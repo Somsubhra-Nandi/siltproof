@@ -1,0 +1,14 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /health",
+  "rawPath": "/health",
+  "rawQueryString": "",
+  "headers": {},
+  "requestContext": {
+    "http": {
+      "method": "GET",
+      "path": "/health"
+    }
+  },
+  "isBase64Encoded": false
+}
