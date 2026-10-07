@@ -53,21 +53,31 @@ seed.py / live upload ──▶ S3 evidence bucket (photos/ slips/ traces/)
 
 ```
 infra/       SAM template and samconfig example
-backend/
+backend/     packaged as one tree, so both functions share common/
+  common/    Textract / Bedrock / Location providers, EXIF + pHash,
+             DynamoDB access, geodesy, retries, and mock fixtures
   ingest/    S3-triggered evidence extraction
   api/       HTTP API, verification rules, decisions
+  layers/    photo dependencies, attached to the ingest function only
   events/    payloads for `sam local invoke`
-data/        OSM drains, slip/trip generators, seed.py, reset.py
+data/        generators (drains, trips, slips, photos), seed.py, reset.py
 scripts/     check_region.py
+tests/       offline test suite
 frontend/    React + Vite + MapLibre app
 ```
 
 ## Status
 
-Day 1 morning: foundation. Infrastructure and both Lambdas deploy, the API
-returns placeholder JSON, and the frontend shows a map with a placeholder
-summary bar. Extraction, rules, generators and seeding land on Day 1 afternoon
-onwards.
+Day 1 complete, offline. The evidence pipeline is written and tested end to
+end against mocks: Textract slip extraction, EXIF + perceptual hash, the
+Bedrock vision check, GPS trace summaries, the full simulated dataset, and
+seeding. 145 tests pass with no AWS account.
+
+Still to come: the 10 verification rules and the API behind them (Day 2
+morning), the decision screen (Day 2), and the live upload (Day 3). The API
+Lambda still answers with placeholder JSON.
+
+Nothing has been deployed yet - see MORNING.md for the ordered commands.
 
 ## Commands
 
@@ -96,7 +106,8 @@ If anything FAILs, try `us-east-1` before building on the region.
 ```bash
 cp infra/samconfig.toml.example infra/samconfig.toml   # once
 
-sam build --template infra/template.yaml
+# --use-container is required: the local python is 3.13, the runtime 3.12
+sam build --use-container --template infra/template.yaml
 
 # First time (interactive, pick region ap-south-1):
 sam deploy --guided --template infra/template.yaml
@@ -115,7 +126,46 @@ sam local invoke IngestFunction --event backend/events/s3-photo.json --template 
 sam local start-api --template infra/template.yaml      # serves on :3000
 ```
 
-### 3. Run the frontend
+### 3. Build the dataset (all offline, no AWS)
+
+```bash
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+
+# 18 drain geofences from OpenStreetMap for your ward
+python data/osm_drains.py --center <lat,lon> --radius 2500 \
+                          --dumpsite <lat,lon>
+# ...or, with no ward chosen yet:
+python data/osm_drains.py --synthetic --center <lat,lon>
+
+python data/gen_trips.py          # 117 trips, traces, ground_truth.json
+python data/gen_slips.py          # a weighbridge slip per trip
+python data/gen_photos.py         # stand-in photos with real EXIF
+
+cp data/out/drains.geojson data/out/dumpsite.geojson frontend/public/data/
+```
+
+Check the real photos before seeding them:
+
+```bash
+python data/check_photos.py ~/siltproof-photos
+```
+
+### 4. Seed
+
+```bash
+python data/seed.py                                   # dry run, writes a plan
+python data/seed.py --live --bucket <EvidenceBucketName>   # for real
+python data/reset.py --live --bucket <EvidenceBucketName>  # between takes
+```
+
+### 5. Tests
+
+```bash
+python -m pytest        # 145 tests, about 30 s, entirely offline
+```
+
+### 6. Run the frontend
 
 ```bash
 cd frontend

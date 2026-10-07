@@ -35,14 +35,23 @@ microservices are all out. One ingest Lambda and one api Lambda is enough.
 
 ```
 infra/       SAM template + samconfig.toml.example
-backend/
+backend/     CodeUri for BOTH functions, so they share common/
+  common/    provider layer: textract, bedrock, location, photo, store,
+             geo, retry, config + fixtures/ for mock mode
   ingest/    S3 event -> EXIF, pHash, Textract, Bedrock -> DynamoDB
   api/       routes, verification rules R1-R10, decisions
+  layers/    photo deps (pillow, imagehash, numpy, scipy) for ingest only
   events/    sam local invoke payloads
-data/        osm_drains, gen_slips, gen_trips, seed, reset + simulated/
+data/        osm_drains, gen_trips, gen_slips, gen_photos, check_photos,
+             seed, reset; dataset.py holds the shared constants
+  out/       generated output, git-ignored
 scripts/     check_region.py
+tests/       offline pytest suite (moto + MOCK_AWS=1)
 frontend/    React app
 ```
+
+Handlers are `ingest.app.lambda_handler` and `api.app.lambda_handler`; both
+import `from common import ...`.
 
 ## Rules
 
@@ -57,9 +66,29 @@ frontend/    React app
 - Keep the ingest Lambda's reserved concurrency low (3) so Bedrock and Textract
   do not throttle during a seed.
 - Small, clear commits.
+- **Every script that can reach AWS defaults to not reaching it.** `seed.py`,
+  `reset.py` and `gen_trips.py` are dry-run/offline unless `--live` is passed,
+  and `--live` prints the call plan and a billable-call estimate first. Keep it
+  that way for anything new.
+- Run the tests before committing: `.venv/bin/python -m pytest` (about 30 s,
+  no AWS account needed). `sam build` needs `--use-container`, because the
+  local python is 3.13 and the runtime is 3.12.
+- `data/out/ground_truth.json` is the expected output of rules R1-R10 for the
+  generated dataset. Day 2's rules are tested against it; if a rule disagrees,
+  one of the two is wrong - decide which before changing either.
+- Mock mode (`MOCK_AWS=1`) must keep using the same parsers as live mode. If
+  you add a provider call, add a fixture for it rather than branching the
+  parsing.
 
 ## Verdict vocabulary
 
 Trip: any hard-rule fail → `HOLD`; else any soft fail → `REVIEW`; else
 `VERIFIED`. Drain: red if any trip is held, amber if any is in review, else
 green. Rate is ₹1,800/tonne (illustrative).
+
+Seeded totals: claimed 1,240 t · verified 805 t · review 65 t · **hold 370 t =
+₹6.66 lakh**. Approving the two review drains on camera takes verified to
+870 t, which is the plan's headline. Two deviations from plan section 5 are
+deliberate and recorded in DECISIONS.md: **R1 has a soft band** (30–60 m from
+the drain is a soft fail, beyond 60 m hard) so drain 8 reads amber, and drain
+11 is red rather than the plan's "🟡/🔴".
