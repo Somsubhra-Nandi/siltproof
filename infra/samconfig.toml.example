@@ -1,0 +1,20 @@
+# Copy to samconfig.toml (git-ignored) and adjust.
+#   cp infra/samconfig.toml.example infra/samconfig.toml
+version = 0.1
+
+[default.global.parameters]
+stack_name = "siltproof"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+region = "ap-south-1"
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+confirm_changeset = true
+parameter_overrides = "BedrockModelId=in.anthropic.claude-opus-5"
+
+[default.sync.parameters]
+watch = true

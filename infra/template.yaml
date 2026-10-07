@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: SiltProof - desilting bill verification (hackathon MVP)
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: in.anthropic.claude-opus-5
+    Description: >-
+      Bedrock model used for photo analysis and evidence summaries.
+      Use an inference profile id (in.* / apac.* / global.*) if the region
+      requires one. Verify with scripts/check_region.py before deploying.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref SiltProofTable
+        EVIDENCE_BUCKET: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+Resources:
+  # ---------------------------------------------------------------- storage
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # Named explicitly, and referenced by name (never !Ref) from the
+      # functions: a !Ref here plus an S3 event source is a circular
+      # dependency in SAM.
+      BucketName: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        # Needed so the browser can PUT to a presigned URL (live upload demo).
+        CorsRules:
+          - AllowedOrigins: ["*"]
+            AllowedMethods: [GET, PUT, HEAD]
+            AllowedHeaders: ["*"]
+
+  SiltProofTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: siltproof
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+  # ------------------------------------------------------------------- api
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        # Open for local dev; this is a demo app with no auth (plan section 1).
+        AllowOrigins: ["*"]
+        AllowHeaders: [Content-Type]
+        AllowMethods: [GET, POST, OPTIONS]
+
+  # ------------------------------------------------------------- functions
+  IngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/ingest/
+      Handler: app.lambda_handler
+      Timeout: 60
+      MemorySize: 1024
+      # Keeps Bedrock/Textract calls from throttling while seeding ~40 photos.
+      ReservedConcurrentExecutions: 3
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SiltProofTable
+        - Statement:
+            - Sid: TextractSlips
+              Effect: Allow
+              # Textract has no resource-level permissions.
+              Action: textract:AnalyzeDocument
+              Resource: "*"
+            - Sid: BedrockPhotoAnalysis
+              Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
+                - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+      Events:
+        Photos:
+          Type: S3
+          Properties:
+            Bucket: !Ref EvidenceBucket   # SAM wires the notification here
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: photos/
+        Slips:
+          Type: S3
+          Properties:
+            Bucket: !Ref EvidenceBucket   # SAM wires the notification here
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: slips/
+        Traces:
+          Type: S3
+          Properties:
+            Bucket: !Ref EvidenceBucket   # SAM wires the notification here
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: traces/
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/api/
+      Handler: app.lambda_handler
+      # HTTP API caps integration timeout at 30s; verification is fast rules only.
+      Timeout: 29
+      MemorySize: 512
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SiltProofTable
+        - Statement:
+            - Sid: BedrockEvidenceSummary
+              Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
+                - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /health
+            Method: GET
+        Verify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /verify/{billId}
+            Method: POST
+        GetBill:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /bill/{billId}
+            Method: GET
+        GetDrain:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /drain/{drainId}
+            Method: GET
+        DrainSummary:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /drain/{drainId}/summary
+            Method: POST
+        Decision:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /decision
+            Method: POST
+        UploadUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /upload-url
+            Method: POST
+
+Outputs:
+  ApiUrl:
+    Description: SiltProof HTTP API base URL (set as VITE_API_BASE_URL)
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+
+  EvidenceBucketName:
+    Description: S3 evidence bucket
+    Value: !Ref EvidenceBucket
+
+  TableName:
+    Description: DynamoDB single table
+    Value: !Ref SiltProofTable

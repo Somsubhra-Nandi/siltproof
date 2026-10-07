@@ -1,0 +1,2 @@
+# boto3 ships with the Lambda runtime, so it is deliberately not listed here.
+# Day 1 afternoon adds: pillow, imagehash (EXIF + perceptual hash).

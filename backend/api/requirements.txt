@@ -1,0 +1,2 @@
+# boto3 ships with the Lambda runtime, so it is deliberately not listed here.
+# Day 2 adds: shapely (geofence point-in-polygon for rules R1/R5).

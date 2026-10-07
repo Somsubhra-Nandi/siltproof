@@ -1,0 +1,12 @@
+{
+  "Records": [
+    {
+      "eventSource": "aws:s3",
+      "eventName": "ObjectCreated:Put",
+      "s3": {
+        "bucket": { "name": "siltproof-evidence-local" },
+        "object": { "key": "photos/drain14/after-003.jpg" }
+      }
+    }
+  ]
+}

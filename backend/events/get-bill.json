@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /bill/{billId}",
+  "rawPath": "/bill/B1",
+  "rawQueryString": "",
+  "headers": {},
+  "pathParameters": { "billId": "B1" },
+  "requestContext": {
+    "http": { "method": "GET", "path": "/bill/B1" }
+  },
+  "isBase64Encoded": false
+}
