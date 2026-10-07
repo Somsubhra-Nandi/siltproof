@@ -1,0 +1,4 @@
+# The crt extra is required when local credentials come from `aws login`
+# (botocore's login credential provider), which is how this repo is set up.
+boto3[crt]>=1.35.0
+pillow>=10.0.0
