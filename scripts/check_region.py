@@ -131,7 +131,12 @@ def main():
         print(f"\n{args.region} works for SiltProof.")
         return 0
 
-    print(f"\n{args.region} is not usable as-is. Fix the FAILs or try us-east-1.")
+    fallback = "ap-south-1" if args.region == "us-east-1" else "us-east-1"
+    print(f"\n{args.region} is not usable as-is. Fix the FAILs or try {fallback}.")
+    print(
+        "SubscriptionRequiredException on every service means the AWS account "
+        "itself is not activated yet, not that the region is wrong."
+    )
     return 1
 
 
