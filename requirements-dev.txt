@@ -1,0 +1,15 @@
+# Local development and offline tests. Nothing here ships to Lambda.
+-r scripts/requirements.txt
+
+# Lambda runtime deps, installed locally so tests exercise the same code.
+pillow>=10.0.0
+imagehash>=4.3.1
+
+# Data generators.
+piexif>=1.1.3
+shapely>=2.0.0
+requests>=2.31.0
+
+# Tests.
+pytest>=8.0.0
+moto[s3,dynamodb]>=5.0.0
