@@ -161,10 +161,13 @@ def split_long_lines(lines, wanted, max_length_m=600.0):
             sections.append(item)
             continue
 
-        per_piece = max(1, len(line) // pieces)
+        # Split by evenly divided indices, with one point of overlap so the
+        # sections join up. Dividing by a floored piece length instead would
+        # dump every leftover point into the last section, leaving it several
+        # times longer than the rest.
         for index in range(pieces):
-            start = index * per_piece
-            end = len(line) if index == pieces - 1 else min(len(line), start + per_piece + 1)
+            start = index * len(line) // pieces
+            end = min(len(line), (index + 1) * len(line) // pieces + 1)
             piece = line[start:end]
             if len(piece) < 2:
                 continue

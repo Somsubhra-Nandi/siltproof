@@ -27,8 +27,16 @@ QUERIES = [
 # Below this, a field is kept but marked low-confidence for the UI.
 LOW_CONFIDENCE = 80.0
 
-# Characters OCR confuses inside otherwise numeric fields.
-OCR_DIGITS = str.maketrans({"O": "0", "o": "0", "l": "1", "I": "1", "|": "1", "S": "5"})
+# Characters OCR confuses inside otherwise numeric fields. Only ever applied
+# to text that already contains at least one real digit, so a word like
+# "none" is not quietly read as a number.
+OCR_DIGITS = str.maketrans(
+    {"O": "0", "o": "0", "l": "1", "I": "1", "L": "1", "|": "1", "S": "5"}
+)
+
+
+def has_digit(text):
+    return any(character.isdigit() for character in str(text))
 
 _NO_ANSWER = {"", "-", "--", "---", "n/a", "na", "none", "nil", "?"}
 
@@ -94,6 +102,11 @@ def parse_weight_tonnes(raw):
     if text in _NO_ANSWER:
         return None
 
+    if not has_digit(text):
+        # Prose, not a weight. Without this, "not a weight" becomes 0.0 once
+        # the OCR fixer turns its letter o into a zero.
+        return None
+
     is_kg = "kg" in text or "kgs" in text
     # Drop units and separators before fixing OCR digit confusions.
     cleaned = re.sub(r"(kgs|kg|mt|tonnes|tonne|ton|tons|t)\b", "", text)
@@ -105,6 +118,8 @@ def parse_weight_tonnes(raw):
         return None
 
     value = float(match.group(0))
+    if value == 0:
+        return None
 
     # A slip never shows a net weight of 9,800 tonnes, so a big number in a
     # field with no unit is kilograms.
@@ -121,6 +136,9 @@ def parse_time(raw):
 
     text = str(raw).strip().lower()
     if text in _NO_ANSWER:
+        return None
+
+    if not has_digit(text):
         return None
 
     meridiem = None
@@ -159,6 +177,8 @@ def parse_vehicle_no(raw):
 
     text = str(raw).strip().upper()
     if text.lower() in _NO_ANSWER:
+        return None
+    if not has_digit(text):
         return None
 
     text = re.sub(r"[^A-Z0-9 ]", " ", text)
