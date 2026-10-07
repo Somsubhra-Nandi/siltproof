@@ -1,0 +1,256 @@
+{
+  "DocumentMetadata": {
+    "Pages": 1
+  },
+  "Blocks": [
+    {
+      "BlockType": "PAGE",
+      "Id": "page-1",
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 1.0,
+          "Height": 1.0,
+          "Left": 0.0,
+          "Top": 0.0
+        }
+      },
+      "Relationships": [
+        {
+          "Type": "CHILD",
+          "Ids": [
+            "query-ticket_no",
+            "query-vehicle_no",
+            "query-gross_weight",
+            "query-tare_weight",
+            "query-net_weight",
+            "query-time_in",
+            "query-time_out",
+            "query-site"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-ticket_no",
+      "Query": {
+        "Text": "What is the ticket number?",
+        "Alias": "TICKET_NO"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-ticket_no"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-ticket_no",
+      "Text": "WB-2O26-O4871",
+      "Confidence": 71.4,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-vehicle_no",
+      "Query": {
+        "Text": "What is the vehicle number?",
+        "Alias": "VEHICLE_NO"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-vehicle_no"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-vehicle_no",
+      "Text": "MH O1 AB l234",
+      "Confidence": 62.8,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-gross_weight",
+      "Query": {
+        "Text": "What is the gross weight?",
+        "Alias": "GROSS_WEIGHT"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-gross_weight"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-gross_weight",
+      "Text": "22,4OO kg",
+      "Confidence": 41.2,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-tare_weight",
+      "Query": {
+        "Text": "What is the tare weight?",
+        "Alias": "TARE_WEIGHT"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-tare_weight"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-tare_weight",
+      "Text": "--",
+      "Confidence": 55.0,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-net_weight",
+      "Query": {
+        "Text": "What is the net weight?",
+        "Alias": "NET_WEIGHT"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-net_weight"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-net_weight",
+      "Text": "9.8O T",
+      "Confidence": 68.3,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-time_in",
+      "Query": {
+        "Text": "What is the time in?",
+        "Alias": "TIME_IN"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-time_in"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-time_in",
+      "Text": "O9:42",
+      "Confidence": 59.7,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-time_out",
+      "Query": {
+        "Text": "What is the time out?",
+        "Alias": "TIME_OUT"
+      }
+    },
+    {
+      "BlockType": "QUERY",
+      "Id": "query-site",
+      "Query": {
+        "Text": "What is the site?",
+        "Alias": "SITE"
+      },
+      "Relationships": [
+        {
+          "Type": "ANSWER",
+          "Ids": [
+            "answer-site"
+          ]
+        }
+      ]
+    },
+    {
+      "BlockType": "QUERY_RESULT",
+      "Id": "answer-site",
+      "Text": "Ward storm wat?r drain desi1ting",
+      "Confidence": 48.1,
+      "Geometry": {
+        "BoundingBox": {
+          "Width": 0.22,
+          "Height": 0.04,
+          "Left": 0.55,
+          "Top": 0.3
+        }
+      }
+    }
+  ],
+  "AnalyzeDocumentModelVersion": "1.0",
+  "ResponseMetadata": {
+    "HTTPStatusCode": 200
+  }
+}

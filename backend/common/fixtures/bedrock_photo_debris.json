@@ -1,0 +1,33 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_siltproof_1",
+            "name": "record_photo_check",
+            "input": {
+              "cleared": true,
+              "load_type": "debris",
+              "confidence": 0.88,
+              "notes": "Load is broken brick, concrete rubble and tile fragments, not drain silt."
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 1540,
+    "outputTokens": 96,
+    "totalTokens": 1636
+  },
+  "metrics": {
+    "latencyMs": 1830
+  },
+  "ResponseMetadata": {
+    "HTTPStatusCode": 200
+  }
+}

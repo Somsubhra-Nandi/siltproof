@@ -1,0 +1,5 @@
+# Photo-evidence dependencies, in a layer so only the ingest function carries
+# them: imagehash.phash needs scipy's DCT, which pulls numpy too, and that is
+# ~200 MB the api function has no use for.
+pillow>=10.0.0
+imagehash>=4.3.1

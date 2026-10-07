@@ -1,0 +1,21 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "text": "Here is my assessment:\n\n```json\n{\"cleared\": true, \"load_type\": \"silt\", \"confidence\": 0.7, \"notes\": \"Bed partly visible.\"}\n```\n"
+        }
+      ]
+    }
+  },
+  "stopReason": "end_turn",
+  "usage": {
+    "inputTokens": 1502,
+    "outputTokens": 88,
+    "totalTokens": 1590
+  },
+  "ResponseMetadata": {
+    "HTTPStatusCode": 200
+  }
+}

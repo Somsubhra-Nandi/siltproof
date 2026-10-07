@@ -1,0 +1,5 @@
+# Intentionally empty of packages.
+#
+# boto3 ships with the Lambda runtime. The photo-evidence stack (pillow,
+# imagehash, numpy, scipy) is in the PhotoDepsLayer, attached to the ingest
+# function only - see backend/layers/photo/requirements.txt.

@@ -7,9 +7,22 @@ Parameters:
     Type: String
     Default: in.anthropic.claude-opus-5
     Description: >-
-      Bedrock model used for photo analysis and evidence summaries.
-      Use an inference profile id (in.* / apac.* / global.*) if the region
-      requires one. Verify with scripts/check_region.py before deploying.
+      Bedrock model for the text evidence summary. Use an inference profile id
+      (in.* / apac.* / global.*) if the region requires one. Verify with
+      scripts/check_region.py before deploying.
+
+  BedrockVisionModelId:
+    Type: String
+    Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
+    Description: >-
+      Bedrock model for the before/after photo check. Roughly 40 calls per seed,
+      so this defaults to the cheapest entitled model rather than the one used
+      for summaries.
+
+  BillId:
+    Type: String
+    Default: B1
+    Description: The single bill this deployment serves (plan section 1).
 
 Globals:
   Function:
@@ -21,6 +34,8 @@ Globals:
         TABLE_NAME: !Ref SiltProofTable
         EVIDENCE_BUCKET: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}
         BEDROCK_MODEL_ID: !Ref BedrockModelId
+        BEDROCK_VISION_MODEL_ID: !Ref BedrockVisionModelId
+        BILL_ID: !Ref BillId
 
 Resources:
   # ---------------------------------------------------------------- storage
@@ -70,13 +85,33 @@ Resources:
         AllowMethods: [GET, POST, OPTIONS]
 
   # ------------------------------------------------------------- functions
+  # pillow + imagehash + numpy + scipy is ~200 MB, and only ingest reads
+  # photos. A layer keeps the api function small and makes code-only redeploys
+  # quick, which matters when iterating on Day 2.
+  PhotoDepsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-photo-deps
+      ContentUri: ../backend/layers/photo/
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - arm64
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: arm64
+
   IngestFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../backend/ingest/
-      Handler: app.lambda_handler
+      # CodeUri is the whole backend tree so both functions share common/.
+      CodeUri: ../backend/
+      Handler: ingest.app.lambda_handler
       Timeout: 60
       MemorySize: 1024
+      Layers:
+        - !Ref PhotoDepsLayer
       # Keeps Bedrock/Textract calls from throttling while seeding ~40 photos.
       ReservedConcurrentExecutions: 3
       Policies:
@@ -131,8 +166,8 @@ Resources:
   ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../backend/api/
-      Handler: app.lambda_handler
+      CodeUri: ../backend/
+      Handler: api.app.lambda_handler
       # HTTP API caps integration timeout at 30s; verification is fast rules only.
       Timeout: 29
       MemorySize: 512

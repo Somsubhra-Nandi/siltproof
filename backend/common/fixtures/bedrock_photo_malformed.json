@@ -1,0 +1,36 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_siltproof_1",
+            "name": "record_photo_check",
+            "input": {
+              "cleared": "yes",
+              "load_type": "rubble",
+              "confidence": "high",
+              "notes": [
+                "unexpected",
+                "list"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 1540,
+    "outputTokens": 96,
+    "totalTokens": 1636
+  },
+  "metrics": {
+    "latencyMs": 1830
+  },
+  "ResponseMetadata": {
+    "HTTPStatusCode": 200
+  }
+}

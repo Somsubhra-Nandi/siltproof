@@ -1,0 +1,33 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_siltproof_1",
+            "name": "record_photo_check",
+            "input": {
+              "cleared": false,
+              "load_type": "unclear",
+              "confidence": 0.41,
+              "notes": "Frame is backlit and the channel bed is not visible; cannot tell whether it was cleared."
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 1540,
+    "outputTokens": 96,
+    "totalTokens": 1636
+  },
+  "metrics": {
+    "latencyMs": 1830
+  },
+  "ResponseMetadata": {
+    "HTTPStatusCode": 200
+  }
+}
