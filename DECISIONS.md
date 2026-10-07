@@ -113,3 +113,79 @@ Everything that could spend money defaults to not spending it: `seed.py`,
 `reset.py` and `gen_trips.py` are dry-run/offline unless `--live` is passed, and
 `--live` first prints the exact call plan and a billable-call estimate. No
 command in this session touched the AWS account.
+
+---
+
+# Second batch (Day 1 afternoon/evening build)
+
+## A pHash index item, alongside the evidence item
+
+Rule R3 has to compare a photo against every other photo in the bill. Evidence
+items are keyed `EVID#<s3key>`, one partition each, so answering that would
+mean scanning the table. The ingest Lambda therefore writes a second small item
+per photo: `BILL#B1 / PHASH#<hash>#<key>`. R3 becomes one `begins_with` query.
+It is not in the plan's section 4 table, but it is the same data, and the drain
+query already filters by `DRAIN#` so nothing else sees it.
+
+## Duplicate threshold is 12 bits
+
+Measured on the generated set: an exact copy is 0, the cropped-and-brightened
+copy is 6, and the closest unrelated pair is 16. `PHASH_DUPLICATE_MAX = 12` sits
+in the gap. **Re-measure after the real photo shoot** - real photos of the same
+drain from slightly different angles may land closer together than these do.
+
+## One slip per trip, not forty
+
+Plan section 6 says "about 40 slips", but rules R7, R8 and R9 are per trip, and
+with 117 trips a 40-slip dataset leaves two thirds of the bill unverifiable.
+The generator renders one slip per trip and `seed.py --max-slips N` caps what
+gets uploaded, so a first live run can be cheap. At full size a seed is 117
+Textract pages (~$1.76) and 40 Bedrock photo calls (~$0.16).
+
+## Heavy dependencies in a Lambda layer
+
+`imagehash.phash` needs scipy's DCT, which brings numpy: ~204 MB with Pillow.
+Carrying that in both functions put each at 82% of the 250 MB unzipped limit
+and slowed the api function's cold start for no reason. The layer is attached
+to ingest only, and both function artifacts are now 156 KB, so Day 2 code
+pushes are seconds rather than minutes.
+
+## Trips are 117, not 120
+
+"About 120" in the plan. 117 is what falls out of hitting every tonnage target
+exactly with believable 5-15 t loads. Forcing it to 120 would mean fudging a
+load somewhere.
+
+## Drain 14 claims 192 t
+
+The hero drain has to carry enough tonnage that holding all of it, plus the
+other three red drains, comes to exactly 370 t. 192 t is 2.8x the average
+drain. That reads as a feature rather than a bug - the biggest claim on the
+bill is the one that never happened - but it is a choice, not the plan's.
+
+## Bugs the tests caught
+
+Worth knowing about, since each was silent:
+
+1. `parse_weight_tonnes("not a weight")` returned **0.0 t**: the OCR corrector
+   turned the letter o into a zero. Digit correction now requires the text to
+   contain a real digit first.
+2. `parse_vehicle_no("MH O1 AB l234")` returned `L234`: upper-casing ran before
+   the digit fix, and `L` was not in the correction table.
+3. `split_long_lines` gave its last section every leftover point, making it
+   several times longer than the others. Sections are now split on evenly
+   divided indices.
+4. A pHash test written with flat two-tone images passed nothing: such images
+   have almost no low-frequency content, so they hash within a few bits of each
+   other however different they look. The same effect made the *first* version
+   of the photo generator produce 40 photos that were all mutual duplicates.
+
+## Still mocked, not proven
+
+Nothing in this session called AWS. The response shapes in
+`backend/common/fixtures/` are written from the documented API shapes, so the
+parsers are tested against what the services *should* return. The three that
+matter on first contact: Textract QUERIES block relationships, the Bedrock
+Converse `toolUse` block, and `geo-routes` leg geometry. The Location parser is
+written defensively (it searches for the geometry rather than assuming a path)
+because that shape is the least certain of the three.
