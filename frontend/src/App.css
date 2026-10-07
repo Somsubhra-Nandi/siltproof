@@ -108,3 +108,37 @@
     font-size: 1.1rem;
   }
 }
+
+.map-legend {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(21, 32, 43, 0.92);
+  color: var(--bar-fg);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.2rem;
+  display: inline-block;
+}
+
+.swatch-drain {
+  background: #8c99a6;
+  border: 1px solid #5b6773;
+}
+
+.swatch-dump {
+  background: #6b8fa8;
+  border: 1px dashed #cfe0ec;
+  margin-left: 0.6rem;
+}
