@@ -1,17 +1,33 @@
 .DS_Store
+
+# secrets and local config
 .env
 .env.local
 .env.*.local
-node_modules/
-frontend/node_modules/
-frontend/dist/
-.aws-sam/
+!.env.example
+infra/samconfig.toml
+
+# python
 __pycache__/
 *.pyc
 .venv/
 venv/
-coverage/
+
+# node
+node_modules/
+frontend/node_modules/
+frontend/dist/
 dist/
 build/
+coverage/
+
+# sam
+.aws-sam/
+
+# generated demo data (photos and originals stay out of git)
+data/simulated/photos/
+data/simulated/slips/
+data/simulated/traces/
+
 .idea/
 .vscode/
