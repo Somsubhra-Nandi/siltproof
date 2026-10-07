@@ -31,3 +31,6 @@ data/simulated/traces/
 
 .idea/
 .vscode/
+
+# generator output (regenerate with data/gen_*.py)
+data/out/
