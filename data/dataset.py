@@ -21,6 +21,11 @@ sys.path.insert(0, str(REPO / "backend"))
 
 from common import geo  # noqa: E402,F401  (backend/common, re-exported)
 
+# One definition of the DynamoDB key layout, shared with the Lambdas.
+from common.store import (  # noqa: E402,F401
+    bill_pk, drain_sk, trip_sk, evidence_pk, vehicle_pk, dumpsite_pk,
+)
+
 DATA = REPO / "data"
 OUT = DATA / "out"
 SIMULATED = DATA / "simulated"
@@ -29,6 +34,11 @@ BILL_ID = "B1"
 RATE_PER_TONNE = 1800
 SILT_DENSITY = 1.4          # tonnes per cubic metre, loose silt
 DRAIN_BUFFER_M = 30.0       # geofence buffer around a drain centreline
+
+# Rule R3: two photos are the same photo at or below this pHash Hamming
+# distance. Measured on the generated set: exact copy 0, cropped and
+# brightened copy ~7, nearest unrelated pair 16.
+PHASH_DUPLICATE_MAX = 12
 TRACE_INTERVAL_S = 30       # one GPS point every 30 s (plan section 6)
 DRAIN_COUNT = 18
 

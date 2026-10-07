@@ -1,0 +1,10 @@
+# Copy to data/photo_map.csv and fill in after the photo shoot.
+# See data/PHOTO_MAPPING.md. role is before | after | load.
+filename,drainId,role,note
+IMG_0001.jpg,1,before,
+IMG_0002.jpg,1,after,
+IMG_0003.jpg,3,load,construction debris pile - drain 3 R4 case
+IMG_0004.jpg,9,after,
+IMG_0004.jpg,14,after,reused on purpose - drain 14 R3 hero case
+IMG_0005.jpg,8,after,shot from across the road - 30-60 m outside the geofence
+IMG_0006.jpg,9,load,silt heap

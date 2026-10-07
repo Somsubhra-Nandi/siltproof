@@ -78,11 +78,17 @@ def _set_answer(response, alias, text):
 
 
 def textract_analyze_document(key):
-    """A mocked AnalyzeDocument response for the slip at this S3 key."""
-    name = "textract_slip_garbled" if "garbled" in key else "textract_slip_good"
-    response = copy.deepcopy(load_fixture(name))
+    """A mocked AnalyzeDocument response for the slip at this S3 key.
 
+    A slip the generator degraded (rotated, shadowed, blurred) comes back on
+    the garbled fixture: the right values, but low confidence and a missing
+    time-out, which is what Textract actually does with a crumpled slip.
+    """
     values = _entry("slips", key)
+
+    garbled = "garbled" in key or bool(values.get("augmented"))
+    name = "textract_slip_garbled" if garbled else "textract_slip_good"
+    response = copy.deepcopy(load_fixture(name))
     for field, alias in SLIP_FIELD_ALIASES.items():
         if field in values and values[field] is not None:
             _set_answer(response, alias, str(values[field]))
