@@ -1,41 +1,153 @@
 # SiltProof
 
-SiltProof verifies proof-of-work for pre-monsoon drain desilting.
+> We don't show the city its drains. We tell the engineer exactly how much of the
+> desilting bill to pay, and show the evidence for every rupee we hold.
 
-The product helps a ward engineer decide how much of a contractor's bill should be approved and how much should be held for review.
+A ward storm-water engineer has one contractor bill to approve two weeks before
+the monsoon: 18 drain sections, ~120 dumper trips, ₹1,800 a tonne. SiltProof
+ingests the evidence (photos, weighbridge slips, GPS traces), extracts the facts
+with AWS, runs 10 deterministic rules, and colours a ward map green, amber or
+red — so the engineer can hold the exact amount that the evidence does not
+support.
 
-## MVP
+Built for Environmental Hacks (AWS), 8–10 Oct 2026. Full scope and schedule in
+[`siltproof-hackathon-plan.md`](siltproof-hackathon-plan.md), which is the
+source of truth.
 
-- One ward
-- One contractor bill
-- 18 drain sections
-- Approximately 120 dumper trips
-- S3 evidence ingestion
-- Textract slip extraction
-- EXIF and perceptual-hash photo checks
-- Bedrock photo analysis and evidence summaries
-- Ten deterministic verification rules
-- Claimed vs verified vs held payment
-- Engineer approve/hold decision
+**Data statement:** contractor bills are not public. The drain geometry and the
+photos (with their GPS and timestamps) are real; weighbridge slips and GPS
+traces are simulated. Every check runs live on AWS.
 
 ## Architecture
 
-- React + TypeScript + Vite
-- Amazon S3
-- AWS Lambda
-- Amazon DynamoDB
-- Amazon API Gateway
-- Amazon Textract
-- Amazon Bedrock
-- Amazon Location Service
-- AWS Amplify Hosting
-- AWS SAM
+```
+seed.py / live upload ──▶ S3 evidence bucket (photos/ slips/ traces/)
+                                     │ S3 event
+                                     ▼
+                            Lambda: ingest
+                   EXIF + pHash · Textract QUERIES · Bedrock vision
+                                     │
+                                     ▼
+                         DynamoDB (single table)
+                                     ▲
+                                     │
+        API Gateway HTTP API ──▶ Lambda: api  (rules R1–R10, decisions)
+                                     ▲
+                                     │
+          React + MapLibre (Amazon Location tiles) on Amplify Hosting
+```
 
-## Repository Structure
+| Service | Job |
+|---|---|
+| S3 | Evidence store |
+| Lambda | `ingest` (extraction) and `api` (rules + endpoints) |
+| Textract | Reads weighbridge slips with Queries |
+| Bedrock | Before/after photo check and the evidence summary |
+| Amazon Location | Map tiles, and routes for generating dumper traces |
+| DynamoDB | Drains, trips, extracted facts, verdicts, decisions |
+| API Gateway | HTTP API for the frontend |
+| Amplify Hosting | Hosts the React app |
+| SAM | Infrastructure as code |
 
-- `frontend/` — ward engineer dashboard
-- `backend/functions/ingest/` — S3 evidence ingestion
-- `backend/functions/api/` — API and verification rules
-- `scripts/` — seed/reset/data-generation scripts
-- `data/simulated/` — simulated hackathon data
-- `docs/` — architecture and submission assets
+## Repository layout
+
+```
+infra/       SAM template and samconfig example
+backend/
+  ingest/    S3-triggered evidence extraction
+  api/       HTTP API, verification rules, decisions
+  events/    payloads for `sam local invoke`
+data/        OSM drains, slip/trip generators, seed.py, reset.py
+scripts/     check_region.py
+frontend/    React + Vite + MapLibre app
+```
+
+## Status
+
+Day 1 morning: foundation. Infrastructure and both Lambdas deploy, the API
+returns placeholder JSON, and the frontend shows a map with a placeholder
+summary bar. Extraction, rules, generators and seeding land on Day 1 afternoon
+onwards.
+
+## Commands
+
+### 1. Check the region (do this first)
+
+One tiny live call each to Bedrock, Textract and Amazon Location. Creates no
+resources; costs a fraction of a cent.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r scripts/requirements.txt
+
+python scripts/check_region.py ap-south-1
+# or with a different model:
+python scripts/check_region.py ap-south-1 --model-id in.anthropic.claude-sonnet-5
+```
+
+`scripts/requirements.txt` pins `boto3[crt]` on purpose: without the `crt`
+extra, boto3 cannot read credentials created by `aws login`.
+
+If anything FAILs, try `us-east-1` before building on the region.
+
+### 2. Deploy the backend
+
+```bash
+cp infra/samconfig.toml.example infra/samconfig.toml   # once
+
+sam build --template infra/template.yaml
+
+# First time (interactive, pick region ap-south-1):
+sam deploy --guided --template infra/template.yaml
+
+# After that:
+sam deploy --config-file infra/samconfig.toml
+```
+
+Note the stack outputs: `ApiUrl`, `EvidenceBucketName`, `TableName`.
+
+Run a Lambda locally without deploying:
+
+```bash
+sam local invoke ApiFunction --event backend/events/get-bill.json --template infra/template.yaml
+sam local invoke IngestFunction --event backend/events/s3-photo.json --template infra/template.yaml
+sam local start-api --template infra/template.yaml      # serves on :3000
+```
+
+### 3. Run the frontend
+
+```bash
+cd frontend
+cp .env.example .env        # then fill in VITE_LOCATION_API_KEY and VITE_API_BASE_URL
+npm install
+npm run dev                 # http://localhost:5173
+npm run build               # type-check + production build
+```
+
+## Manual steps (not automated)
+
+These need a human in the AWS console or CLI:
+
+1. **`aws configure`** — credentials for an IAM user/role with permission to
+   deploy SAM stacks, plus `bedrock:InvokeModel`, `textract:AnalyzeDocument` and
+   `geo-routes:CalculateRoutes` so `check_region.py` can run.
+2. **Bedrock model access** — Bedrock console → *Model access* in your region →
+   request access to the Claude model you intend to use. Approval can take time,
+   so do it before anything else, and keep a second model enabled as a fallback.
+   Pass the model (or inference profile) id to `check_region.py` and to the
+   `BedrockModelId` stack parameter.
+3. **Amazon Location API key** — Location console → *API keys* → create a key
+   scoped to map tiles (`geo-maps:GetTile`, `geo-maps:GetStyleDescriptor`) in the
+   same region. Put it in `frontend/.env` as `VITE_LOCATION_API_KEY`. It is a
+   browser key, so never commit it.
+4. **AWS Budget alarm** — Billing console → *Budgets* → a small monthly budget
+   with an email alert, before any seeding.
+5. **Amplify Hosting** — Amplify console → *Host web app* → connect this Git
+   repo, app root `frontend`, build `npm run build`, output `dist`, and add the
+   `VITE_*` variables as Amplify environment variables.
+6. **Request `geo-routes` permission** if `check_region.py` reports a FAIL for
+   location — the route calculation needs `geo-routes:CalculateRoutes`.
+
+Nothing in this repo deploys or seeds automatically. `sam deploy` and the seed
+scripts are always run by hand.
