@@ -304,7 +304,16 @@ def main(argv=None):
     dumpsite = ds.load_json(ds.OUT / "dumpsite.geojson")
     trips = ds.load_json(ds.OUT / "trips.json")["trips"]
     ground_truth = ds.load_json(ds.OUT / "ground_truth.json")
-    fleet = ds.vehicles()
+
+    # The fleet comes from the trips themselves, not from the nominal list:
+    # the scheduler hires an extra truck rather than double-book one, and
+    # rule R7 needs a capacity record for every vehicle that actually ran.
+    fleet = sorted(
+        ({"vehicleNo": trip["vehicleNo"], "capacityTonnes": trip["capacityTonnes"]}
+         for trip in trips),
+        key=lambda vehicle: vehicle["vehicleNo"],
+    )
+    fleet = list({vehicle["vehicleNo"]: vehicle for vehicle in fleet}.values())
 
     # ---- what would be uploaded
     generated = walk_evidence(evidence_root)

@@ -327,7 +327,12 @@ def main(argv=None):
     feature14 = next(f for f in features if f["properties"]["drainId"] == "14")
     centreline14 = feature14["properties"].get("centreline") or []
     lon14, lat14 = point_inside(feature14["geometry"]["coordinates"][0], reuse_random, centreline14)
-    stamp14 = work_window_stamp(14, 1, reuse_random)
+
+    # The copies must be stamped *after* the photo they reuse. Rule R3 treats
+    # the earliest appearance of an image as the genuine one, so a copy dated
+    # before its source would flag drain 9 and clear drain 14 - backwards.
+    window_end = datetime.datetime.fromisoformat(ds.WORK_WINDOW[1])
+    stamp14 = min(source_meta["stamp"] + datetime.timedelta(days=1), window_end)
 
     # 1. an exact duplicate: copy the encoded bytes and only swap the EXIF, so
     # the pixels really are identical rather than re-compressed.

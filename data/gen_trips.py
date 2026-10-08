@@ -200,13 +200,123 @@ def plan_loads(target_tonnes, drain_id, random):
     return plan
 
 
-def pick_vehicle(fleet, load, marker, random):
-    if marker == "R7_OVERLOAD":
-        small = [v for v in fleet if v["capacityTonnes"] == OVERLOAD_CAPACITY]
-        return random.choice(small or fleet)
+# A truck must be able to drive from where its last trip ended to where its
+# next one starts. Rule R6 calls anything over 40 km/h impossible, so the
+# scheduler keeps honest trips under this, leaving the rule headroom.
+SAFE_SPEED_KMH = 30.0
 
-    able = [v for v in fleet if v["capacityTonnes"] >= load]
-    return random.choice(able or fleet)
+
+def can_follow(previous, trip):
+    """Could one truck do `previous` and then `trip`?"""
+    if previous is None:
+        return True
+
+    gap_minutes = (
+        datetime.datetime.fromisoformat(trip["_points"][0]["t"])
+        - datetime.datetime.fromisoformat(previous["_points"][-1]["t"])
+    ).total_seconds() / 60
+
+    if gap_minutes <= 0:
+        return False
+
+    last = previous["_points"][-1]
+    first = trip["_points"][0]
+    km = ds.geo.haversine_m([last["lon"], last["lat"]], [first["lon"], first["lat"]]) / 1000
+
+    return km / (gap_minutes / 60) <= SAFE_SPEED_KMH
+
+
+def assign_vehicles(trips, fleet, series, random):
+    """Give every trip a truck that is actually free to do it.
+
+    Assigning at random per drain, as an earlier version did, put the same
+    truck on two overlapping trips 8 km apart fifteen times over. Rule R6 is
+    supposed to catch exactly that, so every one of those would have been a
+    hold, and the bill's totals would have been meaningless. Vehicles are now
+    assigned in time order against each truck's own timeline.
+    """
+    fleet = [dict(vehicle) for vehicle in fleet]
+    last_trip = {vehicle["vehicleNo"]: None for vehicle in fleet}
+
+    # The drain 16 pair is deliberately impossible, so it gets a truck of its
+    # own: no honest trip should inherit the conflict.
+    r6_pair = [trip for trip in trips if trip["marker"] == "R6_IMPOSSIBLE"]
+    reserved = None
+    if r6_pair:
+        reserved = next(
+            (v for v in fleet if v["capacityTonnes"] >= max(t["claimedTonnes"] for t in r6_pair)),
+            fleet[0],
+        )
+        fleet = [v for v in fleet if v["vehicleNo"] != reserved["vehicleNo"]]
+        for trip in r6_pair:
+            trip["_vehicle"] = reserved
+
+    pending = sorted(
+        (trip for trip in trips if "_vehicle" not in trip),
+        key=lambda trip: trip["_points"][0]["t"],
+    )
+
+    for trip in pending:
+        if trip["marker"] == "R7_OVERLOAD":
+            # The point of the case is a load heavier than the truck allows.
+            able = [v for v in fleet if v["capacityTonnes"] == OVERLOAD_CAPACITY]
+        else:
+            able = [v for v in fleet if v["capacityTonnes"] >= trip["claimedTonnes"]]
+
+        free = [v for v in able if can_follow(last_trip[v["vehicleNo"]], trip)]
+
+        if free:
+            # Prefer the truck idle longest, so work spreads over the fleet.
+            chosen = min(
+                free,
+                key=lambda v: (
+                    last_trip[v["vehicleNo"]]["_points"][-1]["t"]
+                    if last_trip[v["vehicleNo"]]
+                    else ""
+                ),
+            )
+        else:
+            # Nobody is free: hire another truck rather than double-book one.
+            chosen = {
+                "vehicleNo": ds.vehicle_plate(series, len(fleet) + len(trips)),
+                "capacityTonnes": max(16, int(trip["claimedTonnes"]) + 2),
+            }
+            fleet.append(chosen)
+            last_trip[chosen["vehicleNo"]] = None
+
+        trip["_vehicle"] = chosen
+        last_trip[chosen["vehicleNo"]] = trip
+
+    used = {trip["_vehicle"]["vehicleNo"]: trip["_vehicle"] for trip in trips}
+    return sorted(used.values(), key=lambda vehicle: vehicle["vehicleNo"])
+
+
+def attach_vehicle_and_slip(trip, random):
+    """Fill in everything that depends on which truck did the trip."""
+    vehicle = trip.pop("_vehicle")
+    capacity = vehicle["capacityTonnes"]
+    tare = tare_for(capacity)
+    arrival = datetime.datetime.fromisoformat(trip["arrivalTime"])
+
+    slip_time_in = arrival + datetime.timedelta(minutes=random.randint(-2, 3))
+    if trip["drainId"] == "14":
+        # The slip was printed long before the truck stopped anywhere (R8).
+        slip_time_in = arrival - datetime.timedelta(minutes=R8_SLIP_EARLY_MIN)
+
+    trip["vehicleNo"] = vehicle["vehicleNo"]
+    trip["capacityTonnes"] = capacity
+    trip["slip"] = {
+        "ticketNo": f"WB-2026-{random.randint(10000, 99999)}",
+        "vehicleNo": vehicle["vehicleNo"],
+        "gross": round(tare + trip["claimedTonnes"], 2),
+        "tare": tare,
+        "net": round(trip["claimedTonnes"], 2),
+        "timeIn": slip_time_in.strftime("%H:%M"),
+        "timeOut": (slip_time_in + datetime.timedelta(minutes=random.randint(14, 26))).strftime("%H:%M"),
+        "site": "Ward storm water drain desilting",
+        "date": slip_time_in.strftime("%d/%m/%Y"),
+    }
+    return trip
 
 
 def tare_for(capacity):
@@ -227,10 +337,14 @@ def schedule_start(drain_index, trip_index, random):
     )
 
 
-def build_trip(*, drain, drain_index, trip_index, load, marker, fleet, route, dumpsite_center, random):
+def build_trip(*, drain, drain_index, trip_index, load, marker, route, dumpsite_center, random):
+    """Everything about a trip except which truck did it.
+
+    The vehicle is assigned later, in one pass over all trips, so no truck is
+    booked for two trips at once (see assign_vehicles).
+    """
     drain_id = drain["drainId"]
     trip_no = f"{trip_index + 1:03d}"
-    vehicle = pick_vehicle(fleet, load, marker, random)
 
     start = schedule_start(drain_index, trip_index, random)
     is_detour = drain_id == "14"
@@ -260,19 +374,10 @@ def build_trip(*, drain, drain_index, trip_index, load, marker, fleet, route, du
         seconds=DWELL_AT_DUMP_S
     )
 
-    slip_time_in = arrival + datetime.timedelta(minutes=random.randint(-2, 3))
-    if is_detour:
-        slip_time_in = arrival - datetime.timedelta(minutes=R8_SLIP_EARLY_MIN)
-
-    capacity = vehicle["capacityTonnes"]
-    tare = tare_for(capacity)
-
     return {
         "tripId": ds.trip_id(drain_id, trip_no),
         "drainId": drain_id,
         "tripNo": trip_no,
-        "vehicleNo": vehicle["vehicleNo"],
-        "capacityTonnes": capacity,
         "claimedTonnes": load,
         "marker": marker,
         "startTime": iso(start),
@@ -291,17 +396,6 @@ def build_trip(*, drain, drain_index, trip_index, load, marker, fleet, route, du
         ),
         "traceKey": ds.trace_key(drain_id, trip_no),
         "slipKey": ds.slip_key(drain_id, trip_no),
-        "slip": {
-            "ticketNo": f"WB-2026-{random.randint(10000, 99999)}",
-            "vehicleNo": vehicle["vehicleNo"],
-            "gross": round(tare + load, 2),
-            "tare": tare,
-            "net": round(load, 2),
-            "timeIn": slip_time_in.strftime("%H:%M"),
-            "timeOut": (slip_time_in + datetime.timedelta(minutes=random.randint(14, 26))).strftime("%H:%M"),
-            "site": "Ward storm water drain desilting",
-            "date": slip_time_in.strftime("%d/%m/%Y"),
-        },
         "_points": points,
     }
 
@@ -313,9 +407,6 @@ def apply_r6_case(trips, dumpsite_center):
         return
 
     first, second = flagged[0], flagged[1]
-    second["vehicleNo"] = first["vehicleNo"]
-    second["capacityTonnes"] = first["capacityTonnes"]
-    second["slip"]["vehicleNo"] = first["vehicleNo"]
 
     first_end = datetime.datetime.fromisoformat(first["endTime"])
     new_start = first_end + datetime.timedelta(minutes=R6_GAP_MINUTES)
@@ -343,8 +434,6 @@ def apply_r6_case(trips, dumpsite_center):
         seconds=DWELL_AT_DUMP_S
     )
     second["arrivalTime"] = iso(arrival)
-    second["slip"]["timeIn"] = arrival.strftime("%H:%M")
-    second["slip"]["timeOut"] = (arrival + datetime.timedelta(minutes=18)).strftime("%H:%M")
     second["r6PairedWith"] = first["tripId"]
     # The truck never got near the approved dump site on this trip either.
     second["enteredDumpsite"] = False
@@ -578,7 +667,6 @@ def main(argv=None):
                     trip_index=trip_index,
                     load=load,
                     marker=marker,
-                    fleet=fleet,
                     route=route,
                     dumpsite_center=dumpsite_center,
                     random=random,
@@ -589,6 +677,11 @@ def main(argv=None):
             apply_r6_case(drain_trips, dumpsite_center)
 
         trips.extend(drain_trips)
+
+    # ---- one truck cannot be in two places at once
+    fleet = assign_vehicles(trips, fleet, args.series, ds.rng(args.seed, "fleet"))
+    for trip in trips:
+        attach_vehicle_and_slip(trip, ds.rng(args.seed, f"slip-{trip['tripId']}"))
 
     # ---- write the traces, then strip the points out of trips.json
     trace_dir = ds.OUT / "evidence"

@@ -113,27 +113,36 @@ TARGETS = {
 
 # Fleet. The plate series is a CLI option so no city is baked in; capacity is a
 # stand-in for the Vahan registry (plan section 4).
-VEHICLE_CAPACITIES = [16, 14, 16, 10, 14, 16, 10, 14, 16, 14]
+#
+# The fleet is sized so that no truck is ever in two places at once: 18 drains
+# working in parallel need more than a handful of tippers, and gen_trips.py
+# will extend this if its scheduler still runs out.
+FLEET_SIZE = 22
 
-VEHICLE_SUFFIXES = [
-    ("01", "AB", "1234"), ("01", "CD", "5678"), ("02", "EF", "9012"),
-    ("02", "GH", "3456"), ("03", "JK", "7890"), ("03", "LM", "2345"),
-    ("04", "NP", "6789"), ("04", "QR", "1357"), ("05", "ST", "2468"),
-    ("05", "UV", "8024"),
-]
+CAPACITY_CYCLE = [16, 14, 16, 10, 14, 16, 10, 14, 16, 14]
+
+# Real Indian plates skip I and O, which also keeps OCR honest.
+PLATE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"
 
 
-def vehicles(series="MH"):
+def vehicle_plate(series, index):
+    district = f"{index // 4 % 9 + 1:02d}"
+    letters = PLATE_LETTERS[index // len(PLATE_LETTERS) % len(PLATE_LETTERS)] + PLATE_LETTERS[
+        index % len(PLATE_LETTERS)
+    ]
+    digits = 1000 + index * 137 % 9000
+    return f"{series} {district} {letters} {digits}"
+
+
+def vehicles(series="MH", count=FLEET_SIZE):
     """[{vehicleNo, capacityTonnes}, ...] for the fleet."""
-    fleet = []
-    for (district, letters, digits), capacity in zip(VEHICLE_SUFFIXES, VEHICLE_CAPACITIES):
-        fleet.append(
-            {
-                "vehicleNo": f"{series} {district} {letters} {digits}",
-                "capacityTonnes": capacity,
-            }
-        )
-    return fleet
+    return [
+        {
+            "vehicleNo": vehicle_plate(series, index),
+            "capacityTonnes": CAPACITY_CYCLE[index % len(CAPACITY_CYCLE)],
+        }
+        for index in range(count)
+    ]
 
 
 # ------------------------------------------------------------- s3 key layout
