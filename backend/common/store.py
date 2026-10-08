@@ -109,3 +109,79 @@ def query_pk(pk, sk_prefix=None):
         if not token:
             return items
         kwargs["ExclusiveStartKey"] = token
+
+
+def batch_get(keys):
+    """Fetch many items by (pk, sk). Returns a {(pk, sk): item} map.
+
+    DynamoDB takes at most 100 keys per call and may return fewer than asked
+    for, so this chunks and follows UnprocessedKeys.
+    """
+    found = {}
+    unique = list({(pk, sk) for pk, sk in keys})
+    resource = awsclients.resource("dynamodb")
+    name = config.table_name()
+
+    for start in range(0, len(unique), 100):
+        request = {
+            name: {
+                "Keys": [{"pk": pk, "sk": sk} for pk, sk in unique[start:start + 100]]
+            }
+        }
+
+        while request:
+            response = resource.batch_get_item(RequestItems=request)
+            for item in response.get("Responses", {}).get(name, []):
+                found[(item["pk"], item["sk"])] = from_dynamo(item)
+            request = response.get("UnprocessedKeys") or None
+
+    return found
+
+
+def scan_sk(sk, **equals):
+    """Every item with this sort key, optionally filtered on attributes.
+
+    Photo evidence lives under one partition per S3 key, so there is no
+    partition to query for "all the photos on this bill". The table holds a
+    few hundred items for one ward's bill, so a filtered scan is the honest
+    MVP answer; a sparse GSI on billId would be the production one.
+    """
+    from boto3.dynamodb.conditions import Attr
+
+    condition = Attr("sk").eq(sk)
+    for name, value in equals.items():
+        if value is not None:
+            condition = condition & Attr(name).eq(value)
+
+    items = []
+    kwargs = {"FilterExpression": condition}
+    handle = table()
+
+    while True:
+        response = handle.scan(**kwargs)
+        items.extend(from_dynamo(item) for item in response.get("Items", []))
+        token = response.get("LastEvaluatedKey")
+        if not token:
+            return items
+        kwargs["ExclusiveStartKey"] = token
+
+
+def update_fields(pk, sk, fields):
+    """Merge a few attributes into an existing item."""
+    if not fields:
+        return None
+
+    names = {f"#f{index}": name for index, name in enumerate(fields)}
+    values = {f":v{index}": to_dynamo(value) for index, value in enumerate(fields.values())}
+    assignments = ", ".join(
+        f"{placeholder} = :v{index}" for index, placeholder in enumerate(names)
+    )
+
+    response = table().update_item(
+        Key={"pk": pk, "sk": sk},
+        UpdateExpression=f"SET {assignments}",
+        ExpressionAttributeNames=names,
+        ExpressionAttributeValues=values,
+        ReturnValues="ALL_NEW",
+    )
+    return from_dynamo(response.get("Attributes") or {})
