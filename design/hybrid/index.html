@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiltProof Case File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wdth,wght@75..100,400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="../shared/sp.js"></script>
+<style>
+/* SiltProof hybrid: Direction A's survey sheet, Direction C's case file,
+   one camera move from Direction B. See ../DESIGN.md for the tokens. */
+:root {
+  --ground: #E3DED2;  --sheet: #F2EFE7;  --sheet-2: #E9E5DA;  --paper: #FBFAF6;
+  --ink: #1C2A38;  --ink-2: #4E5A64;  --ink-3: #7D868B;  --rule: #CFC9BB;  --water: #AEC0C3;
+  --prussian: #1F4D78;  --prussian-hover: #245A8B;  --prussian-press: #163A5B;
+  --verified: #39684F;  --review: #A6731E;  --review-wash: #F3EAD7;
+  --held: #8E2424;  --held-hover: #9E2D2B;  --held-press: #651616;  --held-wash: #F1DFDA;
+  --serif: 'Newsreader', Georgia, serif;
+  --sans: 'Instrument Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --ease: cubic-bezier(.2,.7,.1,1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--ground); color: var(--ink); font: 400 16px/1.45 var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums lining-nums; }
+.mono, .keys b, .stamp span, .fields b, .ev label b, .replay b, .case-money .billbox b, .confirm .moves b, .maptag .num, .maptip .money, .claimrow b, .cell .t, .tick, .tl-axis span, .maplabel.dim { font-family: var(--mono); font-variant-numeric: tabular-nums; word-spacing: -.32em; }
+.sim-badge { font: 600 13px/1 var(--sans); color: var(--ink); padding: 6px 10px; border-radius: 3px; white-space: nowrap;
+  background: repeating-linear-gradient(-45deg, #E6DFC9 0 6px, #EFE9D6 6px 12px); border: 1px solid #CDBF95; }
+
+/* ---------- buttons */
+.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 22px;
+  border-radius: 6px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden;
+  transition: background 150ms, box-shadow 150ms, transform 80ms, border-color 150ms; }
+.btn-primary { background: var(--prussian); color: #F6F3EC; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 2px 0 var(--prussian-press), 0 8px 18px -8px rgba(31,77,120,.7); }
+.btn-primary:hover, .btn-primary.is-hover { background: var(--prussian-hover); }
+.btn-primary:active, .btn-primary.is-press { transform: translateY(2px); box-shadow: 0 0 0 var(--prussian-press), 0 2px 6px -4px rgba(31,77,120,.6); }
+.btn-held { background: var(--held); color: #FBF3F0; box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 2px 0 var(--held-press), 0 8px 18px -8px rgba(142,36,36,.7); }
+.btn-held:hover, .btn-held.is-hover { background: var(--held-hover); }
+.btn-held:active, .btn-held.is-press { transform: translateY(2px); box-shadow: none; }
+.btn-quiet { background: var(--paper); border-color: var(--ink-3); color: var(--ink); }
+.btn-quiet:hover, .btn-quiet.is-hover { background: var(--sheet-2); border-color: var(--ink); }
+.btn-quiet:active, .btn-quiet.is-press { transform: translateY(1px); background: #E0DBCE; }
+.btn[disabled], .btn.is-disabled { background: var(--sheet-2); color: var(--ink-3); border-color: var(--rule); box-shadow: none; cursor: not-allowed; transform: none; }
+.btn.is-busy { cursor: progress; }
+.btn.is-busy.btn-primary { background: var(--prussian-press); }
+.btn.is-busy.btn-held { background: var(--held-press); }
+.btn .bar-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.4); transform-origin: left; transform: scaleX(0); }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: currentColor; animation: spin 700ms linear infinite; flex: none; }
+.btn-quiet .spinner { border-color: var(--rule); border-top-color: var(--ink); }
+@keyframes spin { to { transform: rotate(1turn); } }
+.link { border: 0; background: none; padding: 4px 0; color: var(--prussian); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.link:hover, .link.is-hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- stamps (from the docket, in survey ink) */
+.stamp { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 5px 10px 4px;
+  border: 2px solid currentColor; box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px currentColor; border-radius: 3px;
+  transform: rotate(-3deg); line-height: 1; white-space: nowrap; background: rgba(251,250,246,.7); }
+.stamp b { font: 700 13px/1 var(--sans); letter-spacing: .14em; }
+.stamp span { font: 600 16px/1.1 var(--mono); }
+.stamp.held { color: var(--held); }
+.stamp.review { color: var(--review); border-style: dashed; box-shadow: none; transform: rotate(-2deg); }
+.stamp.approved { color: var(--prussian); transform: rotate(-1.5deg); border-width: 1.5px; box-shadow: none; }
+.stamp.big { padding: 8px 14px 7px; }
+.stamp.big b { font-size: 16px; }
+.stamp.big span { font-size: 22px; }
+.stamp.slam { animation: slam 320ms cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes slam { from { transform: rotate(-3deg) scale(1.7); opacity: 0; } }
+
+/* ---------- overview: the working sheet */
+.app { position: fixed; inset: 0; }
+.sheet { position: absolute; left: 0; top: 0; bottom: 0; width: 500px; background: var(--sheet); z-index: 4; display: flex; flex-direction: column;
+  box-shadow: 1px 0 0 var(--rule), 12px 0 32px -18px rgba(40,32,20,.35); transition: transform 600ms var(--ease), opacity 400ms; }
+.app.case .sheet { transform: translateX(-104%); opacity: 0; pointer-events: none; }
+.masthead { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px 14px; border-bottom: 1px solid var(--rule); }
+.wordmark { font: 600 26px/1 var(--serif); letter-spacing: -.01em; }
+.wordmark i { font-weight: 400; color: var(--ink-2); }
+.disclose { margin: 14px 32px 0; padding: 10px 12px; border-left: 3px solid #CDBF95; background: #EEE8D6; font-size: 14px; line-height: 1.4; color: var(--ink); }
+.bill-meta { padding: 14px 32px 0; color: var(--ink-2); font-size: 15px; }
+.bill-meta strong { color: var(--ink); font-weight: 600; }
+.figure { padding: 6px 32px 14px; position: relative; }
+.figure .eyebrow { font-size: 15px; color: var(--ink-2); margin-top: 6px; }
+.figure .amount { font: 500 84px/0.95 var(--serif); letter-spacing: -.035em; margin: 2px 0 8px; font-variation-settings: 'opsz' 72; font-variant-numeric: tabular-nums lining-nums; }
+.figure .amount small { font-size: .40em; letter-spacing: -.01em; margin-left: .14em; font-weight: 400; }
+.figure.held .amount { color: var(--held); }
+.figure .caption { font: 400 18px/1.38 var(--serif); margin: 0; max-width: 32ch; }
+.figure .caption em { font-style: italic; }
+.figure .stamp { position: absolute; right: 34px; top: 34px; }
+.ledger { padding: 2px 32px 14px; }
+.claimrow { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; color: var(--ink-2); margin-bottom: 8px; }
+.claimrow b { color: var(--ink); font-weight: 500; }
+.bar { height: 14px; display: flex; background: var(--sheet-2); border-radius: 2px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--rule); }
+.bar span { height: 100%; transition: width 260ms linear; }
+.bar .v { background: var(--verified); }
+.bar .r { background: repeating-linear-gradient(-45deg, var(--review) 0 3px, #C99A4E 3px 6px); }
+.bar .h { background: var(--held); }
+.keys { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
+.keys div { border-top: 3px solid; padding-top: 8px; }
+.keys .v { border-color: var(--verified); } .keys .r { border-color: var(--review); } .keys .h { border-color: var(--held); }
+.keys b { display: block; font: 500 22px/1.15 var(--mono); letter-spacing: -.02em; }
+.keys span { display: block; color: var(--ink-2); font-size: 14px; }
+.keys .na { border-top: 3px dashed var(--ink-3); }
+.keys .na b { word-spacing: normal; color: var(--ink-3); font-family: var(--sans); font-size: 16px; font-weight: 500; letter-spacing: 0; padding: 4px 0 2px; }
+.actions { padding: 4px 32px 16px; }
+.actions .btn { width: 100%; min-height: 60px; font-size: 19px; }
+.hint { color: var(--ink-2); font-size: 14px; margin: 10px 2px 0; }
+.reran { display: flex; justify-content: space-between; align-items: center; padding: 0 32px 10px; color: var(--ink-2); font-size: 14px; }
+
+.register { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--rule); }
+.register h2 { font: 600 15px/1 var(--sans); color: var(--ink-2); margin: 16px 32px 8px; display: flex; justify-content: space-between; }
+.grid18 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; padding: 0 32px; }
+.cell { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--rule); font-size: 15px; }
+.cell .no { font: 500 18px/1 var(--serif); color: var(--ink-2); }
+.cell .t { font-family: var(--mono); font-size: 14px; color: var(--ink-2); }
+.cell.flash { animation: flash 900ms ease-out; }
+@keyframes flash { from { background: #E7DDC4; } }
+.row { display: grid; grid-template-columns: 34px 1fr auto; gap: 2px 12px; align-items: center; width: 100%; padding: 10px 32px 10px 28px;
+  border: 0; border-left: 4px solid transparent; background: none; text-align: left; cursor: pointer; opacity: 1; transition: background 120ms, opacity 300ms, transform 300ms; }
+.row:hover, .row.is-hover { background: var(--sheet-2); border-left-color: var(--prussian); }
+.row:active, .row.is-press { background: #E0DBCE; }
+.row .no { font: 500 26px/1 var(--serif); color: var(--ink-2); align-self: start; padding-top: 2px; }
+.row .name { font-weight: 600; font-size: 16px; }
+.row .why { color: var(--ink-2); font-size: 14px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row.held .no { color: var(--held); }
+.row.review .no { color: var(--review); }
+.row.approved .no { color: var(--prussian); }
+.row.enter { opacity: 0; transform: translateY(6px); }
+.row .stamp { justify-self: end; }
+.clearline { padding: 8px 32px 18px; color: var(--ink-2); font-size: 14px; }
+.inline { margin: 0 32px 12px 32px; padding: 14px 16px; background: var(--paper); border: 1px solid var(--ink-3); position: relative; }
+.inline .confirm { left: -8px; right: -8px; width: auto; bottom: calc(100% + 8px); }
+.inline p { margin: 0 0 12px; font-size: 15px; }
+.inline .two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; }
+
+/* ---------- confirmation sheet, shared by overview and case */
+.confirm { position: absolute; z-index: 30; background: var(--paper); border: 1.5px solid var(--ink); padding: 18px 20px 16px; width: 460px;
+  box-shadow: 8px 8px 0 rgba(28,42,56,.16), 0 24px 60px -12px rgba(28,42,56,.45); animation: rise 220ms var(--ease); }
+.confirm h4 { font: 500 25px/1.15 var(--serif); margin: 0 0 8px; }
+.confirm p { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; }
+.confirm .moves { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 15px; margin: 0 0 14px; padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.confirm .moves span { color: var(--ink-2); }
+.confirm .moves b { font: 500 15px var(--mono); text-align: right; }
+.confirm .two { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; }
+.confirm .need { font-size: 14px; color: var(--review); margin: -4px 0 10px; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.err { border-left: 3px solid var(--held); background: var(--held-wash); padding: 10px 12px; font-size: 15px; margin: 0 0 12px; }
+.err b { color: var(--held); }
+
+/* ---------- the map frame (moves between the overview plate and Exhibit A) */
+.mapframe { position: absolute; z-index: 2; }
+.mapframe .neat { position: absolute; inset: 0; border: 1.5px solid var(--ink); box-shadow: 0 0 0 5px var(--ground), 0 0 0 6px var(--ink-3); pointer-events: none; z-index: 3; }
+.app.case .mapframe .neat { box-shadow: none; border-color: var(--ink-3); }
+#map { position: absolute; inset: 0; }
+.ticks { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.tick { position: absolute; font: 400 12px/1 var(--mono); color: var(--ink-2); white-space: nowrap; }
+.tick::before { content: ''; position: absolute; background: var(--ink); }
+.tick.top { top: -20px; transform: translateX(-50%); }
+.tick.top::before { left: 50%; top: 14px; width: 1px; height: 12px; }
+.tick.left { left: -28px; transform: translateY(-50%) rotate(-90deg); }
+.north { position: absolute; left: 24px; top: 22px; z-index: 3; width: 40px; text-align: center; font: 600 14px/1 var(--serif); pointer-events: none; transition: transform 400ms; }
+.titleblock { position: absolute; right: 24px; bottom: 24px; z-index: 4; width: 340px; background: var(--sheet); border: 1.5px solid var(--ink); padding: 14px 16px 12px; font-size: 15px; box-shadow: 4px 4px 0 rgba(28,42,56,.12); transition: opacity 300ms; }
+.titleblock h3 { font: 600 17px/1.2 var(--serif); margin: 0 0 8px; }
+.legend { display: grid; grid-template-columns: 36px 1fr; gap: 6px 10px; align-items: center; color: var(--ink-2); line-height: 1.3; }
+.legend svg { display: block; }
+.scale { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 14px; }
+.scale i { display: block; height: 6px; border: 1.5px solid var(--ink); border-top: 0; }
+.app.case .titleblock { right: auto; bottom: auto; left: 16px; top: 16px; width: 300px; padding: 10px 14px; font-size: 14px; }
+.offmap { position: absolute; z-index: 4; display: flex; align-items: center; gap: 8px; font-size: 14px; background: var(--sheet); border: 1px solid var(--ink-3); padding: 6px 10px; border-radius: 3px; white-space: nowrap; }
+.sweep { position: absolute; left: 0; right: 0; height: 2px; background: var(--prussian); z-index: 3; pointer-events: none; opacity: 0; }
+.sweep::after { content: ''; position: absolute; left: 0; right: 0; bottom: 2px; height: 90px; background: linear-gradient(to top, rgba(31,77,120,.14), transparent); }
+.sweep span { position: absolute; right: 10px; top: 8px; font: 600 14px/1 var(--sans); color: var(--prussian); background: var(--sheet); padding: 4px 8px; }
+.ring { cursor: pointer; display: block; }
+.ring text { font: 600 13px var(--sans); fill: var(--ink); }
+.ring.is-hover .halo { stroke: var(--prussian); stroke-width: 3; }
+.maptag { display: none; font: 600 14px/1 var(--sans); color: var(--held); background: var(--paper); border: 1.5px solid var(--held); padding: 5px 7px; white-space: nowrap; pointer-events: none; box-shadow: 2px 2px 0 rgba(28,42,56,.12); transition: opacity 300ms; }
+.maptag .num { font-weight: 600; }
+.maptag.on { display: block; }
+.maptip { position: absolute; z-index: 5; pointer-events: none; background: var(--sheet); border: 1px solid var(--ink); padding: 10px 12px; width: 290px; font-size: 15px; box-shadow: 4px 4px 0 rgba(28,42,56,.14); transform: translate(20px, -50%); }
+.maptip b { font: 600 17px/1.2 var(--serif); display: block; }
+.maptip .money { font: 500 19px/1.3 var(--mono); color: var(--held); }
+.maplabel { font: 600 14px/1.25 var(--sans); background: var(--paper); border: 1px solid var(--ink); padding: 5px 8px; white-space: nowrap; box-shadow: 2px 2px 0 rgba(28,42,56,.12); transition: opacity 300ms; }
+.maplabel.held { background: var(--held); color: #FBF3F0; border-color: var(--held); }
+.maplabel .sub { display: block; font-weight: 400; font-size: 13px; }
+.maplabel.dim { background: var(--ink); color: var(--sheet); border-color: var(--ink); font-family: var(--mono); font-weight: 500; }
+.replay { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 5; background: var(--sheet); border: 1.5px solid var(--ink); padding: 10px 16px; display: none; gap: 22px; align-items: baseline; box-shadow: 4px 4px 0 rgba(28,42,56,.14); font-size: 15px; white-space: nowrap; }
+.replay.on { display: flex; }
+.replay b { font: 500 22px/1 var(--mono); }
+.replay .held { color: var(--held); }
+
+/* ---------- case file */
+.casefile { position: absolute; inset: 0; z-index: 1; padding: 16px 28px 20px; display: grid; grid-template-rows: auto 1fr auto; gap: 14px; visibility: hidden; }
+.app.case .casefile { visibility: visible; }
+.casefile .fade { opacity: 0; transition: opacity 450ms var(--ease), transform 450ms var(--ease); transform: translateY(6px); }
+.app.case.settled .casefile .fade { opacity: 1; transform: none; }
+.case-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; }
+.case-head h1 { font: 500 44px/1 var(--serif); letter-spacing: -.02em; margin: 4px 0 6px; }
+.case-head .dims { color: var(--ink-2); font-size: 16px; }
+.case-head .dims .num { font-size: 15px; }
+.case-money { display: flex; align-items: center; gap: 20px; }
+.case-money .amt { font: 500 60px/0.95 var(--serif); color: var(--held); letter-spacing: -.03em; text-align: right; }
+.case-money .amt small { display: block; font: 400 15px/1.3 var(--sans); color: var(--ink-2); letter-spacing: 0; margin-top: 6px; }
+.case-money .billbox { border-left: 1px solid var(--rule); padding-left: 20px; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+.case-money .billbox b { font: 500 15px var(--mono); color: var(--ink); }
+.case-body { display: grid; grid-template-columns: 1fr 780px; gap: 18px; min-height: 0; }
+.exhibit { background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 1px 0 var(--rule), 0 12px 28px -22px rgba(40,32,20,.45); padding: 16px 20px 16px; display: flex; flex-direction: column; min-height: 0; }
+.ex-head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline; margin-bottom: 10px; }
+.ex-tag { font: 600 13px/1 var(--sans); letter-spacing: .02em; border: 1.5px solid var(--ink); padding: 5px 7px 4px; }
+.ex-head h2 { font: 600 22px/1.15 var(--serif); margin: 0; }
+.ex-head .rules { display: flex; gap: 6px; }
+.rid { font: 600 13px/1 var(--mono); color: var(--held); border: 1px solid var(--held); padding: 4px 6px; border-radius: 2px; white-space: nowrap; }
+.right-col { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; min-height: 0; }
+#exA { position: relative; }
+#exA-slot { flex: 1; min-height: 0; position: relative; }
+.timeline { margin-top: 12px; position: relative; height: 200px; flex: none; }
+.tl-axis { position: relative; height: 22px; margin-left: 168px; margin-right: 150px; border-bottom: 1px solid var(--ink-3); }
+.tl-axis span { position: absolute; bottom: 4px; transform: translateX(-50%); font: 400 13px/1 var(--mono); color: var(--ink-3); }
+.tl-axis span::after { content: ''; position: absolute; left: 50%; top: 17px; width: 1px; height: 5px; background: var(--ink-3); }
+.lane { display: grid; grid-template-columns: 168px 1fr 150px; align-items: center; height: 58px; border-bottom: 1px solid var(--sheet-2); }
+.lane-name { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.lane-name small { display: block; font-weight: 400; color: var(--ink-2); font-size: 13px; }
+.lane-track { position: relative; height: 58px; }
+.lane-track::before { content: ''; position: absolute; left: 0; right: 0; top: 29px; height: 2px; background: var(--rule); }
+.lane-end { font-size: 14px; padding-left: 12px; color: var(--ink-2); line-height: 1.25; }
+.lane-end b { color: var(--held); display: block; }
+.ev { position: absolute; top: 29px; }
+.ev i { position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--paper); }
+.ev.bad i { background: var(--held); }
+.ev.slip i { border-radius: 1px; transform: rotate(45deg); }
+.ev label { position: absolute; white-space: nowrap; font-size: 15px; line-height: 1; color: var(--ink-2); }
+.ev label b { font: 600 15px/1 var(--mono); color: var(--ink); margin-right: 6px; }
+.ev.bad label b { color: var(--held); }
+.ev label.up { bottom: 10px; } .ev label.down { top: 10px; }
+.ev label.l { left: 2px; } .ev label.r { right: 2px; }
+.brackets { margin-left: 168px; margin-right: 150px; position: relative; height: 62px; margin-top: 4px; }
+.bracket { position: absolute; height: 10px; border: 1.5px solid; border-top: 0; font-size: 14px; }
+.bracket > span { position: absolute; left: 0; top: 12px; white-space: nowrap; font-weight: 600; }
+.bracket.r8 { color: var(--held); top: 32px; }
+.bracket.r8 span .num { font-weight: 600; }
+.bracket.lead { color: var(--ink-2); top: 0; border-style: dashed; border-top: 0; }
+.vguide { position: absolute; width: 0; border-left: 1px dashed var(--held); top: 0; pointer-events: none; }
+
+/* Exhibit B: the slip */
+.slipgrid { display: grid; grid-template-columns: 236px 1fr; gap: 20px; min-height: 0; flex: 1; }
+.scan { position: relative; align-self: start; background: #fff; padding: 6px; border: 1px solid var(--ink-3); box-shadow: 3px 4px 0 rgba(28,42,56,.1); transform: rotate(-.6deg); }
+.scan img { display: block; width: 222px; height: auto; filter: contrast(1.02) sepia(.06); }
+.scan .hl { position: absolute; left: 12px; width: 212px; height: 16px; border: 2px solid var(--held); background: rgba(142,36,36,.10); }
+.scan .tag-sim { left: 12px; bottom: 12px; }
+.loupe { position: relative; border: 1.5px solid var(--ink); background-repeat: no-repeat; box-shadow: 3px 3px 0 rgba(28,42,56,.12); }
+.loupe .hl { position: absolute; left: 2px; right: 6px; border: 2px solid var(--held); background: rgba(142,36,36,.08); }
+.loupe-cap { font-size: 13px; color: var(--ink-2); margin: 6px 0 4px; }
+.fields { display: grid; grid-template-columns: 1.3fr 1fr; column-gap: 18px; font-size: 15px; }
+.fields div { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--sheet-2); }
+.fields span { color: var(--ink-2); font-size: 14px; }
+.fields b { font: 500 15px var(--mono); }
+.fields em { font: normal 400 13px var(--mono); color: var(--ink-3); }
+.fields div.hit b { color: var(--held); }
+.r8note { margin-top: 10px; padding: 8px 12px; border-left: 3px solid var(--held); background: var(--held-wash); font: 400 16px/1.4 var(--serif); }
+.r8note .k { font: 600 13px/1 var(--sans); color: var(--held); display: block; margin-bottom: 4px; }
+.fineprint { font-size: 13px; color: var(--ink-3); margin-top: 8px; line-height: 1.35; }
+
+/* Exhibit C: the photographs */
+.photogrid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; flex: 1; min-height: 0; }
+.compare { position: relative; height: 236px; border: 1.5px solid var(--ink); overflow: hidden; user-select: none; touch-action: none; cursor: ew-resize; background: var(--sheet-2); }
+.compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.compare .top { clip-path: inset(0 0 0 var(--cut, 50%)); }
+.compare .handle { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; margin-left: -1px; background: var(--paper); box-shadow: 0 0 0 1px var(--ink); }
+.compare .knob { position: absolute; top: 50%; left: var(--cut, 50%); width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: var(--paper); border: 1.5px solid var(--ink); display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.compare:hover .knob, .compare .knob.is-hover { background: #fff; border-color: var(--prussian); }
+.compare:focus-visible .knob { outline: 3px solid var(--prussian); outline-offset: 2px; }
+.compare .side { position: absolute; top: 10px; font: 600 14px/1.2 var(--sans); background: rgba(28,42,56,.86); color: #F2EFE7; padding: 5px 8px; }
+.compare .side.l { left: 10px; } .compare .side.r { right: 10px; background: var(--held); }
+.tag-sim { position: absolute; bottom: 10px; background: rgba(28,42,56,.88); color: #F2EFE7; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 2px; }
+.slotpair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 236px; }
+.photoslot { border: 1.5px dashed var(--ink-3); background: repeating-linear-gradient(-45deg, var(--sheet) 0 8px, var(--sheet-2) 8px 16px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 14px; color: var(--ink-2); font-size: 14px; line-height: 1.35; }
+.photoslot b { color: var(--ink); font-size: 15px; }
+.compare .tag-sim { left: 10px; right: auto; max-width: calc(100% - 20px); white-space: normal; line-height: 1.3; }
+.cmp-cap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; margin-top: 6px; color: var(--ink-2); line-height: 1.3; }
+.cmp-cap b { color: var(--ink); display: block; }
+.hashes { display: grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items: center; }
+.bits { display: grid; grid-template-columns: repeat(8, 7px); gap: 1px; }
+.bits i { width: 7px; height: 7px; background: var(--sheet-2); }
+.bits i.on { background: var(--ink); }
+.hashes p { margin: 0; font-size: 15px; line-height: 1.3; }
+.hashes p b { color: var(--held); font-family: var(--mono); font-weight: 600; }
+.finding { margin-top: 10px; padding: 10px 12px; border: 1.5px solid var(--held); background: var(--paper); }
+.finding .k, .ai .k { font: 600 13px/1.2 var(--sans); display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.finding .k { color: var(--held); }
+.finding p, .ai p { margin: 0; font-size: 15px; line-height: 1.35; }
+.ai { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--ink-3); background: var(--sheet); }
+.ai .k { color: var(--ink-2); }
+.ai p { font: italic 400 16px/1.3 var(--serif); }
+.ai small { display: block; font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+
+/* decision bar */
+.decide { background: var(--sheet); border: 1.5px solid var(--ink); display: grid; grid-template-columns: minmax(0, 1fr) 460px auto; height: 128px; gap: 22px; padding: 14px 20px; align-items: center; position: relative; box-shadow: 4px 4px 0 rgba(28,42,56,.1); }
+.summary .k { font: 600 13px/1.2 var(--sans); color: var(--ink-2); display: block; margin-bottom: 4px; }
+.summary p { margin: 0; font: 400 16px/1.38 var(--serif); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.decide label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.decide textarea { width: 100%; height: 56px; resize: none; border: 1px solid var(--ink-3); border-radius: 4px; background: var(--paper); padding: 7px 10px; font-size: 15px; line-height: 1.35; }
+.decide textarea:focus { outline: 3px solid var(--prussian); outline-offset: 0; border-color: var(--prussian); }
+.decide .btns { display: grid; grid-template-columns: auto auto; gap: 10px; }
+.decide .confirm { right: 18px; bottom: calc(100% + 12px); }
+.done { display: flex; align-items: center; gap: 18px; }
+.done p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.4; max-width: 640px; }
+.done .note { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.confirm textarea { width: 100%; height: 64px; resize: none; border: 1px solid var(--ink-3); border-radius: 4px; background: #fff; padding: 7px 10px; font-size: 15px; margin: 0 0 10px; }
+.confirm label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 4px; }
+.done p b { color: var(--ink); }
+
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 12px 18px; border-radius: 4px; z-index: 60; font-size: 15px; display: none; }
+
+/* component sheet */
+.system { position: fixed; inset: 0; background: var(--sheet); z-index: 70; overflow: auto; padding: 34px 48px; display: none; }
+.system.on { display: block; }
+.sys-grid { display: grid; grid-template-columns: 1.05fr 1fr 1fr 1fr; gap: 30px 40px; }
+.sys h3 { font: 600 19px/1.2 var(--serif); margin: 0 0 10px; }
+.sys .col { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.sys .lab { color: var(--ink-2); font-size: 13px; margin-top: -4px; }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
+.swatches div { height: 58px; border: 1px solid var(--rule); display: flex; align-items: flex-end; padding: 5px; font: 12px/1.2 var(--mono); }
+.skeleton { height: 14px; background: linear-gradient(90deg, var(--sheet-2) 0, #F6F3EC 40%, var(--sheet-2) 80%); background-size: 200% 100%; animation: sk 1.4s linear infinite; border-radius: 2px; }
+@keyframes sk { to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sheet" id="sheet" aria-label="Bill"></aside>
+  <section class="casefile" id="case" aria-label="Drain investigation"></section>
+  <div class="mapframe" id="mapframe">
+    <div id="map" role="img" aria-label="Survey map of the ward's drains"></div>
+    <div class="neat"></div>
+    <div class="ticks" id="ticks"></div>
+    <div class="sweep" id="sweep"><span>Checking the evidence</span></div>
+    <div class="north" id="north" aria-hidden="true"><svg width="26" height="38" viewBox="0 0 28 40"><path d="M14 2 L24 34 L14 27 L4 34 Z" fill="none" stroke="#1C2A38" stroke-width="1.5"/><path d="M14 2 L14 27 L4 34 Z" fill="#1C2A38"/></svg><div>N</div></div>
+    <div class="titleblock" id="titleblock"></div>
+    <div class="replay" id="replay" aria-live="polite"></div>
+    <div id="overlays"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<section class="system" id="system"></section>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s)
+const $$ = (s, el = document) => [...el.querySelectorAll(s)]
+const C = { ground: '#E3DED2', water: '#AEC0C3', minor: '#F4F1EA', major: '#FBF8F1', ink: '#1C2A38', verified: '#39684F', review: '#A6731E', held: '#8E2424', pending: '#7D868B', paper: '#FBFAF6' }
+const RATE = 1800
+const lakh = (r) => SP.lakh(r)
+const P = SP.params
+
+let D, D9, map
+const state = { view: 'pre', revealed: new Set(), decisions: {}, hover: null, open: null, busy: false }
+const rings = {}, tags = {}
+
+// ------------------------------------------------------------- money, as the backend moves it
+// Same arithmetic as rules.apply_decision (backend) and applyDecision (frontend/src/api.ts).
+function applyDecision(decision, v, r, h) {
+  if (decision === 'APPROVE') return [v + r + h, 0, 0]
+  if (decision === 'HOLD') return [v, 0, r + h]
+  return [v, r, h]
+}
+function drainRows() {
+  return D.bill.drains.map((d) => {
+    const [v, r, h] = applyDecision(state.decisions[d.drainId]?.kind, d.verifiedTonnes, d.reviewTonnes, d.heldTonnes)
+    return { ...d, verifiedTonnes: v, reviewTonnes: r, heldTonnes: h, decision: state.decisions[d.drainId]?.kind ?? null }
+  })
+}
+function summary(rows = drainRows()) {
+  const t = (k) => rows.reduce((a, d) => a + d[k], 0)
+  const s = { claimedTonnes: t('claimedTonnes'), verifiedTonnes: t('verifiedTonnes'), reviewTonnes: t('reviewTonnes'), heldTonnes: t('heldTonnes') }
+  for (const k of ['claimed', 'verified', 'review', 'held']) s[k + 'Rupees'] = s[k + 'Tonnes'] * RATE
+  s.red = rows.filter((d) => d.verdict === 'RED').length
+  return s
+}
+
+// ------------------------------------------------------------- overview sheet
+function sheetHTML() {
+  const s = D.bill.summary
+  return `
+  <header class="masthead"><span class="wordmark">SiltProof <i>ward bill check</i></span><span class="sim-badge">Simulated data</span></header>
+  <div class="disclose" id="disclose"><b>Simulated demonstration.</b> The bill, contractor, weighbridge slips, GPS traces and photos are generated. No real ward or payment is involved.</div>
+  <p class="bill-meta"><strong>Bill B1</strong>, drain desilting, 21 Sep to 4 Oct 2026<br>${D.bill.contractor}, ${s.drainCount} drains, ${tripTotal()} trips</p>
+  <div class="figure" id="figure"></div>
+  <div class="ledger" id="ledger"></div>
+  <div id="actions"></div>
+  <div class="register" id="register"></div>`
+}
+const tripTotal = () => D.bill.drains.reduce((a, d) => a + d.tripCount, 0)
+
+function figurePre() {
+  const s = D.bill.summary
+  return `<div class="eyebrow">Contractor's claim</div>
+    <div class="amount">₹${lakh(s.claimedRupees)}<small>lakh</small></div>
+    <p class="caption">for <em>${SP.tonnes(s.claimedTonnes)}</em> of silt at ₹${SP.num(RATE)} a tonne. Nothing has been checked yet.</p>`
+}
+function figureHeld(s, final) {
+  return `<div class="eyebrow">${final ? 'Payment held by the evidence' : 'Held so far'}</div>
+    <div class="amount">₹${lakh(s.heldRupees)}<small>lakh</small></div>
+    <p class="caption">${final ? `<em>${SP.tonnes(s.heldTonnes)}</em> of ${SP.tonnes(s.claimedTonnes)} billed is contradicted by GPS, slips or photos, on ${s.red} drains.` : `from ${state.revealed.size} of ${D.bill.drains.length} drains checked.`}</p>
+    ${final ? `<span class="stamp held big ${state.slam ? 'slam' : ''}"><b>HELD</b><span>${SP.tonnes(s.heldTonnes)}</span></span>` : ''}`
+}
+function ledgerHTML(s, pending) {
+  const pct = (t) => (100 * t) / s.claimedTonnes + '%'
+  if (pending) return `<div class="claimrow"><span>Claimed</span><b class="num">${SP.tonnes(s.claimedTonnes)}, ₹${lakh(s.claimedRupees)} L</b></div>
+    <div class="bar"></div>
+    <div class="keys"><div class="na"><b>Not yet calculated</b><span>verified</span></div><div class="na"><b>Not yet calculated</b><span>for review</span></div><div class="na"><b>Not yet calculated</b><span>held</span></div></div>`
+  return `<div class="claimrow"><span>Claimed</span><b class="num">${SP.tonnes(s.claimedTonnes)}, ₹${lakh(s.claimedRupees)} L</b></div>
+    <div class="bar" role="img" aria-label="${s.verifiedTonnes} t verified, ${s.reviewTonnes} t in review, ${s.heldTonnes} t held of ${s.claimedTonnes} t claimed">
+      <span class="v" style="width:${pct(s.verifiedTonnes)}"></span><span class="r" style="width:${pct(s.reviewTonnes)}"></span><span class="h" style="width:${pct(s.heldTonnes)}"></span></div>
+    <div class="keys">
+      <div class="v"><b>${SP.num(s.verifiedTonnes)} t</b><span>verified, ₹${lakh(s.verifiedRupees)} L payable</span></div>
+      <div class="r"><b>${SP.num(s.reviewTonnes)} t</b><span>your review, ₹${lakh(s.reviewRupees)} L</span></div>
+      <div class="h"><b>${SP.num(s.heldTonnes)} t</b><span>held, ₹${lakh(s.heldRupees)} L</span></div></div>`
+}
+function actionsPre() {
+  return `<div class="actions"><button class="btn btn-primary" id="verify">Run verification</button>
+    <p class="hint">Checks all ${tripTotal()} trips against the ten rules. Textract and Bedrock read the slips and photos when they were uploaded; this step only runs the rules, in about a second.</p></div>`
+}
+function actionsDone() {
+  return `<div class="reran"><span>Verified ${tripTotal()} trips in <span class="num">${D.bill.verificationMs} ms</span>, 10 rules.</span><button class="link" id="rerun">Run again</button></div>`
+}
+
+function registerPre() {
+  const cells = D.bill.drains.map((d) => `<div class="cell" data-cell="${d.drainId}"><span class="no">${d.drainId}</span><span>${d.name}</span><span class="t">${d.claimedTonnes} t</span></div>`)
+  return `<h2><span>${D.bill.drains.length} drains on this bill, not checked</span><span>billed</span></h2><div class="grid18">${cells.join('')}</div>`
+}
+function registerDone(enter) {
+  const rows = drainRows()
+  const flagged = rows.filter((d) => d.verdict !== 'GREEN').sort((a, b) => (b.verdict === 'RED') - (a.verdict === 'RED') || b.heldTonnes - a.heldTonnes || b.claimedTonnes - a.claimedTonnes)
+  const clear = rows.filter((d) => d.verdict === 'GREEN')
+  const evid = Object.fromEntries(D.bill.drains.map((d) => [d.drainId, d]))
+  return `<h2><span>Needs your decision</span><span>amount</span></h2>` + flagged.map((d) => {
+    const ev = evid[d.drainId]
+    const dec = state.decisions[d.drainId]
+    let cls, stamp, name
+    if (dec?.kind === 'APPROVE') { cls = 'approved'; stamp = `<span class="stamp approved"><b>APPROVED</b><span>₹${SP.num((ev.reviewTonnes + ev.heldTonnes) * RATE)}</span></span>`; name = `Approved by you, ${ev.reviewTonnes + ev.heldTonnes} t released` }
+    else if (d.verdict === 'RED') { cls = 'held'; stamp = `<span class="stamp held"><b>HELD</b><span>₹${SP.num(d.heldTonnes * RATE)}</span></span>`; name = dec?.kind === 'HOLD' ? `Held ${d.heldTonnes} t, confirmed by you` : `Held ${d.heldTonnes} of ${d.claimedTonnes} t` }
+    else { cls = 'review'; stamp = `<span class="stamp review"><b>REVIEW</b><span>₹${SP.num(d.reviewTonnes * RATE)}</span></span>`; name = `${d.reviewTonnes} of ${d.claimedTonnes} t for your review` }
+    const open = state.open === d.drainId && d.verdict === 'AMBER' && !dec
+    return `<button class="row ${cls} ${enter ? 'enter' : ''}" data-drain="${d.drainId}" aria-expanded="${open}"><span class="no">${d.drainId}</span><span><span class="name">${name}</span><br><span class="why">${SP.reason(D.findings, d.drainId)}</span></span>${stamp}</button>${open ? inlineReview(d) : ''}`
+  }).join('') + `<p class="clearline">${clear.length} drains pass every check: ${clear.map((d) => d.drainId).join(', ')}. <span class="num">${SP.tonnes(clear.reduce((a, d) => a + d.claimedTonnes, 0))}</span> payable as billed.</p>`
+}
+function inlineReview(d) {
+  const amt = SP.num(d.reviewTonnes * RATE)
+  return `<div class="inline" id="inline" data-for="${d.drainId}">${state.err ? `<div class="err"><b>The decision was not saved.</b> The bill service did not answer. Nothing changed; try again.</div>` : ''}
+    <p>Soft check only. The engineer decides: approve to pay the <span class="num">${d.reviewTonnes} t</span>, or hold it.</p>
+    <div class="two"><button class="btn btn-primary" data-act="approve">Approve ₹${amt}</button><button class="btn btn-quiet" data-act="hold">Hold</button></div></div>`
+}
+
+function confirmReview(d, kind) {
+  const ev = D.bill.drains.find((x) => x.drainId === d)
+  const [v, r, h] = applyDecision(kind, ev.verifiedTonnes, ev.reviewTonnes, ev.heldTonnes)
+  const after = summary(drainRows().map((x) => (x.drainId === d ? { ...x, verifiedTonnes: v, reviewTonnes: r, heldTonnes: h } : x)))
+  const amt = SP.num(ev.reviewTonnes * RATE)
+  return `<div class="confirm" role="dialog" aria-modal="true" aria-labelledby="cf-h">
+    <h4 id="cf-h">${kind === 'APPROVE' ? `Approve ${ev.reviewTonnes} t on drain ${d}?` : `Hold ${ev.reviewTonnes} t on drain ${d}?`}</h4>
+    <p>${SP.reason(D.findings, d)}</p>
+    <div class="moves"><span>${kind === 'APPROVE' ? 'Moves to payable' : 'Moves to held'}</span><b>₹${amt}</b><span>Bill verified after this</span><b>${SP.num(after.verifiedTonnes)} t</b><span>Still for review</span><b>${SP.num(after.reviewTonnes)} t</b></div>
+    <div class="two"><button class="btn btn-quiet" data-act="cancel">Keep reviewing</button><button class="btn ${kind === 'APPROVE' ? 'btn-primary' : 'btn-held'}" data-act="confirm" data-kind="${kind}">${kind === 'APPROVE' ? 'Confirm approval' : 'Confirm hold'}</button></div></div>`
+}
+
+function renderSheet({ enter = false } = {}) {
+  const s = summary()
+  if (state.view === 'pre') {
+    $('#figure').className = 'figure'; $('#figure').innerHTML = figurePre()
+    $('#ledger').innerHTML = ledgerHTML(D.bill.summary, true)
+    $('#actions').innerHTML = actionsPre()
+    $('#register').innerHTML = registerPre()
+  } else {
+    $('#figure').className = 'figure held'; $('#figure').innerHTML = figureHeld(s, true)
+    $('#ledger').innerHTML = ledgerHTML(s, false)
+    $('#actions').innerHTML = actionsDone()
+    $('#register').innerHTML = registerDone(enter)
+    $('#disclose').style.display = 'none'
+  }
+}
+
+// ------------------------------------------------------------- map furniture
+function ringSVG(d, shown) {
+  const r = 6 + 2.1 * Math.sqrt(d.claimedTonnes), w = 5, size = (r + 4) * 2, c = size / 2, circ = 2 * Math.PI * (r - w / 2)
+  let segs = ''
+  if (shown) {
+    let off = 0
+    for (const [t, col] of [[d.verifiedTonnes, C.verified], [d.reviewTonnes, C.review], [d.heldTonnes, C.held]]) {
+      if (!t) continue
+      const len = (t / d.claimedTonnes) * circ
+      segs += `<circle cx="${c}" cy="${c}" r="${r - w / 2}" fill="none" stroke="${col}" stroke-width="${w}" stroke-dasharray="${len} ${circ}" stroke-dashoffset="${-off}" transform="rotate(-90 ${c} ${c})"/>`
+      off += len
+    }
+  } else segs = `<circle cx="${c}" cy="${c}" r="${r - w / 2}" fill="none" stroke="${C.pending}" stroke-width="${w}" stroke-dasharray="3 2"/>`
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle class="halo" cx="${c}" cy="${c}" r="${r + 1}" fill="#F2EFE7"/>${segs}<text x="${c}" y="${c + 4.5}" text-anchor="middle">${d.drainId}</text></svg>`
+}
+function addRings() {
+  for (const f of D.drains.features) {
+    const id = f.properties.drainId
+    const el = document.createElement('div')
+    el.dataset.drain = id; el.tabIndex = 0; el.setAttribute('role', 'button'); el.setAttribute('aria-label', `Drain ${id}`)
+    rings[id] = { el, marker: new maplibregl.Marker({ element: el }).setLngLat(f.properties.centroid).addTo(map) }
+    const t = document.createElement('div')
+    tags[id] = { el: t, marker: new maplibregl.Marker({ element: t, anchor: 'left', offset: [26, 0] }).setLngLat(f.properties.centroid).addTo(map) }
+  }
+  paintRings()
+}
+function paintRings() {
+  const rows = Object.fromEntries(drainRows().map((d) => [d.drainId, d]))
+  const pend = Object.fromEntries(D.pending.drains.map((d) => [d.drainId, d]))
+  for (const [id, r] of Object.entries(rings)) {
+    const shown = state.revealed.has(id)
+    r.el.innerHTML = ringSVG(shown ? rows[id] : pend[id], shown)
+    r.el.firstChild.classList.toggle('is-hover', state.hover === id)
+    const d = rows[id]
+    const showTag = shown && d.heldTonnes > 0 && state.view !== 'case'
+    tags[id].el.innerHTML = `<div class="maptag ${showTag ? 'on' : ''}">Held <span class="num">₹${lakh(d.heldTonnes * RATE)} L</span></div>`
+  }
+  map.getSource('drains')?.setData({ ...D.drains, features: D.drains.features.map((f) => ({ ...f, properties: { ...f.properties, v: state.revealed.has(f.properties.drainId) ? rows[f.properties.drainId].verdict : 'P' } })) })
+}
+function titleOverview() {
+  const pend = state.view === 'pre'
+  return `<h3>${pend ? 'Drains on this bill, not yet checked' : 'Drains by what the evidence supports'}</h3>
+  <div class="legend">
+    <svg width="36" height="36"><circle cx="18" cy="18" r="13" fill="none" stroke="${C.pending}" stroke-width="5" stroke-dasharray="3 2"/></svg><span>Ring area is tonnes billed, ${tRange()}.</span>
+    ${pend ? '' : `<svg width="36" height="36"><circle cx="18" cy="18" r="13" fill="none" stroke="${C.verified}" stroke-width="5" stroke-dasharray="50 100" transform="rotate(-90 18 18)"/><circle cx="18" cy="18" r="13" fill="none" stroke="${C.held}" stroke-width="5" stroke-dasharray="32 100" stroke-dashoffset="-50" transform="rotate(-90 18 18)"/></svg><span>Ring split: <b style="color:${C.verified}">verified</b>, <b style="color:${C.review}">for review</b>, <b style="color:${C.held}">held</b>.</span>`}
+  </div><div class="scale"><i id="scalebar" style="width:80px"></i><span id="scaletext" class="num">500 m</span></div>`
+}
+function titleCase() {
+  return `<h3>Drain 14 to the dump site</h3><div class="legend">
+    <svg width="36" height="10"><line x1="0" y1="5" x2="36" y2="5" stroke="${C.ink}" stroke-width="2.5" stroke-dasharray="6 4"/></svg><span>Haul the bill implies, <span class="num">${D.facts.claimedKm.toFixed(1)} km</span></span>
+    <svg width="36" height="10"><line x1="0" y1="5" x2="36" y2="5" stroke="${C.held}" stroke-width="4.5"/></svg><span>GPS trace, trip ${D.facts.trip.tripNo}</span>
+    <svg width="36" height="10"><line x1="0" y1="5" x2="36" y2="5" stroke="${C.held}" stroke-width="1.4" opacity=".55"/></svg><span>The other ${D.drain14.trips.length - 1} traces</span>
+    <svg width="36" height="20"><rect x="5" y="2" width="26" height="16" fill="url(#hatch)" stroke="${C.ink}"/></svg><span>Approved dump site geofence</span></div>
+    <div class="scale"><i id="scalebar" style="width:80px"></i><span id="scaletext" class="num"></span></div>`
+}
+function updateScale() {
+  const el = $('#scalebar'); if (!el) return
+  const y = map.getContainer().clientHeight * 0.66, a = map.unproject([0, y]), b = map.unproject([100, y])
+  const mPer100 = SP.metres([a.lng, a.lat], [b.lng, b.lat])
+  const nice = [100, 200, 250, 500, 1000, 2000, 5000].find((n) => (n / mPer100) * 100 > 60) ?? 5000
+  el.style.width = (nice / mPer100) * 100 + 'px'
+  $('#scaletext').textContent = nice >= 1000 ? `${nice / 1000} km` : `${nice} m`
+}
+function updateTicks() {
+  const flat = map.getPitch() < 3 && Math.abs(map.getBearing()) < 1
+  $('#north').style.transform = `rotate(${-map.getBearing()}deg)`
+  updateScale(); placeOffmap()
+  if (!flat || state.view === 'case') { $('#ticks').innerHTML = ''; return }
+  const b = map.getBounds(), w = map.getContainer().clientWidth, h = map.getContainer().clientHeight
+  const step = b.getEast() - b.getWest() > 0.08 ? 0.02 : 0.01
+  let html = ''
+  for (let x = Math.ceil(b.getWest() / step) * step; x < b.getEast(); x += step) { const p = map.project([x, b.getNorth()]); if (p.x > 60 && p.x < w - 60) html += `<span class="tick top" style="left:${p.x}px">${x.toFixed(2)}° E</span>` }
+  for (let y = Math.ceil(b.getSouth() / step) * step; y < b.getNorth(); y += step) { const p = map.project([b.getWest(), y]); if (p.y > 60 && p.y < h - 60) html += `<span class="tick left" style="top:${p.y}px">${y.toFixed(2)}° N</span>` }
+  $('#ticks').innerHTML = html
+}
+function placeOffmap() {
+  const el = $('#offmap'); if (!el) return
+  if (state.view === 'case' || state.flying) { el.style.display = 'none'; return }
+  const W = map.getContainer().clientWidth, H = map.getContainer().clientHeight, p = map.project(D.facts.dump)
+  if (p.x > 0 && p.x < W && p.y > 0 && p.y < H) { el.style.display = 'none'; return }
+  el.style.display = 'flex'
+  const cx = W / 2, cy = H / 2, dx = p.x - cx, dy = p.y - cy
+  const k = Math.min((W / 2 - 170) / Math.abs(dx || 1), (H / 2 - 40) / Math.abs(dy || 1))
+  el.style.left = cx + dx * k - 130 + 'px'; el.style.top = cy + dy * k - 16 + 'px'
+  el.querySelector('svg').style.transform = `rotate(${(Math.atan2(dy, dx) * 180) / Math.PI}deg)`
+}
+function showTip(id) {
+  $('#overlays .maptip')?.remove()
+  if (!id || state.view === 'case' || state.flying) return
+  const d = drainRows().find((x) => x.drainId === id), f = D.drains.features.find((x) => x.properties.drainId === id)
+  const p = map.project(f.properties.centroid), shown = state.revealed.has(id)
+  const tip = document.createElement('div'); tip.className = 'maptip'
+  tip.style.left = p.x + 'px'; tip.style.top = p.y + 'px'
+  tip.innerHTML = `<b>Drain ${id}, ${d.name}</b><span class="num">${d.claimedTonnes} t</span> billed over ${d.tripCount} trips` +
+    (shown && d.heldTonnes ? `<div class="money">₹${SP.num(d.heldTonnes * RATE)} held</div><div>${SP.reason(D.findings, id)}</div>` : '') +
+    (shown && d.reviewTonnes ? `<div class="money" style="color:var(--review)">${d.reviewTonnes} t for your review</div><div>${SP.reason(D.findings, id)}</div>` : '') +
+    (shown && d.verdict === 'GREEN' ? `<div style="color:var(--verified);font-weight:600">Every check passed</div>` : '') +
+    (!shown ? `<div style="color:var(--ink-2)">Not checked yet</div>` : `<div style="color:var(--prussian);font-weight:600;margin-top:6px">Click to open the evidence</div>`)
+  $('#overlays').appendChild(tip)
+}
+
+// ------------------------------------------------------------- layout: where the map frame sits
+function rectOverview() { return { left: 530, top: 30, width: innerWidth - 530 - 30, height: innerHeight - 60 } }
+function rectCase() {
+  const r = $('#exA-slot').getBoundingClientRect()
+  return { left: r.left, top: r.top, width: r.width, height: r.height }
+}
+function setFrame(r) { Object.assign($('#mapframe').style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); map?.resize() }
+async function morphFrame(to, ms) {
+  const el = $('#mapframe'), from = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight }
+  await SP.tween(ms, (p) => setFrame(Object.fromEntries(Object.keys(to).map((k) => [k, from[k] + (to[k] - from[k]) * p]))), SP.ease.inOut)
+}
+
+// ------------------------------------------------------------- verification
+async function runVerification() {
+  if (state.busy || state.view !== 'pre') return
+  state.busy = true
+  const btn = $('#verify')
+  btn.classList.add('is-busy'); btn.setAttribute('aria-busy', 'true')
+  btn.innerHTML = `<span class="spinner"></span><span id="vlabel">Starting verification</span><span class="bar-progress" id="vprog"></span>`
+  await SP.wait(450)
+  const H = map.getContainer().clientHeight
+  const order = D.drains.features.map((f) => ({ id: f.properties.drainId, y: map.project(f.properties.centroid).y })).sort((a, b) => a.y - b.y)
+  const real = Object.fromEntries(D.bill.drains.map((d) => [d.drainId, d]))
+  const sweep = $('#sweep'); sweep.style.opacity = 1
+  $('#figure').className = 'figure held'
+  await SP.tween(3400, (p) => {
+    const y = -10 + p * (H + 20)
+    sweep.style.top = y + 'px'
+    let changed = false
+    for (const o of order) if (o.y < y && !state.revealed.has(o.id)) { state.revealed.add(o.id); changed = true; $(`.cell[data-cell="${o.id}"]`)?.classList.add('flash') }
+    if (changed) {
+      paintRings()
+      const rev = [...state.revealed].map((id) => real[id])
+      const s = summary(rev); s.claimedTonnes = D.bill.summary.claimedTonnes; s.claimedRupees = D.bill.summary.claimedRupees
+      $('#figure').innerHTML = figureHeld(s, false)
+      $('#ledger').innerHTML = ledgerHTML(s, false)
+      $('#vlabel').textContent = `Checking trip ${rev.reduce((a, d) => a + d.tripCount, 0)} of ${tripTotal()}`
+      $$('.cell').forEach((c) => { const d = real[c.dataset.cell]; if (state.revealed.has(c.dataset.cell)) c.querySelector('.t').innerHTML = d.verdict === 'GREEN' ? `<span style="color:var(--verified)">clear</span>` : d.verdict === 'RED' ? `<b style="color:var(--held)">held</b>` : `<b style="color:var(--review)">review</b>` })
+    }
+    $('#vprog').style.transform = `scaleX(${p})`
+  }, SP.ease.linear)
+  sweep.style.opacity = 0
+  state.view = 'verified'; state.slam = true
+  $('#titleblock').innerHTML = titleOverview(); updateScale()
+  renderSheet({ enter: true })
+  paintRings()
+  // the investigation list arrives row by row, after the money has landed
+  const rows = $$('.row.enter')
+  for (const [i, r] of rows.entries()) setTimeout(() => r.classList.remove('enter'), 380 + i * 90)
+  await SP.wait(380 + rows.length * 90 + 300)
+  state.slam = false; state.busy = false
+}
+function enterVerified() {
+  D.drains.features.forEach((f) => state.revealed.add(f.properties.drainId))
+  state.view = 'verified'
+  renderSheet(); paintRings()
+  $('#titleblock').innerHTML = titleOverview(); updateScale()
+}
+
+// ------------------------------------------------------------- review decisions on the overview
+async function onSheetClick(e) {
+  const act = e.target.closest('[data-act]')?.dataset.act
+  const row = e.target.closest('.row')
+  if (e.target.id === 'verify') return runVerification()
+  if (e.target.id === 'rerun') return toast('Re-running gives the same result: the rules are deterministic.')
+  if (act) {
+    const inline = $('#inline'), id = inline?.dataset.for
+    if (act === 'approve' || act === 'hold') { inline.querySelector('.confirm')?.remove(); inline.insertAdjacentHTML('beforeend', confirmReview(id, act.toUpperCase())); inline.querySelector('[data-act=confirm]').focus({ preventScroll: true }) }
+    if (act === 'cancel') inline.querySelector('.confirm')?.remove()
+    if (act === 'confirm') await saveDecision(id, e.target.closest('[data-act]').dataset.kind, e.target.closest('[data-act]'))
+    return
+  }
+  if (row) {
+    const id = row.dataset.drain, d = D.bill.drains.find((x) => x.drainId === id)
+    if (d.verdict === 'AMBER' && !state.decisions[id]) { state.open = state.open === id ? null : id; $('#register').innerHTML = registerDone(); $('#inline')?.scrollIntoView({ block: 'nearest' }); return }
+    openDrain(id, true)
+  }
+}
+async function saveDecision(id, kind, btn, { fail = false } = {}) {
+  btn.disabled = true; btn.classList.add('is-busy')
+  btn.innerHTML = `<span class="spinner"></span>Saving decision`
+  $$('.confirm .btn, .decide .btn, .decide textarea, #inline .btn').forEach((b) => (b.disabled = true))
+  await SP.wait(800)
+  if (fail || P.get('error')) { state.err = true; if (id === '14') renderDecide(); else $('#register').innerHTML = registerDone(); return }
+  state.err = false
+  state.decisions[id] = { kind, at: new Date('2026-10-09T10:42:00+05:30'), note: (kind === 'APPROVE' && $('#sitenote')?.value) || $('#note')?.value }
+  state.open = null
+  if (id === '14') { renderDecide(); renderCaseMoney() }
+  else { renderSheet(); paintRings() }
+  const ev = D.bill.drains.find((x) => x.drainId === id)
+  toast(kind === 'APPROVE' ? `Drain ${id} approved. ₹${SP.num((ev.reviewTonnes + ev.heldTonnes) * RATE)} moves to payable.` : `Drain ${id} held. ₹${SP.num((ev.reviewTonnes + ev.heldTonnes) * RATE)} stays with the ward.`)
+}
+
+// ------------------------------------------------------------- drain 14: the case file
+function caseHTML() {
+  const d = D.drain14, f = D.facts
+  return `
+  <header class="case-head fade">
+    <div><button class="link" id="back"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>All ${D.bill.drains.length} drains</button>
+      <h1>Drain ${d.drainId}</h1>
+      <div class="dims">${d.name}, <span class="num">${d.lengthM.toFixed(0)} m</span> long, <span class="num">${d.widthM} m</span> wide, <span class="num">${d.depthM} m</span> deep. ${d.trips.length} trips, <span class="num">${d.claimedTonnes} t</span> claimed. Every trip failed three hard checks.</div></div>
+    <div class="case-money" id="case-money"></div>
+  </header>
+  <div class="case-body">
+    <article class="exhibit fade" id="exA" style="transition-delay:0ms">
+      <div class="ex-head"><span class="ex-tag">Exhibit A</span><h2>No truck reached the dump site</h2><span class="rules"><span class="rid">R5</span><span class="rid">R8</span></span></div>
+      <div id="exA-slot"></div>
+      <div class="timeline" id="timeline"></div>
+    </article>
+    <div class="right-col">
+      <article class="exhibit fade" style="transition-delay:120ms" data-shot="slip">${exhibitB()}</article>
+      <article class="exhibit fade" style="transition-delay:240ms" data-shot="photos">${exhibitC()}</article>
+    </div>
+  </div>
+  <section class="decide fade" id="decide" style="transition-delay:360ms" aria-label="Your decision"></section>`
+}
+function renderCaseMoney() {
+  const s = summary(), d = drainRows().find((x) => x.drainId === '14')
+  const rel = d.decision === 'APPROVE'
+  $('#case-money').innerHTML = `<div class="amt">₹${SP.num((rel ? 0 : d.heldTonnes) * RATE)}<small>${rel ? `released on your approval` : `held on this drain, ${d.heldTonnes} t`}</small></div>
+    ${rel ? `<span class="stamp approved big"><b>APPROVED</b><span>₹${SP.num(d.claimedTonnes * RATE)}</span></span>` : `<span class="stamp held big"><b>HELD</b><span>₹${SP.num(d.heldTonnes * RATE)}</span></span>`}
+    <div class="billbox">Whole bill now<br>Held <b>₹${lakh(s.heldRupees)} L</b><br>Payable <b>₹${lakh(s.verifiedRupees)} L</b><br>Review <b>₹${lakh(s.reviewRupees)} L</b></div>`
+}
+
+function exhibitB() {
+  const s = D.facts.trip.slip, F = s.fields
+  const sc = 0.2921 /* 222 px of a 760 px slip */, lo = 0.6
+  const cell = (k, label, v) => `<div class="${k === 'timeIn' ? 'hit' : ''}"><span>${label}</span><b>${v}</b><em>${F[k] ? F[k].confidence.toFixed(1) + '%' : ''}</em></div>`
+  return `<div class="ex-head"><span class="ex-tag">Exhibit B</span><h2>The slip is stamped before the truck left</h2><span class="rules"><span class="rid">R8</span></span></div>
+  <div class="slipgrid">
+    <figure class="scan" style="margin:0"><img src="assets/slip-14-001.png" alt="Weighbridge slip for trip 14#001, ticket ${s.ticketNo}, time in ${s.timeIn}">
+      <span class="hl" style="top:${6 + 694 * sc}px;height:${44 * sc}px"></span><span class="tag-sim">Sample slip</span></figure>
+    <div>
+      <div class="loupe" role="img" aria-label="Enlarged: TIME IN ${s.timeIn}, TIME OUT ${s.timeOut}" style="width:${696 * lo}px;height:${104 * lo}px;background-image:url(assets/slip-14-001.png);background-size:${760 * lo}px auto;background-position:-${30 * lo}px -${684 * lo}px">
+        <span class="hl" style="top:${8 * lo}px;height:${44 * lo}px"></span></div>
+      <p class="loupe-cap">Enlarged from the slip. Fields as Textract read them at upload, with its confidence:</p>
+      <div class="fields">${cell('ticketNo', 'Ticket', s.ticketNo)}${cell('timeIn', 'Time in', s.timeIn)}${cell('vehicleNo', 'Vehicle', s.vehicleNo)}${cell('timeOut', 'Time out', s.timeOut)}${cell('net', 'Net', s.net.toFixed(2) + ' t')}${cell('gross', 'Gross', s.gross.toFixed(2) + ' t')}</div>
+      <div class="r8note"><span class="k">R8, hard check failed</span>${r8Message()}</div>
+    </div>
+  </div>`
+}
+function r8Message() { return D.facts.trip.findings.find((x) => x.rule === 'R8').message }
+
+function exhibitC() {
+  const r3 = D.facts.reuse, copyKey = r3.evidence.s3Key, origKey = r3.evidence.original
+  const copy = D.drain14.photos.find((p) => p.s3Key === copyKey), orig = D9.photos.find((p) => p.s3Key === origKey)
+  // ?photos=slot shows the space reserved for the real GPS-tagged photos.
+  const slot = P.get('photos') === 'slot'
+  const imgO = SP.evidence('d9-after-01.jpg'), imgC = SP.evidence('d14-after-02.jpg')
+  const label = 'Simulated photo'
+  const bits = (hex) => [...hex].flatMap((h) => [...parseInt(h, 16).toString(2).padStart(4, '0')]).map((b) => `<i class="${b === '1' ? 'on' : ''}"></i>`).join('')
+  const day = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
+  const ai = copy.bedrock
+  if (slot) return exhibitCSlot(r3, copy, orig, bits, day)
+  return `<div class="ex-head"><span class="ex-tag">Exhibit C</span><h2>The after-photo was filed for drain 9 first</h2><span class="rules"><span class="rid">R3</span></span></div>
+  <div class="photogrid">
+    <div>
+      <div class="compare" id="compare" tabindex="0" role="slider" aria-label="Compare drain 9 original with drain 14 copy" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <img src="${imgO}" alt="Drain 9 after-photo, filed first"><img class="top" src="${imgC}" alt="Drain 14 after-photo, the copy">
+        <span class="side l">Drain 9, filed first</span><span class="side r">Drain 14 copy</span>
+        <span class="handle"></span><span class="knob"><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><path d="M5 1 1 6l4 5M13 1l4 5-4 5" fill="none" stroke="#1C2A38" stroke-width="1.8"/></svg></span>
+        <span class="tag-sim">${label}</span></div>
+      <div class="cmp-cap"><span><b>${origKey.split('/').slice(-2).join('/')}</b>${day(orig.timestamp)}, inside drain 9</span><span><b>${copyKey.split('/').slice(-2).join('/')}</b>${day(copy.timestamp)}, billed for drain 14</span></div>
+    </div>
+    <div>
+      <div class="hashes"><div class="bits" title="${orig.pHash}" aria-label="Perceptual hash of the drain 9 photo">${bits(orig.pHash)}</div><div class="bits" title="${copy.pHash}" aria-label="Perceptual hash of the drain 14 photo">${bits(copy.pHash)}</div>
+        <p>Perceptual hashes differ in <b>${r3.evidence.hammingDistance} of 64</b> bits. R3 calls 12 or fewer a copy.</p></div>
+      <div class="finding"><div class="k"><span>Rule R3, deterministic</span><span>hard fail</span></div><p>${r3.message}</p></div>
+      <div class="ai"><div class="k"><span>AI observation, not a finding</span><span>Bedrock vision</span></div>
+        <p>“${ai.notes}”</p>
+        <small>${ai.mocked ? 'Offline: a canned sample, no model called. Live: Amazon Nova Pro, at upload.' : `Read by ${ai.modelId} at upload.`} It reads what a photo shows; it cannot know the photo was filed twice. R3 can.</small></div>
+    </div>
+  </div>`
+}
+
+function exhibitCSlot(r3, copy, orig, bits, day) {
+  const frame = (who) => `<div class="photoslot"><svg width="40" height="32" viewBox="0 0 40 32" aria-hidden="true"><rect x="1" y="5" width="38" height="26" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="18" r="7" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="1" width="14" height="6" fill="currentColor"/></svg><b>${who}</b><span>Real GPS-tagged photo goes here. Not yet supplied.</span></div>`
+  return `<div class="ex-head"><span class="ex-tag">Exhibit C</span><h2>The after-photo was filed for drain 9 first</h2><span class="rules"><span class="rid">R3</span></span></div>
+  <div class="photogrid"><div><div class="slotpair">${frame('Drain 9, filed first')}${frame('Drain 14 copy')}</div>
+    <div class="cmp-cap"><span><b>${r3.evidence.original.split('/').slice(-2).join('/')}</b>${day(orig.timestamp)}</span><span><b>${r3.evidence.s3Key.split('/').slice(-2).join('/')}</b>${day(copy.timestamp)}</span></div></div>
+  <div><div class="hashes"><div class="bits">${bits(orig.pHash)}</div><div class="bits">${bits(copy.pHash)}</div><p>Hashes differ in <b>${r3.evidence.hammingDistance} of 64</b> bits. R3 calls 12 or fewer a copy.</p></div>
+    <div class="finding"><div class="k"><span>Rule R3, deterministic</span><span>hard fail</span></div><p>${r3.message}</p></div>
+    <p class="fineprint">The slot keeps the 4:3 frame, captions and labels the real photos will use. EXIF time and GPS appear in the captions once the photos are ingested.</p></div></div>`
+}
+function wireCompare() {
+  const el = $('#compare'); if (!el) return
+  const set = (pct) => { pct = Math.max(0, Math.min(100, pct)); el.style.setProperty('--cut', pct + '%'); el.setAttribute('aria-valuenow', Math.round(pct)) }
+  let drag = false
+  el.addEventListener('pointerdown', (e) => { drag = true; el.setPointerCapture(e.pointerId); set(((e.clientX - el.getBoundingClientRect().left) / el.clientWidth) * 100) })
+  el.addEventListener('pointermove', (e) => drag && set(((e.clientX - el.getBoundingClientRect().left) / el.clientWidth) * 100))
+  el.addEventListener('pointerup', () => (drag = false))
+  el.addEventListener('keydown', (e) => { const now = +el.getAttribute('aria-valuenow'); if (e.key === 'ArrowLeft') set(now - 5); if (e.key === 'ArrowRight') set(now + 5) })
+  set(+(P.get('cut') ?? 50))
+}
+
+// The two-lane timeline. Labels are measured and placed so none collide,
+// whatever times the data carries.
+function timelineHTML() {
+  const f = D.facts, t = f.trip
+  const r8 = t.findings.find((x) => x.rule === 'R8').evidence
+  const hm = (iso) => iso.slice(11, 16)
+  const min = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m }
+  const lanes = [
+    { name: 'Weighbridge slip', sub: `ticket ${t.slip.ticketNo}`, kind: 'slip', evs: [[t.slip.timeIn, 'time in', true], [t.slip.timeOut, 'time out', false]], end: '' },
+    { name: 'GPS trace', sub: `trip ${t.tripNo}, ${t.vehicleNo}`, kind: 'gps', evs: [[hm(r8.departure), 'leaves drain 14', false], [hm(t.arrivalTime), `stops ${(f.shortOfDumpM / 1000).toFixed(1)} km short`, true], [hm(r8.arrival), 'last fix', true]], end: '<b>Never arrives</b>at the dump site' },
+  ]
+  const all = lanes.flatMap((l) => l.evs.map((e) => min(e[0])))
+  const lo = Math.floor((Math.min(...all) - 5) / 15) * 15, hi = Math.ceil((Math.max(...all) + 5) / 15) * 15
+  const W = $('#timeline').clientWidth - 168 - 150
+  const x = (s) => ((min(s) - lo) / (hi - lo)) * W
+  const ctx = document.createElement('canvas').getContext('2d')
+  const width = (time, text) => { ctx.font = "600 15px 'IBM Plex Mono'"; const a = ctx.measureText(time).width; ctx.font = "400 15px 'Instrument Sans'"; return a + 6 + ctx.measureText(text).width }
+  const laneHTML = (l) => {
+    const placed = [] // [row, x0, x1]
+    const evs = l.evs.map(([time, text, bad]) => {
+      const px = x(time), w = width(time, text)
+      const opts = [['up', 'l', px + 2, px + 2 + w], ['up', 'r', px - 2 - w, px - 2], ['down', 'l', px + 2, px + 2 + w], ['down', 'r', px - 2 - w, px - 2]]
+      const fits = opts.filter(([, , a, b]) => a >= -4 && b <= W + 4)
+      const ok = fits.find(([row, , a, b]) => !placed.some(([r, c, d]) => r === row && a < d + 14 && b > c - 14)) ?? fits[0]
+      placed.push([ok[0], ok[2], ok[3]])
+      return `<div class="ev ${bad ? 'bad' : ''} ${l.kind}" style="left:${px}px"><i></i><label class="${ok[0]} ${ok[1]}"><b>${time}</b>${text}</label></div>`
+    })
+    return `<div class="lane"><div class="lane-name">${l.name}<small>${l.sub}</small></div><div class="lane-track">${evs.join('')}</div><div class="lane-end">${l.end}</div></div>`
+  }
+  const ticks = []; for (let m = lo; m <= hi; m += 15) ticks.push(`<span style="left:${((m - lo) / (hi - lo)) * W}px">${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}</span>`)
+  const a = x(t.slip.timeIn), b1 = x(hm(r8.departure)), b2 = x(hm(r8.arrival))
+  const lead = min(hm(r8.departure)) - min(t.slip.timeIn), gap = Math.trunc(Math.abs(r8.minutesEarly))
+  return `<div class="tl-axis">${ticks.join('')}</div>${lanes.map(laneHTML).join('')}
+    <div class="brackets"><div class="bracket lead" style="left:${a}px;width:${b1 - a}px"><span>Slip time-in is <span class="num">${lead} min</span> before the truck leaves the drain</span></div>
+      <div class="bracket r8" style="left:${a}px;width:${b2 - a}px"><span>R8: slip time-in against the last GPS fix, <span class="num">${gap} min</span> apart. Allowed: <span class="num">10 min</span>.</span></div></div>`
+}
+
+function renderDecide() {
+  const d = drainRows().find((x) => x.drainId === '14'), dec = state.decisions['14']
+  const held = SP.num(D.drain14.heldTonnes * RATE)
+  const sum = D.drain14.summary
+  const summaryHTML = `<div class="summary"><span class="k">Evidence summary ${sum.startsWith('Offline summary') ? '(offline: assembled from the rule findings, no model called; live, written by Amazon Nova Pro on Bedrock)' : 'by Amazon Bedrock'}</span><p>${sum.replace(/^Offline summary, no model was called\.\s*/, '')}</p></div>`
+  if (dec) {
+    const at = '9 Oct 2026, 10:42'
+    $('#decide').innerHTML = `${summaryHTML}<div class="done" style="grid-column:2 / 4">${dec.kind === 'HOLD' ? `<span class="stamp held big slam"><b>HELD</b><span>₹${held}</span></span>` : `<span class="stamp approved big slam"><b>APPROVED</b><span>₹${held}</span></span>`}
+      <p><b>${dec.kind === 'HOLD' ? `You held ₹${held} on drain 14.` : `You released ₹${held} on drain 14.`}</b><br>Recorded ${at} by the ward engineer.</p><p class="note">Note: ${dec.note || 'none'}</p><p><button class="link" id="undo">Change decision</button></p></div>`
+    return
+  }
+  $('#decide').innerHTML = `${summaryHTML}
+    <div><label for="note">Note for the file</label><textarea id="note">Every trace stops ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site. Slip stamped before departure. After-photo is drain 9's.</textarea></div>
+    <div>${state.err ? `<div class="err" style="margin:0 0 8px"><b>Not saved.</b> The bill service did not answer. Try again.</div>` : ''}<div class="btns"><button class="btn btn-held" data-act="hold">Hold ₹${held}</button><button class="btn btn-quiet" data-act="approve">Approve and release</button></div></div>`
+}
+function confirmCase(kind) {
+  const ev = D.bill.drains.find((x) => x.drainId === '14')
+  const [v, r, h] = applyDecision(kind, ev.verifiedTonnes, ev.reviewTonnes, ev.heldTonnes)
+  const after = summary(drainRows().map((x) => (x.drainId === '14' ? { ...x, verifiedTonnes: v, reviewTonnes: r, heldTonnes: h } : x)))
+  const amt = SP.num(ev.heldTonnes * RATE)
+  if (kind === 'HOLD') return `<div class="confirm" role="dialog" aria-modal="true" aria-labelledby="cf-h"><h4 id="cf-h">Hold ₹${amt} on drain 14?</h4>
+    <p>The contractor is not paid for these ${ev.heldTonnes} t until the hold is lifted. Your note goes on the file.</p>
+    <div class="moves"><span>Held on this drain</span><b>₹${amt}</b><span>Whole bill held after this</span><b>₹${lakh(after.heldRupees)} L</b></div>
+    <div class="two"><button class="btn btn-quiet" data-act="cancel">Keep reviewing</button><button class="btn btn-held" data-act="confirm" data-kind="HOLD">Confirm hold</button></div></div>`
+  return `<div class="confirm" role="dialog" aria-modal="true" aria-labelledby="cf-h"><h4 id="cf-h">Release ₹${amt} despite three failed hard checks?</h4>
+    <p>Approving overrules R3, R5 and R8 on all ${D.drain14.trips.length} trips. Record what you saw on site that the evidence does not show.</p>
+    <div class="moves"><span>Moves to payable</span><b>₹${amt}</b><span>Whole bill held after this</span><b>₹${lakh(after.heldRupees)} L</b></div>
+    <label for="sitenote">Site note, required to approve against the evidence</label>
+    <textarea id="sitenote" placeholder="What you inspected, when, and what you found"></textarea>
+    <div class="two"><button class="btn btn-quiet" data-act="cancel">Keep reviewing</button><button class="btn btn-primary" data-act="confirm" data-kind="APPROVE" disabled>Approve and release</button></div></div>`
+}
+function wireSiteNote() {
+  const t = $('#sitenote'); if (!t) return
+  t.addEventListener('input', () => { $('#decide .confirm [data-kind=APPROVE]').disabled = t.value.trim().length < 20 })
+}
+async function onDecideClick(e) {
+  const b = e.target.closest('[data-act]'); if (e.target.id === 'undo') { delete state.decisions['14']; renderDecide(); renderCaseMoney(); return }
+  if (!b) return
+  const act = b.dataset.act
+  if (act === 'hold' || act === 'approve') { $('#decide .confirm')?.remove(); $('#decide').insertAdjacentHTML('beforeend', confirmCase(act.toUpperCase())); wireSiteNote(); ($('#sitenote') ?? $('#decide .confirm [data-act=confirm]')).focus() }
+  if (act === 'cancel') $('#decide .confirm')?.remove()
+  if (act === 'confirm') await saveDecision('14', b.dataset.kind, b)
+}
+
+// ------------------------------------------------------------- the case map layers
+function addCaseLayers() {
+  const f = D.facts
+  const others = D.drain14.trips.filter((t) => t !== f.trip).map((t) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: t.actualRoute } }))
+  const line = (c) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: c } })
+  map.addSource('claimed', { type: 'geojson', data: line(f.claimedRoute) })
+  map.addSource('others', { type: 'geojson', data: { type: 'FeatureCollection', features: others } })
+  map.addSource('actual', { type: 'geojson', data: line([f.trip.actualRoute[0], f.trip.actualRoute[0]]) })
+  map.addSource('stop', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Point', coordinates: f.trip.actualRoute.at(-1) } } })
+  map.addSource('dim', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+  map.addLayer({ id: 'claimed', type: 'line', source: 'claimed', paint: { 'line-color': C.ink, 'line-width': 2.5, 'line-dasharray': [3, 2], 'line-opacity': 0 } })
+  map.addLayer({ id: 'others', type: 'line', source: 'others', paint: { 'line-color': C.held, 'line-width': 1.4, 'line-opacity': 0 } })
+  map.addLayer({ id: 'actual-case', type: 'line', source: 'actual', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F2EFE7', 'line-width': 9, 'line-opacity': 0 } })
+  map.addLayer({ id: 'actual', type: 'line', source: 'actual', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.held, 'line-width': 4.5, 'line-opacity': 0 } })
+  map.addLayer({ id: 'dim', type: 'line', source: 'dim', paint: { 'line-color': C.ink, 'line-width': 1.6 } })
+  map.addLayer({ id: 'stop', type: 'circle', source: 'stop', paint: { 'circle-radius': 0, 'circle-color': C.held, 'circle-stroke-color': '#F2EFE7', 'circle-stroke-width': 3 } })
+}
+// A survey dimension line from the stop to the dump site edge, with end ticks.
+function dimensionLine(frac = 1) {
+  const a = D.facts.trip.actualRoute.at(-1), b = D.facts.dump
+  const end = [a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac]
+  const k = Math.cos((a[1] * Math.PI) / 180), dx = (b[0] - a[0]) * k, dy = b[1] - a[1], len = Math.hypot(dx, dy)
+  const nx = (-dy / len) * 0.0012 / k, ny = (dx / len) * 0.0012
+  const tick = (p) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[p[0] - nx, p[1] - ny], [p[0] + nx, p[1] + ny]] } })
+  return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [a, end] } }, tick(a), ...(frac >= 1 ? [tick(b)] : [])] }
+}
+function bearingTo(a, b) { const k = Math.cos((a[1] * Math.PI) / 180); return (Math.atan2((b[0] - a[0]) * k, b[1] - a[1]) * 180) / Math.PI }
+const labels = {}
+function caseLabel(id, lnglat, html, cls, anchor, offset) {
+  labels[id]?.remove()
+  const el = document.createElement('div'); el.className = 'maplabel ' + (cls ?? ''); el.innerHTML = html
+  labels[id] = new maplibregl.Marker({ element: el, anchor, offset }).setLngLat(lnglat).addTo(map)
+}
+function showCaseMapFinal() {
+  const f = D.facts, stop = f.trip.actualRoute.at(-1), r8 = f.trip.findings.find((x) => x.rule === 'R8').evidence
+  map.getSource('actual').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: f.trip.actualRoute } })
+  for (const l of ['claimed', 'actual', 'actual-case']) map.setPaintProperty(l, 'line-opacity', 1)
+  map.setPaintProperty('others', 'line-opacity', 0.45)
+  map.setPaintProperty('stop', 'circle-radius', 8)
+  map.getSource('dim').setData(dimensionLine(1))
+  const mid = [(stop[0] + f.dump[0]) / 2, (stop[1] + f.dump[1]) / 2]
+  caseLabel('dim', mid, `${(f.shortOfDumpM / 1000).toFixed(1)} km short`, 'dim', 'center', [0, 0])
+  caseLabel('stop', stop, `Every trace stops here<span class="sub">trip ${f.trip.tripNo}: ${f.trip.arrivalTime.slice(11, 16)}, last fix ${r8.arrival.slice(11, 16)}</span>`, 'held', 'right', [-16, 0])
+  caseLabel('dump', f.dump, `Approved dump site<span class="sub">no trace enters it</span>`, '', 'bottom', [0, -22])
+  const c14 = D.drains.features.find((x) => x.properties.drainId === '14').properties.centroid
+  caseLabel('d14', c14, `Drain 14<span class="sub">loads leave from here</span>`, '', 'right', [-28, 0])
+}
+function hideRingsExcept(id) { for (const [k, r] of Object.entries(rings)) r.el.style.visibility = k === id ? 'visible' : 'hidden'; for (const t of Object.values(tags)) t.el.innerHTML = '' }
+function caseCamera() {
+  const pts = [...D.facts.claimedRoute, ...D.facts.trip.actualRoute, D.facts.dump]
+  return map.cameraForBounds(SP.bounds(pts), { padding: { top: 76, bottom: 44, left: 150, right: 190 }, bearing: 0, pitch: 0 })
+}
+
+async function openDrain(id, animate = false) {
+  if (id !== '14') { toast(`This prototype carries the full evidence for drain 14. Drain ${id} opens the same way in the app.`); return }
+  if (state.view === 'case') return
+  state.view = 'case'; state.flying = true
+  showTip(null); placeOffmap(); updateTicks()
+  $('#case').innerHTML = caseHTML()
+  $('#timeline').innerHTML = '' // measured once the case grid has a size
+  $('#back').onclick = () => (location.search = '?view=verified')
+  $('#decide').onclick = onDecideClick
+  hideRingsExcept('14')
+  map.setPaintProperty('drain-fill', 'fill-opacity', ['case', ['==', ['get', 'drainId'], '14'], 0.7, 0.12])
+  map.setPaintProperty('drain-line', 'line-opacity', ['case', ['==', ['get', 'drainId'], '14'], 1, 0.25])
+  $('#titleblock').style.opacity = 0
+  const f = D.facts, route = f.trip.actualRoute
+  const c14 = D.drains.features.find((x) => x.properties.drainId === '14').properties.centroid
+  const brg = bearingTo(c14, f.dump)
+  if (animate) {
+    $('#app').classList.add('flying')
+    // 1. tilt over drain 14, looking down the haul the bill claims
+    map.setPaintProperty('claimed', 'line-opacity', 1)
+    map.flyTo({ center: route[0], zoom: 15.1, pitch: 58, bearing: brg, duration: 1400, curve: 1.2 })
+    await SP.wait(1450)
+    // 2. follow one truck, trip 001, along its GPS trace
+    for (const l of ['actual', 'actual-case']) map.setPaintProperty(l, 'line-opacity', 1)
+    const rp = $('#replay'); rp.classList.add('on')
+    const total = f.trip.actualRouteDistanceM / 1000
+    await SP.tween(3600, (p) => {
+      const part = SP.slice(route, p), head = part.at(-1)
+      map.getSource('actual').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: part } })
+      map.jumpTo({ center: head, zoom: 15.1 - 0.9 * p, pitch: 58, bearing: brg })
+      rp.innerHTML = `<span>Trip ${f.trip.tripNo}, ${f.trip.vehicleNo}</span><span>leaves drain 14 at <b>${f.trip.startTime.slice(11, 16)}</b></span><span>driven <b>${(total * p).toFixed(1)} km</b></span>${p >= 1 ? `<span class="held">stops at <b>${f.trip.arrivalTime.slice(11, 16)}</b>, ${(f.shortOfDumpM / 1000).toFixed(1)} km short</span>` : ''}`
+    }, SP.ease.inOut)
+    // 3. the shortfall, measured
+    map.setPaintProperty('stop', 'circle-radius', 9)
+    map.easeTo({ zoom: 13.9, duration: 600 })
+    await SP.tween(600, (p) => map.getSource('dim').setData(dimensionLine(p)))
+    showCaseMapFinal()
+    await SP.wait(500)
+    rp.classList.remove('on')
+    // 4. settle into the case file: the frame moves into Exhibit A as the camera lies flat
+    $('#app').classList.add('case')
+    $('#timeline').innerHTML = ''
+    await SP.wait(30)
+    const to = rectCase()
+    const cam = (() => { const keep = { left: $('#mapframe').offsetLeft, top: $('#mapframe').offsetTop, width: $('#mapframe').offsetWidth, height: $('#mapframe').offsetHeight }; setFrame(to); const c = caseCamera(); setFrame(keep); return c })()
+    map.easeTo({ ...cam, pitch: 0, bearing: 0, duration: 1100 })
+    renderCaseMoney(); renderDecide(); $('#app').classList.add('settled')
+    await morphFrame(to, 1100)
+    // resizing during the ease drifts the centre; land exactly on the case framing
+    map.easeTo({ ...caseCamera(), pitch: 0, bearing: 0, duration: 350 })
+    await SP.wait(350)
+  } else {
+    $('#app').classList.add('case')
+    setFrame(rectCase())
+    map.jumpTo({ ...caseCamera(), pitch: 0, bearing: 0 })
+    showCaseMapFinal()
+  }
+  state.flying = false
+  $('#titleblock').innerHTML = titleCase(); $('#titleblock').style.opacity = 1
+  $('#timeline').innerHTML = timelineHTML()
+  renderCaseMoney(); renderDecide(); wireCompare()
+  new ResizeObserver(() => { if (!state.flying) setFrame(rectCase()) }).observe($('#exA-slot'))
+  if (!animate) { setFrame(rectCase()); map.jumpTo({ ...caseCamera(), pitch: 0, bearing: 0 }) }
+  updateTicks()
+  $('#app').classList.add('settled')
+  await SP.wait(animate ? 300 : 0)
+}
+
+// ------------------------------------------------------------- component sheet
+function systemHTML() {
+  const sw = [['Paper', '#F2EFE7'], ['Limestone', '#E3DED2'], ['Card', '#FBFAF6'], ['Rule', '#CFC9BB'], ['Survey ink', '#1C2A38'], ['Ink 2', '#4E5A64'], ['Prussian, action', '#1F4D78'], ['Water', '#AEC0C3'], ['Verified', '#39684F'], ['Review', '#A6731E'], ['Held', '#8E2424'], ['Held wash', '#F1DFDA']]
+  const light = ['#F2EFE7', '#E3DED2', '#FBFAF6', '#CFC9BB', '#AEC0C3', '#F1DFDA']
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:24px"><h1 style="font:500 40px/1 var(--serif);margin:0">SiltProof case file, components and states</h1><span class="sim-badge">Simulated data</span></div>
+  <div class="sys-grid sys">
+    <div class="col"><h3>Colour</h3><div class="swatches">${sw.map(([n, c]) => `<div style="background:${c};color:${light.includes(c) ? '#1C2A38' : '#F2EFE7'}">${n}<br>${c}</div>`).join('')}</div>
+      <h3 style="margin-top:8px">Type</h3><div style="font:500 72px/1 var(--serif);color:var(--held);letter-spacing:-.035em">₹6.66<small style="font-size:.4em"> lakh</small></div><span class="lab">Newsreader 500: money, headings, exhibit titles</span>
+      <div style="font:400 16px/1.45 var(--sans)">Instrument Sans 400 to 600: controls, labels, body</div><span class="lab">16 px body, 15 px minimum for anything read in the video</span>
+      <div class="num" style="font-size:20px">06:53  07:12  370 t  ₹3,45,600</div><span class="lab">IBM Plex Mono: times, tonnes, rupees in tables</span></div>
+    <div class="col"><h3>Primary action</h3>
+      <button class="btn btn-primary" style="min-height:60px;font-size:19px;width:300px">Run verification</button><span class="lab">Default</span>
+      <button class="btn btn-primary is-hover" style="min-height:60px;font-size:19px;width:300px">Run verification</button><span class="lab">Hover: lighter</span>
+      <button class="btn btn-primary is-press" style="min-height:60px;font-size:19px;width:300px">Run verification</button><span class="lab">Pressed: drops 2 px onto its lip</span>
+      <button class="btn btn-primary" style="min-height:60px;font-size:19px;width:300px;outline:3px solid var(--prussian);outline-offset:2px">Run verification</button><span class="lab">Keyboard focus</span>
+      <button class="btn btn-primary is-busy" style="min-height:60px;font-size:19px;width:300px"><span class="spinner"></span>Checking trip 64 of 117<span class="bar-progress" style="transform:scaleX(.55)"></span></button><span class="lab">Running: real trip count, progress on the lower edge</span>
+      <button class="btn btn-primary" style="min-height:60px;font-size:19px;width:300px" disabled>Run verification</button><span class="lab">Disabled while the bill loads</span></div>
+    <div class="col"><h3>Decisions</h3>
+      <div style="display:flex;gap:10px"><button class="btn btn-held">Hold ₹3,45,600</button><button class="btn btn-quiet">Approve and release</button></div><span class="lab">Not decided. Hold is weighted on a red drain.</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held is-hover">Hold ₹3,45,600</button><button class="btn btn-quiet is-hover">Approve and release</button></div><span class="lab">Hover</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held is-press">Hold ₹3,45,600</button><button class="btn btn-quiet is-press">Approve and release</button></div><span class="lab">Pressed</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held is-busy"><span class="spinner"></span>Saving decision</button><button class="btn btn-quiet" disabled>Approve and release</button></div><span class="lab">Submitting: the rest of the bar is disabled</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held" disabled>Hold ₹3,45,600</button><button class="btn btn-quiet" disabled>Approve and release</button></div><span class="lab">Disabled before verification has run</span>
+      <div class="err" style="width:100%"><b>Not saved.</b> The bill service did not answer. Nothing changed; try again.</div><span class="lab">Error: says what happened and what to do</span></div>
+    <div class="col"><h3>Stamps and marks</h3>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span class="stamp held big"><b>HELD</b><span>₹3,45,600</span></span><span class="stamp held"><b>HELD</b><span>₹50,400</span></span></div><span class="lab">Hard evidence: held drains and the bill total</span>
+      <div style="display:flex;gap:16px;align-items:center"><span class="stamp review"><b>REVIEW</b><span>₹99,000</span></span><span class="stamp approved"><b>APPROVED</b><span>₹99,000</span></span></div><span class="lab">Soft check, dashed. Your approval, in action blue.</span>
+      <div style="display:flex;gap:6px"><span class="rid">R3</span><span class="rid">R5</span><span class="rid">R8</span></div><span class="lab">Rule chips name the check that failed</span>
+      <h3 style="margin-top:8px">Map symbols</h3><div style="display:flex;gap:14px;align-items:center">${['3', '6', '1'].map((id) => ringSVG(D.bill.drains.find((d) => d.drainId === id), true)).join('')}${ringSVG(D.pending.drains.find((d) => d.drainId === '14'), false)}</div><span class="lab">Ring area is tonnes billed, never drain size. Dashed grey: not checked.</span>
+      <div style="display:flex;gap:10px;align-items:center"><span class="maplabel dim">2.2 km short</span><span class="maplabel held">Every trace stops here</span></div><span class="lab">Dimension and finding labels on the case map</span></div>
+    <div class="col" style="grid-column: span 2"><h3>Confirmation</h3><div style="position:relative;height:300px;width:100%"><div style="position:absolute;left:0;top:0">${confirmCase('HOLD')}</div></div><span class="lab">States the amount, the consequence and the bill total afterwards</span></div>
+    <div class="col"><h3>Done</h3><div class="done"><span class="stamp held big"><b>HELD</b><span>₹3,45,600</span></span><p><b>You held ₹3,45,600.</b><br>Recorded 9 Oct 2026, 10:42.<br><button class="link">Change decision</button></p></div><span class="lab">Stamped, timed, reversible</span></div>
+    <div class="col"><h3>Loading and empty</h3><div class="skeleton" style="width:300px"></div><div class="skeleton" style="width:220px"></div><div class="skeleton" style="width:260px"></div><span class="lab">Exhibit loading. The map keeps its last frame.</span>
+      <div style="border-left:3px solid var(--review);padding:8px 12px;background:var(--review-wash);font-size:15px">No slip image for this trip. The fields Textract read are shown; the trip is in review, not held.</div>
+      <div style="border-left:3px solid var(--ink-3);padding:8px 12px;background:var(--sheet-2);font-size:15px">Photo link expired. Reopen the drain to fetch a new one.</div></div>
+  </div>`
+}
+
+// ------------------------------------------------------------- shared wiring
+function wireHover() {
+  document.addEventListener('mouseover', (e) => {
+    const t = e.target.closest('[data-drain]'), id = t?.dataset.drain ?? null
+    if (id === state.hover) return
+    state.hover = id
+    $$('.row').forEach((r) => r.classList.toggle('is-hover', r.dataset.drain === id))
+    for (const [k, r] of Object.entries(rings)) r.el.firstChild?.classList.toggle('is-hover', k === id)
+    showTip(id)
+  })
+  document.addEventListener('click', (e) => { const r = e.target.closest('.mapframe [data-drain]'); if (r && state.view === 'verified') openDrain(r.dataset.drain, true) })
+}
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 2800) }
+function tRange() { const ts = D.bill.drains.map((d) => d.claimedTonnes); return `${Math.min(...ts)} t to ${Math.max(...ts)} t` }
+function wardCentre() { const cs = D.drains.features.map((f) => f.properties.centroid); return [cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length] }
+function hatchImage() {
+  const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d')
+  g.strokeStyle = '#1C2A38'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, 8); g.lineTo(8, 0); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke()
+  return g.getImageData(0, 0, 8, 8)
+}
+
+// ------------------------------------------------------------- boot
+;(async () => {
+  D = await SP.load()
+  D9 = await (await fetch('../shared/data/drain-9.json')).json()
+  const view = P.get('view') ?? 'pre'
+  if (view === 'system') { await document.fonts.ready; $('#system').innerHTML = systemHTML(); $('#system').classList.add('on'); window.__ready = true; return }
+  document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#1C2A38" stroke-width="1.5"/></pattern></defs></svg>`)
+  $('#sheet').innerHTML = sheetHTML()
+  $('#sheet').addEventListener('click', onSheetClick)
+  renderSheet()
+  $('#titleblock').innerHTML = titleOverview()
+  setFrame(rectOverview())
+
+  const base = SP.basemapLayers(D.basemap, C)
+  map = new maplibregl.Map({
+    container: 'map', attributionControl: false, maxPitch: 70,
+    style: { version: 8, sources: { ...base.sources, drains: { type: 'geojson', data: D.drains }, dump: { type: 'geojson', data: D.dumpsite } }, layers: [
+      ...base.layers,
+      { id: 'dump-line', type: 'line', source: 'dump', paint: { 'line-color': C.ink, 'line-width': 1.6 } },
+      { id: 'drain-fill', type: 'fill', source: 'drains', paint: { 'fill-color': ['match', ['get', 'v'], 'RED', C.held, 'AMBER', C.review, 'GREEN', C.verified, C.pending], 'fill-opacity': 0.5 } },
+      { id: 'drain-line', type: 'line', source: 'drains', paint: { 'line-color': C.ink, 'line-width': 1 } },
+    ] },
+    bounds: SP.drainBounds(D.drains), fitBoundsOptions: { padding: { top: 70, bottom: 70, left: 70, right: 420 } },
+  })
+  map.on('move', updateTicks)
+  await new Promise((r) => map.on('load', r))
+  map.addImage('hatch', hatchImage())
+  map.addLayer({ id: 'dump-fill', type: 'fill', source: 'dump', paint: { 'fill-pattern': 'hatch' } }, 'dump-line')
+  addRings(); addCaseLayers(); wireHover()
+  $('#overlays').insertAdjacentHTML('beforeend', `<div class="offmap" id="offmap"><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><path d="M0 6h14M10 1l5 5-5 5" fill="none" stroke="#1C2A38" stroke-width="1.8"/></svg>Approved dump site, <span class="num">${(SP.metres(wardCentre(), D.facts.dump) / 1000).toFixed(1)} km</span> from the ward</div>`)
+  await document.fonts.ready
+  updateTicks()
+
+  // Deep links for review and capture
+  for (const id of (P.get('approved') ?? '').split(',').filter(Boolean)) state.decisions[id] = { kind: 'APPROVE' }
+  if (P.get('held14')) state.decisions['14'] = { kind: 'HOLD', note: `Every trace stops ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site.` }
+  if (view !== 'pre') enterVerified()
+  if (P.get('review')) { state.open = P.get('review'); $('#register').innerHTML = registerDone(); $('#inline').scrollIntoView({ block: 'nearest' }); if (P.get('confirm')) $('#inline').insertAdjacentHTML('beforeend', confirmReview(state.open, P.get('confirm').toUpperCase())) }
+  if (view === 'drain14') {
+    await openDrain('14', false)
+    if (P.get('decided')) { state.decisions['14'] = { kind: P.get('decided').toUpperCase(), note: $('#note').value }; renderDecide(); renderCaseMoney() }
+    if (P.get('confirm')) $('#decide').insertAdjacentHTML('beforeend', confirmCase(P.get('confirm').toUpperCase()))
+    if (P.get('saving')) { $('#decide').insertAdjacentHTML('beforeend', confirmCase('HOLD')); const b = $('#decide [data-act=confirm]'); b.classList.add('is-busy'); b.innerHTML = '<span class="spinner"></span>Saving decision'; $$('#decide .btn, #decide textarea').forEach((x) => (x.disabled = true)); b.disabled = false }
+    if (P.get('error')) { state.err = true; renderDecide() }
+  }
+  if (P.get('hover')) { const id = P.get('hover'); state.hover = id; $$('.row').forEach((r) => r.classList.toggle('is-hover', r.dataset.drain === id)); rings[id]?.el.firstChild.classList.add('is-hover'); showTip(id) }
+  addEventListener('resize', () => { if (state.view === 'case') setFrame(rectCase()); else setFrame(rectOverview()) })
+  await SP.mapReady(map)
+  window.__ready = true
+  if (P.get('wait')) await new Promise((r) => (window.__go = r))
+  if (P.get('play') === 'scan') {
+    await SP.wait(500)
+    $('#verify').classList.add('is-press'); await SP.wait(160); $('#verify').classList.remove('is-press')
+    await runVerification(); await SP.wait(400); window.__done = true
+  }
+  if (P.get('play') === 'open14') {
+    await SP.wait(300)
+    const row = $('.row[data-drain="14"]'); row.classList.add('is-hover'); rings['14'].el.firstChild.classList.add('is-hover'); await SP.wait(350)
+    row.classList.add('is-press'); await SP.wait(150)
+    await openDrain('14', true); window.__done = true
+  }
+})()
+</script>
+</body>
+</html>

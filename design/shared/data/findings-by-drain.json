@@ -132,7 +132,7 @@
   "firstMessage": {
    "R3": "after-02.jpg is the same image as after-01.jpg, already submitted for drain 9.",
    "R5": "The truck's GPS trace never enters the approved dump site.",
-   "R8": "The slip was printed at 06:53, 44 minutes before the truck arrived anywhere."
+   "R8": "The slip records time-in at 06:53, 19 minutes before the truck left the drain at 07:12. The GPS trace never reaches the dump site; its last fix, at 07:37, is 44 minutes after the slip's time-in."
   }
  },
  "15": {
