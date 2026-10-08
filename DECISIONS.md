@@ -422,3 +422,79 @@ draws is checked by `npm run screenshot`, which drives the already-installed
 Chrome through `puppeteer-core` (nothing downloaded) with SwiftShader for
 software WebGL, and saves four views under `frontend/screenshots/`. They are
 committed at 1x: four retina PNGs came to 3 MB.
+
+# Fifth batch (evidence consistency and image links)
+
+## R8 says which GPS time it compared against
+
+R8 compares the slip's time-in with the truck's GPS arrival at the dump site.
+A truck that never arrives has no arrival, so the rule has always fallen back
+to the trace's **last fix**. The message called that "arrived anywhere", and
+the drain 14 numbers disagreed: the generator plants the slip 40 minutes
+before the truck **stops** (07:33), the truck then dwells 4 minutes, and R8
+measures to the last fix (07:37), so the rule said 44 while the canned
+summary said 40.
+
+The comparison, tolerance (10 min) and severity are unchanged. The message
+now names the times it uses, and quotes the departure from the drain when the
+slip predates it, because that alone contradicts the slip:
+
+> The slip records time-in at 06:53, 19 minutes before the truck left the
+> drain at 07:12. The GPS trace never reaches the dump site; its last fix, at
+> 07:37, is 44 minutes after the slip's time-in.
+
+Evidence gains `arrivalKind` (`dumpsite` or `lastFix`) and `departure`. The
+generator constant keeps its value; its comment now explains 40 versus 44.
+
+## Slip images record what they print
+
+A drain 14 slip in `data/out` showed another truck's plate and time: the
+trips had been regenerated, the images had not. `gen_slips.py` now draws every
+value from one `printed_fields()` dict and stores that dict in the PNG as a
+text chunk. `python data/gen_slips.py --check` compares every image with
+`trips.json` and exits 1 on any mismatch; `tests/test_slips.py` checks the
+same, and that each checked field really changes the pixels. No OCR, so the
+check is exact and fast.
+
+## Mock mode names no model
+
+Offline, photo checks and summaries are canned. They used to carry the
+configured model id, which read as "Nova Pro (or Haiku) looked at this". Mock
+records now have `modelId: null` and `mocked: true`, and the mock summary is
+built from that drain's own findings with the lead "Offline summary, no model
+was called." Before, every flagged drain in the snapshot carried drain 14's
+canned sentence.
+
+## Evidence image links: 5-minute presigned GETs, no login
+
+`GET /drain/{id}` adds `photos[].imageUrl`, `trips[].slipImageUrl` and
+`evidenceUrlExpiresInSeconds: 300`. Additive; nothing existing changed.
+
+- Keys come from DynamoDB items of that bill and drain, and are re-checked
+  against the exact canonical layout (`photos/{bill}/drain{drain}/{role}-NN.ext`,
+  `slips/{bill}/{drain}-NNN.ext`). Anything else gets `null`: traversal, other
+  prefixes, other bills or drains, an item filed under the wrong drain.
+- Links are never logged or stored. The api role already has `s3:GetObject`
+  through `S3CrudPolicy`, so no IAM change.
+- **The API has no authentication.** Anyone who can call `GET /drain/{id}`
+  gets working image links for five minutes. The bucket stays private, but the
+  links are bearer tokens. Fine for simulated demo evidence; not for real
+  evidence without adding auth first.
+- The offline snapshot never contains a signed link: `make_demo_fixtures.py`
+  swaps them for local copies of drain 14's images (and the drain 9 photo it
+  reuses), 1.2 MB, sets other drains' links to null, and refuses to write a
+  file containing `X-Amz-`.
+
+## Pending live steps (not run; each needs approval)
+
+1. Redeploy the api and ingest code:
+   `sam build --use-container --template infra/template.yaml && sam deploy --config-file infra/samconfig.toml`
+2. Re-upload the regenerated slips if the live bucket was seeded before this
+   change. Each upload re-triggers ingestion, which **calls Textract** once
+   per slip (only drain 14's 18 slips if just those are replaced). Run
+   `python data/gen_slips.py --check` first; the seed script's dry run lists
+   the objects and the billable calls.
+3. Re-run `POST /verify/B1` (rules only, no model calls) so stored R8 messages
+   pick up the new wording.
+4. Cached live summaries still quote the old R8 text. `POST /drain/14/summary`
+   with `{"refresh": true}` regenerates one, and that **calls Bedrock**.
