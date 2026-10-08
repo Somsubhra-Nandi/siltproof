@@ -194,7 +194,20 @@ describe('the summary bar', () => {
     expect(within(bar).getByText('1,240 t')).toBeInTheDocument()
     expect(within(bar).getByText('805 t')).toBeInTheDocument()
     expect(within(bar).getByText('65 t')).toBeInTheDocument()
-    expect(within(bar).getByText('₹6.66 L')).toBeInTheDocument()
+    // The headline hold figure is spelled out; the sub-figures keep the short form.
+    expect(within(bar).getByText('₹6.66 lakh')).toBeInTheDocument()
+    expect(within(bar).getByText('₹22.32 L')).toBeInTheDocument()
+  })
+
+  it('shows the ward from the bill, falling back to a plain label', async () => {
+    render(<App />)
+    expect(await screen.findByText(/Test ward · Simulated Contractor/)).toBeInTheDocument()
+  })
+
+  it('says only "Ward" when the bill has no ward name', async () => {
+    vi.mocked(api.getBill).mockResolvedValue(billFixture({ ward: '' }))
+    render(<App />)
+    expect(await screen.findByText(/^Ward · /)).toBeInTheDocument()
   })
 
   it('holds back the verdict columns until verification has run', async () => {
@@ -220,6 +233,43 @@ describe('the summary bar', () => {
     fireEvent.click(button)
 
     await waitFor(() => expect(api.runVerification).toHaveBeenCalledOnce())
+  })
+
+  it('goes from an unchecked bill to a verified one when the button is pressed', async () => {
+    const pending = billFixture({
+      status: 'PENDING',
+      verifiedAt: null,
+      drains: billFixture().drains.map((row) => ({
+        ...row, verdict: null, verifiedTonnes: 0, reviewTonnes: 0, heldTonnes: 0,
+      })),
+      summary: {
+        ...billFixture().summary,
+        verifiedTonnes: 0, reviewTonnes: 0, heldTonnes: 0,
+        verifiedRupees: 0, reviewRupees: 0, heldRupees: 0,
+        red: 0, amber: 0, green: 0,
+      },
+    })
+    vi.mocked(api.getBill).mockResolvedValue(pending)
+    vi.mocked(api.runVerification).mockResolvedValue(billFixture())
+
+    render(<App />)
+
+    // Before: nothing is verified and the button invites a first run.
+    const button = await screen.findByRole('button', { name: /^run verification$/i })
+    const bar = screen.getByRole('banner')
+    expect(within(bar).getByText('1,240 t')).toBeInTheDocument()
+    expect(within(bar).queryByText('₹6.66 lakh')).not.toBeInTheDocument()
+    expect(within(bar).getByText('not checked yet')).toBeInTheDocument()
+
+    fireEvent.click(button)
+
+    // After: the money appears and the button offers to run it again.
+    expect(await screen.findByRole('button', { name: /re-run verification/i })).toBeInTheDocument()
+    // Each figure counts up on its own timer, so wait for each settled value
+    // rather than assuming they land together.
+    expect(await screen.findByText('₹6.66 lakh', {}, { timeout: 4000 })).toBeInTheDocument()
+    expect(await screen.findByText('805 t', {}, { timeout: 4000 })).toBeInTheDocument()
+    expect(await screen.findByText('65 t', {}, { timeout: 4000 })).toBeInTheDocument()
   })
 
   it('surfaces an API failure instead of showing nothing', async () => {
