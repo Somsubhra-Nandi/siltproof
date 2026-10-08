@@ -115,7 +115,7 @@ def trace_arrival(points, dumpsite):
     """(entered, arrival time) at the dump site.
 
     When the truck never gets there, the arrival is its last fix - which is
-    what R8 then compares the slip against.
+    what R8 then compares the slip against, and names as "its last fix".
     """
     geofence = (dumpsite or {}).get("geofence")
 
@@ -164,6 +164,35 @@ def minutes_apart(slip_time_text, arrival):
             best = delta
 
     return best
+
+
+def r8_message(time_in, delta, arrival, entered, departure):
+    """R8 in the engineer's words, naming exactly which GPS time was used.
+
+    R8 compares the slip's time-in with the truck's arrival at the dump site.
+    A truck that never arrives has no arrival, so the trace's last fix stands
+    in for it - and the message says so, rather than calling it an arrival.
+    The departure from the drain is quoted only when the slip predates it,
+    because then the slip contradicts the trace on its own.
+    """
+    minutes = f"{abs(delta):.0f} minutes"
+    when = "before" if delta < 0 else "after"
+    clock = arrival.strftime("%H:%M")
+
+    if entered:
+        return (f"The slip records time-in at {time_in}, {minutes} {when} the truck's "
+                f"GPS reached the dump site at {clock}.")
+
+    text = f"The slip records time-in at {time_in}"
+    if departure is not None and minutes_apart(time_in, departure) < 0:
+        lead = -minutes_apart(time_in, departure)
+        text += (f", {lead:.0f} minutes before the truck left the drain at "
+                 f"{departure.strftime('%H:%M')}")
+    # delta is the slip relative to the fix; this sentence is the fix relative
+    # to the slip, so the direction flips.
+    fix_when = "after" if delta < 0 else "before"
+    return (text + ". The GPS trace never reaches the dump site; its last fix, at "
+            f"{clock}, is {minutes} {fix_when} the slip's time-in.")
 
 
 # ------------------------------------------------------------ photo rules
@@ -435,14 +464,15 @@ def check_trip(trip, slip, trace_points, trace_item, dumpsite, vehicles, impossi
                     slipKey=trip.get("slipKey"))
         )
     elif abs(delta) > SLIP_TOLERANCE_MIN:
-        when = "before" if delta < 0 else "after"
+        departure = parse_time(trace_points[0].get("t")) if trace_points else None
         findings.append(
-            finding("R8", HARD,
-                    f"The slip was printed at {slip['timeIn']}, {abs(delta):.0f} minutes "
-                    f"{when} the truck arrived"
-                    + ("" if entered else " anywhere") + ".",
+            finding("R8", HARD, r8_message(slip["timeIn"], delta, arrival, entered, departure),
                     slipKey=trip.get("slipKey"), timeIn=slip.get("timeIn"),
                     arrival=arrival.isoformat() if arrival else None,
+                    # What the slip was compared against: the first fix inside
+                    # the dump site, or - when there is none - the last fix.
+                    arrivalKind="dumpsite" if entered else "lastFix",
+                    departure=departure.isoformat() if departure else None,
                     minutesEarly=round(-delta, 1))
         )
 

@@ -241,7 +241,8 @@ def test_drain_14_is_held_for_the_three_reasons_in_the_plan(verified):
         finding["message"] for trip in drain["trips"] for finding in trip["findings"]
     )
     assert "never enters the approved dump site" in messages
-    assert "minutes before the truck arrived" in messages
+    assert "before the truck left the drain" in messages
+    assert "never reaches the dump site; its last fix" in messages
     assert "same image as" in messages
 
 
@@ -423,3 +424,38 @@ def test_the_evidence_summary_is_written_once_and_cached(verified):
     )
     assert second["cached"] is True
     assert second["summary"] == first["summary"]
+
+
+def test_drain_14_r8_names_the_times_it_compares(verified):
+    """R8 quotes the slip's time-in, the departure and the last fix, and its
+    minute counts agree with those clock times - no 40-against-44 drift."""
+    import datetime
+    import re
+
+    _, drain = call(verified["api"], "GET /drain/{drainId}", path={"drainId": "14"})
+
+    for trip in drain["trips"]:
+        r8 = next(item for item in trip["findings"] if item["rule"] == "R8")
+        evidence = r8["evidence"]
+        match = re.fullmatch(
+            r"The slip records time-in at (\d\d:\d\d), (\d+) minutes before the truck left "
+            r"the drain at (\d\d:\d\d)\. The GPS trace never reaches the dump site; its "
+            r"last fix, at (\d\d:\d\d), is (\d+) minutes after the slip's time-in\.",
+            r8["message"],
+        )
+        assert match, r8["message"]
+        time_in, lead, left, last, minutes = match.groups()
+
+        def clock(text):
+            hour, minute = map(int, text.split(":"))
+            return hour * 60 + minute
+
+        departure = datetime.datetime.fromisoformat(evidence["departure"])
+        arrival = datetime.datetime.fromisoformat(evidence["arrival"])
+        assert time_in == evidence["timeIn"] == trip["slip"]["timeIn"]
+        assert left == departure.strftime("%H:%M")
+        assert last == arrival.strftime("%H:%M")
+        assert evidence["arrivalKind"] == "lastFix"
+        assert int(lead) == clock(left) - clock(time_in)
+        assert int(minutes) == clock(last) - clock(time_in)
+        assert abs(evidence["minutesEarly"] - int(minutes)) < 1

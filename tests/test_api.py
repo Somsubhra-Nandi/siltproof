@@ -548,3 +548,14 @@ def test_a_drain_with_no_photos_at_all_is_flagged(api, small_bill):
     assert body["missingEvidence"]["drainsWithoutPhotos"] == 1
     rows = {drain["drainId"]: drain for drain in body["drains"]}
     assert "PHOTOS_MISSING" in rows["1"]["failedRules"]
+
+
+# ------------------------------------------------- offline summaries
+def test_offline_summaries_name_no_model_and_describe_their_own_drain(api, small_bill):
+    call(api, "POST /verify/{billId}", path={"billId": BILL})
+    _, body = call(api, "POST /drain/{drainId}/summary", path={"drainId": "2"}, body={})
+
+    assert body["modelId"] is None
+    assert body["summary"].startswith("Offline summary, no model was called.")
+    assert "14.00 t on a truck rated 10 t" in body["summary"]
+    assert "drain 14" not in body["summary"]

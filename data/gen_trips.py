@@ -59,7 +59,11 @@ OVERLOAD_CAPACITY = 10      # the truck the drain 11 slips overload
 GPS_GAP_S = 240             # the honest four-minute gap in an underpass
 R6_GAP_MINUTES = 7          # drain 16: second trip starts this soon after
 R6_DISTANCE_KM = 22         # ...and this far away
-R8_SLIP_EARLY_MIN = 40      # drain 14: slip printed before the truck arrives
+# Drain 14: the slip's time-in is this long before the truck stops short of
+# the dump site. The truck then sits there for DWELL_AT_DUMP_S, so the trace's
+# last fix - which R8 compares against, as the truck never arrives - comes
+# 4 minutes later and the finding reads 44 minutes (06:53 against 07:37).
+R8_SLIP_EARLY_MIN = 40
 DETOUR_SHORTFALL_M = 2200   # drain 14 stops this far short of the dump site
 
 

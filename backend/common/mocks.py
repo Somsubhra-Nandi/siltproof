@@ -133,9 +133,26 @@ def bedrock_photo_check(key):
     return response
 
 
-def bedrock_text(_prompt):
-    """A mocked Converse response for the Day 2 evidence summary."""
-    return copy.deepcopy(load_fixture("bedrock_summary_text"))
+MOCK_SUMMARY_LEAD = "Offline summary, no model was called."
+
+
+def bedrock_text(prompt):
+    """A mocked Converse response for the Day 2 evidence summary.
+
+    The text is built from the findings listed in the prompt, so each drain's
+    offline summary describes that drain - not one canned drain for all of
+    them - and it says plainly that no model wrote it.
+    """
+    response = copy.deepcopy(load_fixture("bedrock_summary_text"))
+    lines = [
+        line[2:].split(": ", 1)[1]
+        for line in (prompt or "").splitlines()
+        if line.startswith("- ") and ": " in line
+    ]
+    if lines:
+        text = " ".join([MOCK_SUMMARY_LEAD] + lines[:3])
+        response["output"]["message"]["content"][0]["text"] = text
+    return response
 
 
 # ------------------------------------------------------------------ location

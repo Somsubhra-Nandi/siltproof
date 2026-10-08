@@ -15,9 +15,16 @@ crisp, per the plan's risk note.
 Reads data/out/trips.json, writes:
     data/out/evidence/slips/B1/<drain>-<trip>.png
     data/out/mock_manifest.json   (marks which slips are degraded)
+
+Every value printed on a slip comes from printed_fields(), and the same dict
+is stored in the PNG as a text chunk. That lets a check compare the pixels'
+source against trips.json without OCR:
+
+    python data/gen_slips.py --check          # exit 1 if any slip is stale
 """
 
 import argparse
+import json
 import pathlib
 import random as random_module
 import sys
@@ -26,7 +33,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import dataset as ds  # noqa: E402
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont  # noqa: E402
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, PngImagePlugin  # noqa: E402
 
 WIDTH, HEIGHT = 760, 1000
 MARGIN = 48
@@ -39,6 +46,12 @@ WEIGHBRIDGE_SUB = "Public Weighbridge  |  Cap. 60 MT  |  Lic. SMPL/0000"
 DEGRADE_SHARE = 0.25
 CRISP_DRAINS = {"14"}
 
+# PNG text chunk holding the printed values, read back by --check and tests.
+PRINTED_KEY = "siltproof:printed"
+
+# The fields a slip must agree with its trip on, in print order.
+CHECKED_FIELDS = ("ticketNo", "vehicleNo", "gross", "tare", "net", "timeIn", "timeOut")
+
 
 def font(size, bold=False):
     """Pillow's built-in font scales, so no font files have to be shipped."""
@@ -48,8 +61,66 @@ def font(size, bold=False):
         return ImageFont.load_default()
 
 
-def draw_slip(trip):
+def printed_fields(trip):
+    """Exactly the text printed on the slip, keyed by field."""
     slip = trip["slip"]
+    return {
+        "ticketNo": slip["ticketNo"],
+        "date": slip["date"],
+        "vehicleNo": slip["vehicleNo"],
+        "site": slip["site"],
+        "gross": f"{slip['gross']:.2f} T",
+        "tare": f"{slip['tare']:.2f} T",
+        "net": f"{slip['net']:.2f} T",
+        "timeIn": slip["timeIn"],
+        "timeOut": slip["timeOut"],
+        "tripId": trip["tripId"],
+    }
+
+
+def expected_fields(trip):
+    """What printed_fields() must say for this trip, for --check."""
+    printed = printed_fields(trip)
+    return {name: printed[name] for name in CHECKED_FIELDS}
+
+
+def read_printed(path):
+    """The printed values stored in a slip PNG, or None if it has none."""
+    with Image.open(path) as image:
+        raw = (getattr(image, "text", None) or {}).get(PRINTED_KEY)
+    return json.loads(raw) if raw else None
+
+
+def stale_slips(trips, root):
+    """[(slipKey, problem)] for every slip that does not match its trip."""
+    problems = []
+    for trip in trips:
+        path = pathlib.Path(root) / trip["slipKey"]
+        if not path.exists():
+            problems.append((trip["slipKey"], "missing"))
+            continue
+        printed = read_printed(path)
+        if printed is None:
+            problems.append((trip["slipKey"], "no printed-values record (rendered by an old generator)"))
+            continue
+        wrong = [
+            f"{name} {printed.get(name)!r} != {want!r}"
+            for name, want in expected_fields(trip).items()
+            if printed.get(name) != want
+        ]
+        if wrong:
+            problems.append((trip["slipKey"], "; ".join(wrong)))
+    return problems
+
+
+def png_info(trip):
+    info = PngImagePlugin.PngInfo()
+    info.add_text(PRINTED_KEY, json.dumps(printed_fields(trip), sort_keys=True))
+    return info
+
+
+def draw_slip(trip):
+    printed = printed_fields(trip)
     image = Image.new("RGB", (WIDTH, HEIGHT), (253, 253, 250))
     draw = ImageDraw.Draw(image)
 
@@ -83,30 +154,30 @@ def draw_slip(trip):
         draw.text((MARGIN + 250, y - 3), str(text), font=value_font, fill=(10, 10, 10))
         y += gap
 
-    row("TICKET NO", slip["ticketNo"])
-    row("DATE", slip["date"])
-    row("VEHICLE NO", slip["vehicleNo"], value_font=mono)
+    row("TICKET NO", printed["ticketNo"])
+    row("DATE", printed["date"])
+    row("VEHICLE NO", printed["vehicleNo"], value_font=mono)
     row("MATERIAL", "DRAIN SILT")
-    row("SITE", slip["site"], value_font=small)
+    row("SITE", printed["site"], value_font=small)
 
     y += 10
     draw.line([MARGIN, y, WIDTH - MARGIN, y], fill=(120, 120, 120), width=2)
     y += 28
 
-    row("GROSS WT", f"{slip['gross']:.2f} T", value_font=mono)
-    row("TARE WT", f"{slip['tare']:.2f} T", value_font=mono)
+    row("GROSS WT", printed["gross"], value_font=mono)
+    row("TARE WT", printed["tare"], value_font=mono)
 
     # The net weight is the number the whole bill rests on, so it is boxed.
     draw.rectangle([MARGIN, y - 8, WIDTH - MARGIN, y + 46], outline=(20, 20, 20), width=3)
     draw.text((MARGIN + 14, y + 6), "NET WT", font=label, fill=(20, 20, 20))
-    draw.text((MARGIN + 250, y + 2), f"{slip['net']:.2f} T", font=font(32), fill=(10, 10, 10))
+    draw.text((MARGIN + 250, y + 2), printed["net"], font=font(32), fill=(10, 10, 10))
     y += 74
 
     draw.line([MARGIN, y, WIDTH - MARGIN, y], fill=(120, 120, 120), width=2)
     y += 28
 
-    row("TIME IN", slip["timeIn"], value_font=mono)
-    row("TIME OUT", slip["timeOut"], value_font=mono)
+    row("TIME IN", printed["timeIn"], value_font=mono)
+    row("TIME OUT", printed["timeOut"], value_font=mono)
 
     y += 40
     draw.text((MARGIN, y), "OPERATOR", font=label, fill=(70, 70, 70))
@@ -122,7 +193,7 @@ def draw_slip(trip):
     )
     draw.text(
         (WIDTH / 2, HEIGHT - MARGIN - 4),
-        f"trip {trip['tripId']}",
+        f"trip {printed['tripId']}",
         font=small,
         fill=(170, 170, 170),
         anchor="mm",
@@ -195,6 +266,8 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, default=0, help="render only this many slips")
     parser.add_argument("--degrade-share", type=float, default=DEGRADE_SHARE)
     parser.add_argument("--seed", default="siltproof")
+    parser.add_argument("--check", action="store_true",
+                        help="render nothing; report slips that disagree with trips.json")
     args = parser.parse_args(argv)
 
     trips_path = pathlib.Path(args.trips or (ds.OUT / "trips.json"))
@@ -204,6 +277,16 @@ def main(argv=None):
         return 2
 
     trips = ds.load_json(trips_path)["trips"]
+
+    if args.check:
+        problems = stale_slips(trips, ds.OUT / "evidence")
+        for key, problem in problems:
+            print(f"stale  {key}: {problem}")
+        print(f"{len(trips) - len(problems)} of {len(trips)} slips match trips.json")
+        if problems:
+            print("Re-render them with: python data/gen_slips.py")
+        return 1 if problems else 0
+
     chosen = select_trips(trips, args.limit)
     degraded = choose_degraded(chosen, args.degrade_share, args.seed)
 
@@ -226,7 +309,7 @@ def main(argv=None):
 
         path = out_root / trip["slipKey"]
         path.parent.mkdir(parents=True, exist_ok=True)
-        image.save(path, format="PNG", optimize=True)
+        image.save(path, format="PNG", optimize=True, pnginfo=png_info(trip))
 
         entry = dict(manifest["slips"].get(trip["slipKey"], {}))
         entry.update(trip["slip"])

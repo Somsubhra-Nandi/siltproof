@@ -335,6 +335,7 @@ def _photo_row(item):
             "confidence": verdict.get("confidence"),
             "notes": verdict.get("notes"),
             "modelId": verdict.get("modelId"),
+            "mocked": bool(verdict.get("mocked")),
             "ok": verdict.get("ok"),
         },
     }
@@ -441,7 +442,9 @@ def drain_summary(drain_id, body, query):
     if not text:
         return error(502, "The model returned an empty summary.", drainId=drain_id)
 
-    model_id = config.text_model_id()
+    # Mock mode builds the text from the findings; naming a model would claim
+    # Bedrock wrote it.
+    model_id = None if config.mock_aws() else config.text_model_id()
     store.update_fields(
         store.bill_pk(bill_id),
         store.drain_sk(drain_id),

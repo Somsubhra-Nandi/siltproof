@@ -4,7 +4,7 @@
       "role": "assistant",
       "content": [
         {
-          "text": "The truck left drain 14 but its GPS trace never entered the approved dump site, and the weighbridge slip was printed 40 minutes before the truck arrived anywhere.\nThe after photo is a reused copy of a photo from drain 9."
+          "text": "Offline summary, no model was called. The GPS trace never reaches the dump site. The after-photo is a reused copy of a photo from another drain."
         }
       ]
     }

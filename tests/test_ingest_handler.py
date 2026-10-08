@@ -62,6 +62,9 @@ def test_a_photo_becomes_an_evidence_item(aws, handler):
     assert item["pHash"]
     assert item["bedrock"]["load_type"] in ("silt", "debris", "unclear")
     assert item["bedrock"]["ok"] is True
+    # A canned mock answer must not be attributed to a Bedrock model.
+    assert item["bedrock"]["mocked"] is True
+    assert item["bedrock"]["modelId"] is None
 
 
 def test_a_photo_also_lands_in_the_phash_index(aws, handler):

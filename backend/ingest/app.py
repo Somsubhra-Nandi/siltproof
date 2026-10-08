@@ -151,7 +151,10 @@ def handle_photo(bucket, key, obj, meta):
             "confidence": verdict["confidence"],
             "notes": verdict["notes"],
             "ok": verdict["ok"],
-            "modelId": config.vision_model_id(),
+            # A canned mock response names no model: it would be a claim that
+            # Bedrock read the photo when nothing did.
+            "modelId": None if config.mock_aws() else config.vision_model_id(),
+            "mocked": config.mock_aws(),
         },
         "problems": problems + [f"bedrock:{p}" for p in verdict.get("problems", [])],
         "status": "OK",

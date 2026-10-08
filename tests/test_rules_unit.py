@@ -383,6 +383,51 @@ def test_r8_catches_a_slip_printed_before_the_truck_arrived():
     assert r8[0]["evidence"]["minutesEarly"] > 10
 
 
+def test_r8_names_the_dump_site_arrival_it_compared_against():
+    points = trace_to_dump(start="2026-09-25T10:00:00+05:30")
+    findings = rules.check_trip(
+        trip(), slip(timeIn="09:30"), points, {"status": "OK"}, DUMPSITE,
+        {"MH 01 AA 1000": 16}, {},
+    )
+    r8 = next(item for item in findings if item["rule"] == "R8")
+
+    assert r8["evidence"]["arrivalKind"] == "dumpsite"
+    assert r8["message"].startswith("The slip records time-in at 09:30, ")
+    assert "minutes before the truck's GPS reached the dump site at 10:" in r8["message"]
+
+
+def test_r8_without_an_arrival_says_it_used_the_last_fix():
+    """A truck that never reaches the dump site has no arrival. R8 still
+    compares against the trace's last fix, and says that is what it used."""
+    points = trace_to_dump(start="2026-09-25T10:00:00+05:30", arrive_at_dump=False)
+    findings = rules.check_trip(
+        trip(), slip(timeIn="09:30"), points, {"status": "OK"}, DUMPSITE,
+        {"MH 01 AA 1000": 16}, {},
+    )
+    r8 = next(item for item in findings if item["rule"] == "R8")
+
+    assert r8["severity"] == "hard"
+    assert r8["evidence"]["arrivalKind"] == "lastFix"
+    assert r8["evidence"]["minutesEarly"] == 50.0
+    assert r8["message"] == (
+        "The slip records time-in at 09:30, 30 minutes before the truck left the drain "
+        "at 10:00. The GPS trace never reaches the dump site; its last fix, at 10:20, "
+        "is 50 minutes after the slip's time-in."
+    )
+
+
+def test_r8_does_not_quote_the_departure_when_the_slip_follows_it():
+    points = trace_to_dump(start="2026-09-25T10:00:00+05:30", arrive_at_dump=False)
+    findings = rules.check_trip(
+        trip(), slip(timeIn="10:05"), points, {"status": "OK"}, DUMPSITE,
+        {"MH 01 AA 1000": 16}, {},
+    )
+    r8 = next(item for item in findings if item["rule"] == "R8")
+
+    assert "left the drain" not in r8["message"]
+    assert "its last fix, at 10:20, is 15 minutes after the slip's time-in" in r8["message"]
+
+
 def test_r8_handles_a_slip_printed_either_side_of_midnight():
     points = trace_to_dump(start="2026-09-25T23:50:00+05:30")
     findings = rules.check_trip(
