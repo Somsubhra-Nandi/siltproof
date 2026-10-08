@@ -116,6 +116,16 @@ def handle_photo(bucket, key, obj, meta):
             obj["bytes"], key=key, content_type=obj["contentType"]
         )
         verdict = bedrock.parse_photo_check(response)
+        # One line per real model call, so CloudWatch shows each invocation.
+        log(
+            "bedrock_photo_checked",
+            key=key,
+            model=config.vision_model_id(),
+            request_id=(response.get("ResponseMetadata") or {}).get("RequestId"),
+            latency_ms=(response.get("metrics") or {}).get("latencyMs"),
+            stop_reason=response.get("stopReason"),
+            usage=response.get("usage"),
+        )
 
     item = {
         "pk": store.evidence_pk(key),
