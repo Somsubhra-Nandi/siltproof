@@ -1,10 +1,10 @@
 {
  "billId": "B1",
  "contractor": "Simulated Contractor Pvt Ltd",
- "ward": "Ward (set from drains.geojson)",
+ "ward": "Ward",
  "status": "VERIFIED",
- "verifiedAt": "2026-10-08T04:38:23.193099+00:00",
- "verificationMs": 641,
+ "verifiedAt": "2026-10-08T06:23:06.827433+00:00",
+ "verificationMs": 637,
  "workWindow": [
   "2026-09-21T06:00:00+05:30",
   "2026-10-04T19:00:00+05:30"

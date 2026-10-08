@@ -1,30 +1,28 @@
 import type { Bill } from '../types'
 import { offline } from '../api'
-
-function lakh(rupees: number) {
-  return `₹${(rupees / 100000).toFixed(2)} L`
-}
-
-function tonnes(value: number) {
-  return `${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })} t`
-}
+import { lakhLong, lakhShort, tonnes, useCountUp } from '../format'
 
 interface Props {
   bill: Bill | null
   verifying: boolean
+  animate: boolean
   onVerify: () => void
 }
 
-function SummaryBar({ bill, verifying, onVerify }: Props) {
+function SummaryBar({ bill, verifying, animate, onVerify }: Props) {
   const summary = bill?.summary
   const verified = bill?.status === 'VERIFIED'
+
+  const verifiedTonnes = useCountUp(summary?.verifiedTonnes ?? 0, animate)
+  const reviewTonnes = useCountUp(summary?.reviewTonnes ?? 0, animate)
+  const heldRupees = useCountUp(summary?.heldRupees ?? 0, animate)
 
   return (
     <header className="summary-bar">
       <div className="brand">
         <span className="brand-name">SiltProof</span>
         <span className="brand-sub">
-          {bill ? `${bill.ward} · ${bill.contractor}` : 'loading…'}
+          {bill ? `${bill.ward || 'Ward'} · ${bill.contractor}` : 'loading…'}
         </span>
       </div>
 
@@ -32,25 +30,25 @@ function SummaryBar({ bill, verifying, onVerify }: Props) {
         <div className="stat">
           <dt>Claimed</dt>
           <dd>{summary ? tonnes(summary.claimedTonnes) : '—'}</dd>
-          <span className="stat-sub">{summary ? lakh(summary.claimedRupees) : ''}</span>
+          <span className="stat-sub">{summary ? lakhShort(summary.claimedRupees) : ''}</span>
         </div>
         <div className="stat stat-verified">
           <dt>Verified</dt>
-          <dd>{verified && summary ? tonnes(summary.verifiedTonnes) : '—'}</dd>
+          <dd>{verified ? tonnes(verifiedTonnes) : '—'}</dd>
           <span className="stat-sub">
-            {verified && summary ? lakh(summary.verifiedRupees) : ''}
+            {verified && summary ? lakhShort(summary.verifiedRupees) : 'not checked yet'}
           </span>
         </div>
         <div className="stat stat-review">
           <dt>Review</dt>
-          <dd>{verified && summary ? tonnes(summary.reviewTonnes) : '—'}</dd>
+          <dd>{verified ? tonnes(reviewTonnes) : '—'}</dd>
           <span className="stat-sub">
-            {verified && summary ? lakh(summary.reviewRupees) : ''}
+            {verified && summary ? lakhShort(summary.reviewRupees) : ''}
           </span>
         </div>
         <div className="stat stat-hold">
           <dt>Hold</dt>
-          <dd>{verified && summary ? lakh(summary.heldRupees) : '—'}</dd>
+          <dd>{verified ? lakhLong(heldRupees) : '—'}</dd>
           <span className="stat-sub">
             {verified && summary ? tonnes(summary.heldTonnes) : ''}
           </span>

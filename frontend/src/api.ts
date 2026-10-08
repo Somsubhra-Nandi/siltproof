@@ -54,6 +54,73 @@ function applyDecision(
 const offlineEvidence = new Map<string, { verified: number; review: number; held: number }>()
 let offlineBill: Bill | null = null
 
+/**
+ * Offline, the snapshot is already verified, but the demo has to start where
+ * the engineer starts: a bill nobody has checked yet. So the snapshot is
+ * served through a pending projection until Run Verification is pressed.
+ *
+ * ?state=verified skips that, for when you are working on the verified view.
+ */
+let offlineVerified =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('state') === 'verified'
+
+export function pendingView(bill: Bill): Bill {
+  return {
+    ...bill,
+    status: 'PENDING',
+    verifiedAt: null,
+    verificationMs: undefined,
+    missingEvidence: null,
+    drains: bill.drains.map((row) => ({
+      ...row,
+      verdict: null,
+      decision: null,
+      note: null,
+      verifiedTonnes: 0,
+      reviewTonnes: 0,
+      heldTonnes: 0,
+      failedRules: [],
+    })),
+    summary: {
+      ...bill.summary,
+      verifiedTonnes: 0,
+      reviewTonnes: 0,
+      heldTonnes: 0,
+      verifiedRupees: 0,
+      reviewRupees: 0,
+      heldRupees: 0,
+      red: 0,
+      amber: 0,
+      green: 0,
+      decided: 0,
+      pendingTonnes: bill.summary.claimedTonnes,
+    },
+  }
+}
+
+function pendingDrain(drain: Drain): Drain {
+  return {
+    ...drain,
+    verdict: null,
+    decision: null,
+    note: null,
+    verifiedTonnes: 0,
+    reviewTonnes: 0,
+    heldTonnes: 0,
+    findings: [],
+    failedRules: [],
+    summary: null,
+    trips: drain.trips.map((trip) => ({
+      ...trip,
+      verdict: null,
+      hardFails: [],
+      softFails: [],
+      findings: [],
+    })),
+  }
+}
+
 function round(value: number) {
   return Math.round(value * 1000) / 1000
 }
@@ -95,7 +162,7 @@ export async function getBill(): Promise<Bill> {
         })
       }
     }
-    return offlineBill
+    return offlineVerified ? offlineBill : pendingView(offlineBill)
   }
   return request<Bill>(`/bill/${billId}`)
 }
@@ -105,6 +172,7 @@ export async function runVerification(): Promise<Bill> {
     // The real call takes a second or two; keep the pause so the button's
     // state is visible rather than flashing past.
     await new Promise((resolve) => setTimeout(resolve, 900))
+    offlineVerified = true
     return getBill()
   }
   await request(`/verify/${billId}`, { method: 'POST', body: '{}' })
@@ -114,9 +182,20 @@ export async function runVerification(): Promise<Bill> {
 export async function getDrain(drainId: string): Promise<Drain> {
   if (offline) {
     const drain = await snapshot<Drain>(`drain-${drainId}`)
+    if (!offlineVerified) return pendingDrain(drain)
+
     const bill = await getBill()
     const row = bill.drains.find((entry) => entry.drainId === drainId)
-    return row ? { ...drain, decision: row.decision, note: row.note } : drain
+    return row
+      ? {
+          ...drain,
+          decision: row.decision,
+          note: row.note,
+          verifiedTonnes: row.verifiedTonnes,
+          reviewTonnes: row.reviewTonnes,
+          heldTonnes: row.heldTonnes,
+        }
+      : drain
   }
   return request<Drain>(`/drain/${drainId}?billId=${billId}`)
 }
@@ -176,4 +255,12 @@ export async function getEvidenceSummary(
     method: 'POST',
     body: JSON.stringify({ billId }),
   })
+}
+
+
+/** Tests only: forget the cached snapshot and the verified flag. */
+export function __resetOfflineState(verified = false) {
+  offlineBill = null
+  offlineEvidence.clear()
+  offlineVerified = verified
 }

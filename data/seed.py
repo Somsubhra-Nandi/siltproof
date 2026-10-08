@@ -125,7 +125,8 @@ def real_photo_items(photos_dir, photo_map_path):
 
 
 # -------------------------------------------------------------------- items
-def bill_items(drains, trips, dumpsite, fleet, ground_truth):
+def bill_items(drains, trips, dumpsite, fleet, ground_truth, ward="Ward",
+               contractor="Simulated Contractor Pvt Ltd"):
     """Every DynamoDB item the seed writes (plan section 4)."""
     items = []
     claimed = sum(ds.DRAIN_CLAIMED[drain["properties"]["drainId"]] for drain in drains)
@@ -135,8 +136,8 @@ def bill_items(drains, trips, dumpsite, fleet, ground_truth):
             "pk": ds.bill_pk(),
             "sk": "META",
             "billId": ds.BILL_ID,
-            "contractor": "Simulated Contractor Pvt Ltd",
-            "ward": "Ward (set from drains.geojson)",
+            "contractor": contractor,
+            "ward": ward,
             "ratePerTonne": ds.RATE_PER_TONNE,
             "claimedTonnes": claimed,
             "claimedRupees": ds.rupees(claimed),
@@ -277,6 +278,9 @@ def main(argv=None):
     parser.add_argument("--photos-dir", default=None, help="folder of real photos, replacing the generated ones")
     parser.add_argument("--photo-map", default=None, help="CSV mapping real photos to drains")
     parser.add_argument("--max-slips", type=int, default=0, help="upload at most this many slips")
+    parser.add_argument("--ward", default="Ward",
+                        help="ward name shown on the screen, e.g. 'K-East Ward'")
+    parser.add_argument("--contractor", default="Simulated Contractor Pvt Ltd")
     parser.add_argument("--skip-photos", action="store_true")
     parser.add_argument("--concurrency", type=int, default=3,
                         help="parallel uploads; matches the ingest function's reserved concurrency")
@@ -334,7 +338,8 @@ def main(argv=None):
         slips = slips[: args.max_slips]
 
     uploads = photos + slips + traces
-    items = bill_items(drains, trips, dumpsite, fleet, ground_truth)
+    items = bill_items(drains, trips, dumpsite, fleet, ground_truth,
+                       ward=args.ward, contractor=args.contractor)
 
     bedrock_calls = len(photos)
     textract_calls = len(slips)

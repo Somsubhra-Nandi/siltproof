@@ -65,6 +65,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--center", default="19.0760,72.8777",
                         help="ward centre for the synthetic drains")
+    parser.add_argument("--ward", default="Ward",
+                        help="ward name written into the snapshot")
     parser.add_argument("--keep", action="store_true",
                         help="reuse data/out instead of generating into a temp dir")
     args = parser.parse_args(argv)
@@ -121,7 +123,10 @@ def main(argv=None):
         gen_slips.main([])
         gen_photos.main([])
 
-        seed_script.main(["--live", "--yes", "--bucket", BUCKET, "--table", TABLE])
+        seed_script.main(
+            ["--live", "--yes", "--bucket", BUCKET, "--table", TABLE,
+             "--ward", args.ward]
+        )
 
         import ingest.app as ingest_app
 
