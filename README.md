@@ -57,7 +57,8 @@ backend/     packaged as one tree, so both functions share common/
   common/    Textract / Bedrock / Location providers, EXIF + pHash,
              DynamoDB access, geodesy, retries, and mock fixtures
   ingest/    S3-triggered evidence extraction
-  api/       HTTP API, verification rules, decisions
+  api/       HTTP API endpoints
+  common/rules.py   the ten verification rules
   layers/    photo dependencies, attached to the ingest function only
   events/    payloads for `sam local invoke`
 data/        generators (drains, trips, slips, photos), seed.py, reset.py
@@ -68,16 +69,32 @@ frontend/    React + Vite + MapLibre app
 
 ## Status
 
-Day 1 complete, offline. The evidence pipeline is written and tested end to
-end against mocks: Textract slip extraction, EXIF + perceptual hash, the
-Bedrock vision check, GPS trace summaries, the full simulated dataset, and
-seeding. 145 tests pass with no AWS account.
+Days 1 and 2 complete, entirely offline. The evidence pipeline, the ten
+verification rules, the API behind them and the ward engineer's decision
+screen are all written and tested: **249 backend tests and 17 frontend tests
+pass with no AWS account**.
 
-Still to come: the 10 verification rules and the API behind them (Day 2
-morning), the decision screen (Day 2), and the live upload (Day 3). The API
-Lambda still answers with placeholder JSON.
+Still to come: the live upload moment (Day 3), UI polish, and the video.
+`POST /upload-url` is implemented but has never been exercised against real
+S3.
 
-Nothing has been deployed yet - see MORNING.md for the ordered commands.
+**Nothing has been deployed** — the AWS account is still pending activation.
+See MORNING.md for the ordered commands once it is live. Until then the app
+runs off an offline snapshot (below), so the whole flow can be clicked
+through.
+
+### Try it right now, with no AWS
+
+```bash
+python scripts/make_demo_fixtures.py     # drives the pipeline through moto
+cd frontend && npm install && npm run dev
+```
+
+With `VITE_API_BASE_URL` unset the app reads the generated snapshot in
+`public/data/demo`: the map colours itself from real rule output, the
+drill-down shows the real evidence, and approving the two amber drains moves
+verified from 805 t to 870 t with ₹6.66 lakh still held. The map tiles
+themselves still need an Amazon Location API key.
 
 ## Commands
 
@@ -162,8 +179,13 @@ python data/reset.py --live --bucket <EvidenceBucketName>  # between takes
 ### 5. Tests
 
 ```bash
-python -m pytest        # 145 tests, about 30 s, entirely offline
+python -m pytest                 # 249 backend tests, about 80 s, entirely offline
+cd frontend && npm test          # 17 component tests
 ```
+
+`tests/test_rules_oracle.py` is the acceptance test for rules R1-R10: it
+generates the dataset, seeds it into moto, ingests it, verifies the bill and
+compares all 117 trips against `data/out/ground_truth.json`.
 
 ### 6. Run the frontend
 

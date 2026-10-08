@@ -38,16 +38,19 @@ infra/       SAM template + samconfig.toml.example
 backend/     CodeUri for BOTH functions, so they share common/
   common/    provider layer: textract, bedrock, location, photo, store,
              geo, retry, config + fixtures/ for mock mode
+             rules.py    the ten verification rules, pure functions
+             billdata.py assembles a bill from DynamoDB + S3
   ingest/    S3 event -> EXIF, pHash, Textract, Bedrock -> DynamoDB
-  api/       routes, verification rules R1-R10, decisions
+  api/       routes: verify, bill, drain, decision, summary, upload-url
   layers/    photo deps (pillow, imagehash, numpy, scipy) for ingest only
   events/    sam local invoke payloads
 data/        osm_drains, gen_trips, gen_slips, gen_photos, check_photos,
              seed, reset; dataset.py holds the shared constants
   out/       generated output, git-ignored
-scripts/     check_region.py
+scripts/     check_region.py, make_demo_fixtures.py
 tests/       offline pytest suite (moto + MOCK_AWS=1)
-frontend/    React app
+frontend/    React app; src/__tests__ runs under vitest + jsdom
+             public/data/demo is a generated API snapshot for offline use
 ```
 
 Handlers are `ingest.app.lambda_handler` and `api.app.lambda_handler`; both
@@ -70,9 +73,14 @@ import `from common import ...`.
   `reset.py` and `gen_trips.py` are dry-run/offline unless `--live` is passed,
   and `--live` prints the call plan and a billable-call estimate first. Keep it
   that way for anything new.
-- Run the tests before committing: `.venv/bin/python -m pytest` (about 30 s,
-  no AWS account needed). `sam build` needs `--use-container`, because the
-  local python is 3.13 and the runtime is 3.12.
+- Run the tests before committing: `.venv/bin/python -m pytest` (249 tests,
+  about 80 s) and `cd frontend && npm test` (17). No AWS account needed.
+  `sam build` needs `--use-container`, because the local python is 3.13 and
+  the runtime is 3.12.
+- Rules live in `backend/common/rules.py` as pure functions over dicts. Keep
+  them that way: the API assembles the context, the rules only judge it.
+- After changing rules or generators, regenerate the offline snapshot with
+  `python scripts/make_demo_fixtures.py`, or the frontend demo will drift.
 - `data/out/ground_truth.json` is the expected output of rules R1-R10 for the
   generated dataset. Day 2's rules are tested against it; if a rule disagrees,
   one of the two is wrong - decide which before changing either.
