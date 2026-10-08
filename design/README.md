@@ -1,4 +1,36 @@
-# SiltProof: three design directions
+# SiltProof design
+
+## The approved hybrid (current)
+
+Direction A's survey sheet, Direction C's case file, one camera move from
+Direction B. It is in `hybrid/index.html`.
+
+```sh
+cd design && python3 -m http.server 8765
+```
+
+| State | URL |
+|---|---|
+| Pre-verification (press Run verification) | http://localhost:8765/hybrid/ |
+| Verified overview | http://localhost:8765/hybrid/?view=verified |
+| Drain 14 case file | http://localhost:8765/hybrid/?view=drain14 |
+| Scan, autoplay | http://localhost:8765/hybrid/?view=pre&play=scan |
+| Open drain 14, autoplay | http://localhost:8765/hybrid/?view=verified&play=open14 |
+| Components and states | http://localhost:8765/hybrid/?view=system |
+| Hold / approve confirmation | `?view=drain14&confirm=hold`, `?view=verified&review=8&confirm=approve` |
+| Saving, error, decided | `?view=drain14&saving=1`, `&error=1`, `&decided=hold` |
+| After both review approvals | `?view=verified&approved=6,8&held14=1` |
+| Real-photo slot | `?view=drain14&photos=slot` |
+
+- Captures: `node capture-hybrid.mjs [stills|video|all]`, writing to
+  `screenshots/hybrid/` and `videos/hybrid/`.
+- Design system: `DESIGN.md`.
+- Overnight decisions: `DECISIONS-hybrid.md`.
+- Build plan: `IMPLEMENTATION-PLAN.md`.
+
+---
+
+# The three original directions
 
 Design only. Nothing here touches `frontend/src`, the backend, the API or the
 totals. Each prototype is one self-contained HTML page that reads the real API
@@ -156,6 +188,17 @@ strongest single moment, but it is the slowest to build and the riskiest to
 record.
 
 ## Found while doing this (not design, but blocking)
+
+All four are resolved or have a decision recorded. See the repo's
+`DECISIONS.md`, fifth batch:
+1. Slips are regenerated and checked by `gen_slips.py --check` and tests.
+2. R8 and the summary agree (44 min, last fix); mock records name no model.
+3. `GET /drain` returns 5-minute presigned image links. They are not
+   deployed yet.
+4. Placeholders stay, labelled, with a slot reserved for real photos.
+
+The original notes follow.
+
 
 1. **The slip image on disk is stale.** `data/out/evidence/slips/B1/14-001.png`
    shows `MH 04 NP 6789`, net 7.40 t, time in 06:43. `trips.json` and the API
