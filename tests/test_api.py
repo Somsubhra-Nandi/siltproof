@@ -550,7 +550,161 @@ def test_a_drain_with_no_photos_at_all_is_flagged(api, small_bill):
     assert "PHOTOS_MISSING" in rows["1"]["failedRules"]
 
 
-# ------------------------------------------------- offline summaries
+# ------------------------------------------------- evidence image links
+DRAIN_FIELDS_BEFORE_IMAGE_LINKS = {
+    "billId", "drainId", "name", "verdict", "decision", "note", "decidedAt",
+    "claimedTonnes", "verifiedTonnes", "reviewTonnes", "heldTonnes", "lengthM",
+    "widthM", "depthM", "plausibleMaxTonnes", "geofence", "claimedRoute", "dumpsite",
+    "findings", "failedRules", "summary", "summaryModelId", "photos", "trips", "rules",
+}
+
+
+def signed_key(url):
+    """The object key and expiry a presigned GET link points at."""
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    key = unquote(parsed.path.lstrip("/"))
+    if key.startswith(BUCKET_NAME + "/"):          # path-style addressing
+        key = key[len(BUCKET_NAME) + 1:]
+    return key, int(query["X-Amz-Expires"][0])
+
+
+BUCKET_NAME = "siltproof-test-evidence"
+
+
+def test_the_drill_down_links_its_own_images_for_five_minutes(api, small_bill):
+    status, drain = call(api, "GET /drain/{drainId}", path={"drainId": "2"})
+
+    assert status == 200
+    assert drain["evidenceUrlExpiresInSeconds"] == 300
+    for photo in drain["photos"]:
+        key, expires = signed_key(photo["imageUrl"])
+        assert key == photo["s3Key"]
+        assert expires == 300
+        assert BUCKET_NAME in photo["imageUrl"]
+
+    trip = drain["trips"][0]
+    key, expires = signed_key(trip["slipImageUrl"])
+    assert key == trip["slipKey"] == "slips/B1/2-001.png"
+    assert expires == 300
+
+
+def test_image_links_are_additive(api, small_bill):
+    _, drain = call(api, "GET /drain/{drainId}", path={"drainId": "1"})
+
+    assert DRAIN_FIELDS_BEFORE_IMAGE_LINKS <= set(drain)
+    assert {"s3Key", "role", "bedrock", "pHash"} <= set(drain["photos"][0])
+    assert {"slip", "slipKey", "traceKey", "actualRoute"} <= set(drain["trips"][0])
+    assert drain["photos"][0]["s3Key"] == "photos/B1/drain1/after-01.jpg"
+
+
+def test_a_missing_slip_gets_no_link(api, small_bill):
+    from common import store
+
+    store.table().delete_item(Key={"pk": store.evidence_pk("slips/B1/2-001.png"), "sk": "SLIP"})
+    status, drain = call(api, "GET /drain/{drainId}", path={"drainId": "2"})
+
+    assert status == 200
+    assert drain["trips"][0]["slip"] is None
+    assert drain["trips"][0]["slipImageUrl"] is None
+
+
+def test_no_bucket_means_no_links(api, small_bill, monkeypatch):
+    monkeypatch.setenv("EVIDENCE_BUCKET", "")
+    status, drain = call(api, "GET /drain/{drainId}", path={"drainId": "2"})
+
+    assert status == 200
+    assert all(photo["imageUrl"] is None for photo in drain["photos"])
+    assert drain["trips"][0]["slipImageUrl"] is None
+
+
+@pytest.mark.parametrize(
+    "key, kind",
+    [
+        ("photos/B1/drain2/after-01.jpg", "photo"),
+        ("photos/B1/drain2/before-01.png", "photo"),
+        ("slips/B1/2-001.png", "slip"),
+    ],
+)
+def test_canonical_keys_are_accepted(api, key, kind):
+    assert api.evidence_key_ok(key, kind, "B1", "2")
+
+
+@pytest.mark.parametrize(
+    "key, kind",
+    [
+        ("photos/B1/drain2/../drain1/after-01.jpg", "photo"),   # traversal
+        ("photos/B1/drain2/after-01.jpg/../../x", "photo"),
+        ("/photos/B1/drain2/after-01.jpg", "photo"),             # absolute
+        ("photos/B1/drain22/after-01.jpg", "photo"),             # another drain
+        ("photos/B1/drain1/after-01.jpg", "photo"),
+        ("photos/B2/drain2/after-01.jpg", "photo"),              # another bill
+        ("photos/live/0f0f.jpg", "photo"),                       # unattached upload
+        ("photos/B1/drain2/selfie-01.jpg", "photo"),             # unknown role
+        ("photos/B1/drain2/after-01.html", "photo"),             # not an image
+        ("traces/B1/2-001.json", "photo"),                       # wrong prefix
+        ("traces/B1/2-001.json", "slip"),
+        ("slips/B1/2-001.png", "photo"),                         # wrong kind
+        ("slips/B1/12-001.png", "slip"),
+        ("slips/B1/2-01.png", "slip"),
+        ("slips/B1/2-001.png ", "slip"),
+        ("", "slip"),
+        (None, "slip"),
+        ("slips/B1/2-001.png", "trace"),
+    ],
+)
+def test_malformed_or_foreign_keys_are_refused(api, key, kind):
+    assert not api.evidence_key_ok(key, kind, "B1", "2")
+
+
+@pytest.mark.parametrize("bill_id, drain_id", [("B1/..", "2"), ("B1", "2/.."), ("", "2"), ("B1", None)])
+def test_bad_ids_are_refused(api, bill_id, drain_id):
+    assert not api.evidence_key_ok("slips/B1/2-001.png", "slip", bill_id, drain_id)
+
+
+def test_an_item_filed_under_the_wrong_drain_gets_no_link(api, small_bill):
+    """A photo item claiming drain 2 but keyed to drain 1, or to another bill,
+    is listed (it is evidence the engineer should know about) but unsigned."""
+    from common import store
+
+    for key in ("photos/B1/drain1/load-07.jpg", "photos/B2/drain2/after-09.jpg"):
+        store.put({
+            "pk": store.evidence_pk(key), "sk": "PHOTO", "s3Key": key,
+            "billId": BILL, "drainId": "2", "role": "after", "status": "OK",
+            "pHash": "1234123412341234", "problems": [], "bedrock": {},
+        })
+
+    _, drain = call(api, "GET /drain/{drainId}", path={"drainId": "2"})
+    links = {photo["s3Key"]: photo["imageUrl"] for photo in drain["photos"]}
+
+    assert links["photos/B1/drain1/load-07.jpg"] is None
+    assert links["photos/B2/drain2/after-09.jpg"] is None
+    assert links["photos/B1/drain2/after-01.jpg"] is not None
+
+
+def test_a_slip_item_owned_by_another_drain_gets_no_link(api, small_bill):
+    from common import store
+
+    store.update_fields(store.evidence_pk("slips/B1/2-001.png"), "SLIP", {"drainId": "1"})
+    _, drain = call(api, "GET /drain/{drainId}", path={"drainId": "2"})
+
+    assert drain["trips"][0]["slipImageUrl"] is None
+
+
+def test_image_links_are_never_logged_or_stored(api, small_bill, capsys):
+    from common import store
+
+    call(api, "POST /verify/{billId}", path={"billId": BILL})
+    _, drain = call(api, "GET /drain/{drainId}", path={"drainId": "2"})
+    assert drain["photos"][0]["imageUrl"]
+
+    assert "X-Amz-Signature" not in capsys.readouterr().out
+    items = store.table().scan()["Items"]
+    assert "X-Amz-" not in json.dumps(items, default=str)
+
+
 def test_offline_summaries_name_no_model_and_describe_their_own_drain(api, small_bill):
     call(api, "POST /verify/{billId}", path={"billId": BILL})
     _, body = call(api, "POST /drain/{drainId}/summary", path={"drainId": "2"}, body={})

@@ -2,7 +2,8 @@
 
     POST /verify/{billId}         run rules R1-R10, write verdicts
     GET  /bill/{billId}           drains + money summary
-    GET  /drain/{drainId}         trips, evidence, routes, failed rules
+    GET  /drain/{drainId}         trips, evidence, routes, failed rules, and
+                                  5-minute presigned GET links to its images
     POST /drain/{drainId}/summary Bedrock evidence summary, cached
     POST /decision                hold / approve + note
     POST /upload-url              presigned S3 URL (Day 3)
@@ -15,6 +16,7 @@ enough to run on camera.
 import datetime
 import json
 import os
+import re
 import sys
 import uuid
 
@@ -26,6 +28,13 @@ from common.jsonlog import log  # noqa: E402
 # Presigned PUT links for the live upload are short-lived on purpose.
 UPLOAD_URL_TTL_S = 900
 UPLOAD_PREFIXES = ("photos", "slips", "traces")
+
+# Presigned GET links to evidence images. Short, because the API has no login:
+# anyone holding the drain response can open the images until they expire.
+EVIDENCE_URL_TTL_S = 300
+
+# Bill and drain ids are short slugs; anything else is never signed.
+_ID = re.compile(r"[A-Za-z0-9_-]{1,32}")
 
 DECISIONS = ("APPROVE", "HOLD")
 
@@ -272,6 +281,9 @@ def get_drain(drain_id, _body, query):
                 "slipKey": trip.get("slipKey"),
                 "traceKey": trip.get("traceKey"),
                 "slip": _slip_row(slips.get(trip.get("slipKey"))),
+                "slipImageUrl": evidence_url(
+                    slips.get(trip.get("slipKey")), "slip", bill_id, drain_id
+                ),
                 "actualRoute": [
                     [point["lon"], point["lat"]] for point in billdata.downsample(points)
                 ],
@@ -310,17 +322,71 @@ def get_drain(drain_id, _body, query):
             "failedRules": drain.get("failedRules") or [],
             "summary": drain.get("summary"),
             "summaryModelId": drain.get("summaryModelId"),
-            "photos": [_photo_row(item) for item in photos],
+            "photos": [_photo_row(item, bill_id, drain_id) for item in photos],
             "trips": trip_rows,
+            "evidenceUrlExpiresInSeconds": EVIDENCE_URL_TTL_S,
             "rules": rules.RULE_TEXT,
         },
     )
 
 
-def _photo_row(item):
+def evidence_key_ok(key, kind, bill_id, drain_id):
+    """True only for the canonical key of this bill's and this drain's image.
+
+    The keys come from DynamoDB, not the request, but they are still checked
+    against the exact layout the ingest Lambda accepts, so a bad item can
+    never get a link to another bill's evidence, a trace, or an arbitrary
+    object: no '..', no extra '/', no other prefix.
+    """
+    if not isinstance(key, str) or not _ID.fullmatch(str(bill_id or "")) \
+            or not _ID.fullmatch(str(drain_id or "")):
+        return False
+    bill, drain = re.escape(bill_id), re.escape(drain_id)
+    if kind == "photo":
+        pattern = rf"photos/{bill}/drain{drain}/(before|after|load)-[A-Za-z0-9_-]{{1,32}}\.(jpe?g|png)"
+    elif kind == "slip":
+        pattern = rf"slips/{bill}/{drain}-[0-9]{{3}}\.(png|jpe?g)"
+    else:
+        return False
+    return re.fullmatch(pattern, key) is not None
+
+
+def evidence_url(item, kind, bill_id, drain_id):
+    """A 5-minute presigned GET link to one evidence image, or None.
+
+    None when there is no bucket, no evidence item, or the item does not
+    belong to this bill and drain. The link itself is never logged or stored.
+    """
+    bucket = config.evidence_bucket()
+    if not bucket or not item:
+        return None
+
+    key = item.get("s3Key")
+    if item.get("billId") not in (None, bill_id) or item.get("drainId") not in (None, drain_id):
+        log("evidence_url_refused", kind=kind, reason="owner_mismatch", drainId=drain_id)
+        return None
+    if not evidence_key_ok(key, kind, bill_id, drain_id):
+        log("evidence_url_refused", kind=kind, reason="bad_key", drainId=drain_id)
+        return None
+
+    try:
+        from common import awsclients
+
+        return awsclients.client("s3").generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=EVIDENCE_URL_TTL_S,
+        )
+    except Exception as exc:
+        log("evidence_url_failed", kind=kind, error=type(exc).__name__)
+        return None
+
+
+def _photo_row(item, bill_id=None, drain_id=None):
     verdict = item.get("bedrock") or {}
     return {
         "s3Key": item.get("s3Key"),
+        "imageUrl": evidence_url(item, "photo", bill_id, drain_id),
         "role": item.get("role"),
         "status": item.get("status"),
         "lat": item.get("lat"),
