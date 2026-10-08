@@ -1,0 +1,45 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       72.9297872,
+       19.1252275
+      ],
+      [
+       72.9339707,
+       19.1252275
+      ],
+      [
+       72.9339707,
+       19.12918
+      ],
+      [
+       72.9297872,
+       19.12918
+      ],
+      [
+       72.9297872,
+       19.1252275
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "dumpsiteId": "D1",
+    "name": "Approved dumping ground",
+    "center": [
+     72.9318789,
+     19.1272037
+    ],
+    "halfSideM": 220.0,
+    "placeholder": true
+   }
+  }
+ ]
+}

@@ -1,0 +1,176 @@
+{
+ "1": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 5,
+  "firstMessage": {}
+ },
+ "2": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 5,
+  "firstMessage": {}
+ },
+ "3": {
+  "hard": [
+   "R4"
+  ],
+  "soft": [],
+  "tripsHeld": 12,
+  "tripsReview": 0,
+  "trips": 12,
+  "firstMessage": {
+   "R4": "The load in load-01.jpg is construction debris, not drain silt."
+  }
+ },
+ "4": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 6,
+  "firstMessage": {}
+ },
+ "5": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 4,
+  "firstMessage": {}
+ },
+ "6": {
+  "hard": [],
+  "soft": [
+   "GPS_GAP"
+  ],
+  "tripsHeld": 0,
+  "tripsReview": 1,
+  "trips": 7,
+  "firstMessage": {
+   "GPS_GAP": "The GPS trace goes dark for 4 minutes."
+  }
+ },
+ "7": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 5,
+  "firstMessage": {}
+ },
+ "8": {
+  "hard": [],
+  "soft": [
+   "R1"
+  ],
+  "tripsHeld": 0,
+  "tripsReview": 5,
+  "trips": 5,
+  "firstMessage": {
+   "R1": "after-01.jpg was taken 45 m outside the geofence, within the margin of a consumer GPS fix."
+  }
+ },
+ "9": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 6,
+  "firstMessage": {}
+ },
+ "10": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 4,
+  "firstMessage": {}
+ },
+ "11": {
+  "hard": [
+   "R7"
+  ],
+  "soft": [],
+  "tripsHeld": 2,
+  "tripsReview": 0,
+  "trips": 7,
+  "firstMessage": {
+   "R7": "The slip claims 14.00 t on a truck rated 10 t."
+  }
+ },
+ "12": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 6,
+  "firstMessage": {}
+ },
+ "13": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 5,
+  "firstMessage": {}
+ },
+ "14": {
+  "hard": [
+   "R3",
+   "R5",
+   "R8"
+  ],
+  "soft": [],
+  "tripsHeld": 18,
+  "tripsReview": 0,
+  "trips": 18,
+  "firstMessage": {
+   "R3": "after-02.jpg is the same image as after-01.jpg, already submitted for drain 9.",
+   "R5": "The truck's GPS trace never enters the approved dump site.",
+   "R8": "The slip was printed at 06:53, 44 minutes before the truck arrived anywhere."
+  }
+ },
+ "15": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 5,
+  "firstMessage": {}
+ },
+ "16": {
+  "hard": [
+   "R5",
+   "R6"
+  ],
+  "soft": [],
+  "tripsHeld": 2,
+  "tripsReview": 0,
+  "trips": 7,
+  "firstMessage": {
+   "R6": "The same truck is logged on trip 16#006 7 minutes and 22.0 km away, which needs 188 km/h.",
+   "R5": "The truck's GPS trace never enters the approved dump site."
+  }
+ },
+ "17": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 4,
+  "firstMessage": {}
+ },
+ "18": {
+  "hard": [],
+  "soft": [],
+  "tripsHeld": 0,
+  "tripsReview": 0,
+  "trips": 6,
+  "firstMessage": {}
+ }
+}

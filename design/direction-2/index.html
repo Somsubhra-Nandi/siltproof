@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiltProof · Night Twin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="../shared/sp.js"></script>
+<style>
+/* Direction B: Night Twin.
+   The ward at night, seen at an angle. Light means evidence: a drain glows
+   only once something has checked it. Panels are solid, not frosted. */
+:root {
+  --night: #0A1520;
+  --panel: #0F1E2C;
+  --panel-2: #152839;
+  --line: #24394D;
+  --text: #E6EDF2;
+  --text-2: #93A8BA;
+  --text-3: #5F7689;
+  --ghost: #9FB4C7;      /* claimed, unverified */
+  --verified: #3FC1A5;
+  --review: #E9B24C;
+  --held: #FF5E52;
+  --action: #E6EDF2;     /* the primary control is light on dark */
+  --sans: 'Geist', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--night); color: var(--text); font: 400 16px/1.45 var(--sans); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid #8FD0FF; outline-offset: 2px; }
+#map { position: fixed; inset: 0; }
+.vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 55%, rgba(5,10,16,.65)); z-index: 1; }
+
+/* ---------- HUD */
+.top { position: fixed; left: 40px; top: 32px; z-index: 5; display: flex; align-items: center; gap: 22px; }
+.mark { font-weight: 600; font-size: 22px; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+.mark svg { display: block; }
+.billname { color: var(--text-2); font-size: 15px; border-left: 1px solid var(--line); padding-left: 22px; }
+.sim { font-size: 13px; font-weight: 600; color: #FFE3A3; border: 1px solid #6E5A2A; background: #2A2312; padding: 5px 10px; border-radius: 999px; }
+
+.money { position: fixed; left: 40px; bottom: 40px; z-index: 5; width: 640px; }
+.money .label { color: var(--text-2); font-size: 17px; margin-bottom: 4px; }
+.money .big { font-weight: 300; font-size: 128px; line-height: .9; letter-spacing: -.045em; }
+.money .big small { font-size: .32em; letter-spacing: -.01em; font-weight: 400; color: var(--text-2); margin-left: 10px; }
+.money.held .big { color: var(--held); }
+.money .sub { font-size: 18px; color: var(--text-2); margin-top: 10px; max-width: 34ch; }
+.money .sub b { color: var(--text); font-weight: 500; }
+.flow { display: grid; grid-template-columns: repeat(4, auto); gap: 30px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); width: max-content; }
+.flow div { font-size: 14px; color: var(--text-2); }
+.flow b { display: block; font-size: 26px; font-weight: 400; color: var(--text); letter-spacing: -.01em; }
+.flow .v b { color: var(--verified); } .flow .r b { color: var(--review); } .flow .h b { color: var(--held); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 999px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: 17px; white-space: nowrap; transition: background 160ms, box-shadow 160ms, transform 90ms; position: relative; overflow: hidden; }
+.btn-primary { background: var(--action); color: #0A1520; box-shadow: 0 0 0 4px rgba(230,237,242,.08), 0 10px 30px -10px rgba(143,208,255,.5); }
+.btn-primary:hover, .btn-primary.is-hover { background: #fff; box-shadow: 0 0 0 6px rgba(230,237,242,.14), 0 12px 34px -10px rgba(143,208,255,.7); }
+.btn-primary:active, .btn-primary.is-press { transform: scale(.98); }
+.btn-ghost { background: transparent; border-color: #3A536A; color: var(--text); }
+.btn-ghost:hover, .btn-ghost.is-hover { background: var(--panel-2); border-color: var(--text-2); }
+.btn-held { background: var(--held); color: #1A0605; box-shadow: 0 10px 30px -12px rgba(255,94,82,.8); }
+.btn-held:hover, .btn-held.is-hover { background: #FF7A70; }
+.btn[disabled], .btn.is-disabled { background: var(--panel-2); color: var(--text-3); border-color: var(--line); box-shadow: none; cursor: not-allowed; }
+.btn.is-running { background: var(--panel-2); color: var(--text); border-color: #3A536A; cursor: progress; box-shadow: none; }
+.btn .progress { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--text); transform-origin: left; }
+.verify { position: fixed; right: 40px; bottom: 40px; z-index: 5; text-align: right; }
+.verify .hint { color: var(--text-2); font-size: 14px; margin-top: 10px; max-width: 340px; margin-left: auto; }
+
+.legend { position: fixed; right: 40px; top: 32px; z-index: 5; width: 340px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 14px; color: var(--text-2); }
+.legend h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--text); }
+.legend .row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; margin-top: 8px; }
+.legend .note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--text); }
+
+/* pylon labels: always at ground, with the numbers */
+.plabel { font-size: 13px; font-weight: 500; color: var(--text); background: rgba(10,21,32,.85); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; white-space: nowrap; pointer-events: auto; cursor: pointer; transform: translateY(14px); }
+.plabel b { font-weight: 700; padding-right: 6px; margin-right: 6px; border-right: 1px solid currentColor; }
+.plabel.red { border-color: var(--held); color: #FFD9D5; }
+.plabel.amber { border-color: var(--review); }
+.plabel.is-hover { background: var(--text); color: var(--night); }
+.plabel.big { font-size: 15px; padding: 5px 9px; }
+.tip { position: fixed; z-index: 6; width: 300px; background: var(--panel); border: 1px solid #3A536A; border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--text-2); box-shadow: 0 20px 40px -20px #000; pointer-events: none; }
+.tip b { color: var(--text); font-size: 16px; display: block; }
+.tip .amt { font-size: 22px; color: var(--held); }
+.tip .open { color: #8FD0FF; font-weight: 600; margin-top: 6px; }
+
+/* flagged list (verified overview) */
+.flagged { position: fixed; right: 40px; top: 300px; z-index: 5; width: 340px; display: none; }
+.flagged.on { display: block; }
+.flagged h3 { font-size: 15px; font-weight: 600; margin: 0 0 8px; color: var(--text-2); }
+.fl { display: grid; grid-template-columns: 36px 1fr auto; gap: 2px 10px; align-items: baseline; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; cursor: pointer; }
+.fl:hover, .fl.is-hover { background: var(--panel-2); border-color: #3A536A; }
+.fl .n { font-size: 22px; font-weight: 300; }
+.fl .t { font-weight: 500; font-size: 15px; }
+.fl .a { font-size: 16px; }
+.fl .w { grid-column: 2 / 4; color: var(--text-2); font-size: 13px; line-height: 1.3; }
+.fl.red .n, .fl.red .a { color: var(--held); }
+.fl.amber .n, .fl.amber .a { color: var(--review); }
+
+/* ---------- case (drain 14) */
+.rail { position: fixed; right: 0; top: 0; bottom: 0; width: 560px; z-index: 6; background: var(--panel); border-left: 1px solid var(--line); transform: translateX(100%); transition: transform 700ms cubic-bezier(.2,.7,.1,1); display: flex; flex-direction: column; }
+.case .rail { transform: none; }
+.rail-in { flex: 1; overflow: hidden; padding: 26px 30px 0; display: flex; flex-direction: column; gap: 18px; }
+.rail h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+.rail .sub { color: var(--text-2); font-size: 14px; margin: 0 0 10px; }
+.diff { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; }
+.diff figure { margin: 0; }
+.diff .fr { position: relative; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.diff .fr.bad { border: 2px solid var(--held); }
+.diff img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+.diff figcaption { font-size: 14px; margin-top: 6px; color: var(--text-2); }
+.diff figcaption b { color: var(--text); display: block; font-weight: 500; }
+.scanline { position: absolute; left: 0; right: 0; height: 2px; background: var(--held); box-shadow: 0 0 12px var(--held); top: 0; animation: scan 1.6s ease-in-out 2; opacity: .9; }
+@keyframes scan { 0% { top: 0 } 100% { top: calc(100% - 2px) } }
+.tag { position: absolute; left: 8px; top: 34px; font-size: 12px; font-weight: 600; background: rgba(10,21,32,.85); color: #FFE3A3; padding: 3px 7px; border-radius: 4px; }
+.verdict { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--held); font-weight: 600; font-size: 15px; }
+.verdict .bits { display: grid; grid-template-columns: repeat(16, 6px); gap: 2px; }
+.verdict .bits i { height: 6px; background: var(--held); border-radius: 1px; }
+
+.slip { display: grid; grid-template-columns: 1fr 170px; gap: 14px; align-items: stretch; }
+.slipcard { background: #F4F2EC; color: #1B1B1B; border-radius: 4px; padding: 12px 14px; font-size: 14px; position: relative; }
+.slipcard .hd { font-weight: 700; font-size: 13px; border-bottom: 1.5px solid #1B1B1B; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.slipcard .hd span { color: #A02222; border: 1px solid #A02222; font-size: 10.5px; padding: 0 4px; font-weight: 600; }
+.slipcard dl { display: grid; grid-template-columns: 70px 1fr auto; gap: 2px 8px; margin: 0; }
+.slipcard dt { color: #5B5B5B; } .slipcard dd { margin: 0; font-weight: 500; }
+.slipcard .c { color: #8A8A8A; font-size: 12px; }
+.slipcard .hit { background: #FFD9D5; outline: 2px solid #D93A2F; color: #A01A12; font-weight: 700; }
+.clock { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.clock div { font-size: 13px; color: var(--text-2); }
+.clock b { display: block; font-size: 26px; font-weight: 400; color: var(--text); }
+.clock .bad b { color: var(--held); }
+.trips { display: grid; grid-template-columns: repeat(18, 1fr); gap: 4px; margin-top: 8px; }
+.trips i { height: 20px; border-radius: 3px; background: var(--held); }
+.ai { border-left: 2px solid #8FD0FF; padding: 2px 0 2px 14px; font-size: 16px; line-height: 1.45; }
+.ai cite { display: block; font-style: normal; color: var(--text-2); font-size: 13px; margin-top: 6px; }
+.decide { padding: 18px 30px 26px; border-top: 1px solid var(--line); background: var(--panel); position: relative; }
+.decide label { font-size: 14px; font-weight: 600; display: block; margin-bottom: 6px; }
+.decide textarea { width: 100%; height: 52px; resize: none; background: var(--night); border: 1px solid #3A536A; border-radius: 8px; padding: 8px 10px; font-size: 15px; }
+.decide textarea:focus { outline: 3px solid #8FD0FF; outline-offset: 0; }
+.decide .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.confirm { position: absolute; left: 20px; right: 20px; bottom: calc(100% + 10px); background: var(--panel-2); border: 1px solid var(--held); border-radius: 12px; padding: 18px; box-shadow: 0 30px 60px -20px #000; animation: up 220ms cubic-bezier(.2,.7,.1,1); }
+.confirm h4 { margin: 0 0 6px; font-size: 22px; font-weight: 500; }
+.confirm p { margin: 0 0 14px; color: var(--text-2); font-size: 15px; }
+@keyframes up { from { opacity: 0; transform: translateY(10px) } }
+.decided { display: flex; align-items: center; gap: 14px; }
+.decided .seal { width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--held); display: grid; place-items: center; color: var(--held); animation: seal 380ms cubic-bezier(.3,1.6,.5,1); }
+@keyframes seal { from { transform: scale(1.8); opacity: 0 } }
+
+.casehead { position: fixed; left: 40px; top: 96px; z-index: 5; display: none; width: 560px; }
+.case .casehead { display: block; }
+.casehead .back { background: none; border: 0; color: #8FD0FF; font-weight: 600; cursor: pointer; padding: 6px 0; display: inline-flex; gap: 6px; align-items: center; }
+.casehead h1 { font-size: 64px; font-weight: 300; letter-spacing: -.03em; margin: 4px 0 2px; line-height: 1; }
+.casehead .dims { color: var(--text-2); }
+.held-amt { color: var(--held); font-size: 40px; font-weight: 300; letter-spacing: -.02em; line-height: 1.1; }
+.casehead { width: 520px; }
+.findings { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.findings li { display: grid; grid-template-columns: 46px 1fr; gap: 10px; background: rgba(15,30,44,.92); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 15px; opacity: 0; transform: translateX(-10px); transition: opacity 400ms, transform 400ms; }
+.findings li.on { opacity: 1; transform: none; }
+.findings .r { color: var(--held); font-weight: 700; }
+
+.scrub { position: fixed; left: 40px; right: 600px; bottom: 36px; z-index: 5; display: none; background: rgba(15,30,44,.94); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px 16px; }
+.case .scrub { display: block; }
+.scrub .hd { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-2); }
+.scrub .hd b { color: var(--text); font-size: 15px; }
+.play { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #3A536A; background: var(--panel-2); cursor: pointer; display: grid; place-items: center; }
+.play:hover { background: var(--text); color: var(--night); }
+.track { position: relative; height: 54px; margin-top: 10px; }
+.track .rail-l { position: absolute; left: 0; right: 0; top: 26px; height: 2px; background: var(--line); }
+.track .fill { position: absolute; left: 0; top: 26px; height: 2px; background: var(--text); width: 0; }
+.track .ev { position: absolute; top: 0; transform: translateX(-50%); font-size: 13px; color: var(--text-2); text-align: center; white-space: nowrap; }
+.track .ev b { display: block; color: var(--text); font-size: 15px; font-weight: 500; margin-bottom: 14px; }
+.track .ev::after { content: ''; position: absolute; left: 50%; top: 20px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--night); border: 2px solid var(--text); }
+.track .ev.bad b { color: var(--held); } .track .ev.bad::after { border-color: var(--held); background: var(--held); }
+.track .ev .lab { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); }
+.track .head { position: absolute; top: 18px; width: 2px; height: 18px; background: #8FD0FF; box-shadow: 0 0 10px #8FD0FF; }
+.track .clockface { position: absolute; top: -2px; transform: translateX(-50%); color: #8FD0FF; font-weight: 600; font-size: 13px; }
+
+.beacon { width: 20px; height: 20px; border-radius: 50%; background: var(--held); box-shadow: 0 0 0 0 rgba(255,94,82,.7); animation: pulse 1.6s infinite; }
+@keyframes pulse { to { box-shadow: 0 0 0 26px rgba(255,94,82,0); } }
+.beacon-label { background: var(--held); color: #1A0605; font-weight: 600; font-size: 15px; padding: 8px 12px; border-radius: 6px; width: 260px; line-height: 1.3; }
+.dumplabel { color: var(--verified); font-weight: 600; font-size: 14px; background: rgba(10,21,32,.85); border: 1px solid var(--verified); border-radius: 4px; padding: 3px 8px; white-space: nowrap; }
+.toast { position: fixed; left: 50%; top: 32px; transform: translateX(-50%); background: var(--text); color: var(--night); padding: 12px 18px; border-radius: 999px; z-index: 20; font-size: 15px; font-weight: 500; display: none; }
+
+.system { position: fixed; inset: 0; background: var(--night); z-index: 50; overflow: auto; padding: 40px 56px; display: none; }
+.system.on { display: block; }
+.sys-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 48px; }
+.sys h3 { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+.sys .col { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.sys .lab { color: var(--text-2); font-size: 13px; margin-top: -6px; }
+.sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+.sw div { height: 64px; border-radius: 6px; border: 1px solid var(--line); display: flex; align-items: flex-end; padding: 6px; font-size: 12px; }
+.sk { height: 14px; border-radius: 4px; background: linear-gradient(90deg, var(--panel-2) 0, #1E3448 40%, var(--panel-2) 80%); background-size: 200% 100%; animation: sk 1.4s linear infinite; }
+@keyframes sk { to { background-position: -200% 0 } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div id="map" role="img" aria-label="Tilted map of the ward's drains"></div>
+<div class="vignette"></div>
+<header class="top">
+  <span class="mark"><svg width="26" height="26" viewBox="0 0 26 26"><path d="M3 18c4-6 7 2 10-4s6-2 10-8" fill="none" stroke="#E6EDF2" stroke-width="2.2" stroke-linecap="round"/><path d="M3 23h20" stroke="#3FC1A5" stroke-width="2.2" stroke-linecap="round"/></svg>SiltProof</span>
+  <span class="billname" id="billname"></span>
+  <span class="sim" title="Slips, GPS traces and the bill are simulated. Photos are placeholders until the photo shoot.">Simulated data</span>
+</header>
+<aside class="legend" id="legend"></aside>
+<section class="flagged" id="flagged"></section>
+<section class="money" id="money"></section>
+<div class="verify" id="verifybox"></div>
+<section class="casehead" id="casehead"></section>
+<section class="scrub" id="scrub"></section>
+<aside class="rail" id="rail" aria-label="Evidence"></aside>
+<div class="toast" id="toast"></div>
+<section class="system" id="system"></section>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const C = { ground: '#0A1520', water: '#0C2636', minor: '#14243A', major: '#22384F', ghost: '#9FB4C7', verified: '#3FC1A5', review: '#E9B24C', held: '#FF5E52', text: '#E6EDF2' }
+const M_PER_T = 3          // data-bar scale: 1 tonne billed = 3 m of column
+const BAR_SIZE = 70        // column footprint, metres
+let D, map, labels = {}, state = { view: 'pre', revealed: new Set(), hover: null, decision: null }
+
+const centre = () => { const cs = D.drains.features.map((f) => f.properties.centroid); return [cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length] }
+/** Columns stand beside the drain, not on it, so they never read as the drain itself. */
+const barAt = (f) => { const [x, y] = f.properties.centroid; return [x + 110 / (111320 * Math.cos((y * Math.PI) / 180)), y] }
+
+function barFeatures() {
+  const feats = []
+  for (const f of D.drains.features) {
+    const p = f.properties, at = barAt(f), shown = state.revealed.has(p.drainId)
+    const sq = SP.square(at, BAR_SIZE)
+    if (!shown) { feats.push({ type: 'Feature', geometry: sq, properties: { id: p.drainId, base: 0, top: p.claimed * M_PER_T, kind: 'claimed' } }); continue }
+    let base = 0
+    for (const [k, t] of [['verified', p.verified], ['review', p.review], ['held', p.held]]) {
+      if (!t) continue
+      feats.push({ type: 'Feature', geometry: sq, properties: { id: p.drainId, base, top: base + t * M_PER_T, kind: k } })
+      base += t * M_PER_T
+    }
+  }
+  return { type: 'FeatureCollection', features: feats }
+}
+function drainFC() {
+  return { ...D.drains, features: D.drains.features.map((f) => ({ ...f, properties: { ...f.properties, v: state.revealed.has(f.properties.drainId) ? f.properties.verdict : 'P' } })) }
+}
+function paint() {
+  map.getSource('bars').setData(barFeatures())
+  map.getSource('drains').setData(drainFC())
+  for (const f of D.drains.features) {
+    const p = f.properties, el = labels[p.drainId].inner, shown = state.revealed.has(p.drainId)
+    el.className = 'plabel' + (shown ? ({ RED: ' red', AMBER: ' amber' }[p.verdict] ?? '') : '') + (state.hover === p.drainId ? ' is-hover' : '')
+    el.innerHTML = shown && p.verdict !== 'GREEN' ? `<b>${p.drainId}</b> ${p.claimed} t claimed, ${p.verified} t verified` : `<b>${p.drainId}</b> ${p.claimed} t`
+  }
+}
+
+function legendHTML() {
+  const pend = state.view === 'pre'
+  const sw = (c, o = 1) => `<svg width="30" height="22"><rect x="9" y="1" width="12" height="20" fill="${c}" fill-opacity="${o}" stroke="${c}"/></svg>`
+  return `<h3>Columns are data bars</h3>
+  <div class="row">${sw(C.ghost, .35)}<span>Claimed tonnes, not yet checked</span></div>
+  ${pend ? '' : `<div class="row">${sw(C.verified)}<span>Verified tonnes</span></div><div class="row">${sw(C.review)}<span>Tonnes for your review</span></div><div class="row">${sw(C.held)}<span>Held tonnes</span></div>`}
+  <div class="note">Height is tonnes billed, 1 t to ${M_PER_T} m. It is not the drain's depth or the silt's volume.</div>`
+}
+
+function moneyPre() {
+  const s = D.bill.summary
+  return `<div class="label">Claimed on this bill</div>
+  <div class="big">₹${SP.lakh(s.claimedRupees)}<small>lakh</small></div>
+  <div class="sub"><b>${SP.tonnes(s.claimedTonnes)}</b> of silt from <b>${s.drainCount} drains</b>, ${D.bill.drains.reduce((a, d) => a + d.tripCount, 0)} dumper trips, at ₹${SP.num(s.ratePerTonne)} a tonne.</div>`
+}
+function moneyHeld(s, partial) {
+  return `<div class="label">${partial ? `Held so far, ${state.revealed.size} of 18 drains checked` : 'Held from payment'}</div>
+  <div class="big">₹${SP.lakh(s.heldRupees)}<small>lakh</small></div>
+  <div class="flow"><div><b>${SP.tonnes(s.claimedTonnes)}</b>claimed</div><div class="v"><b>${SP.tonnes(s.verifiedTonnes)}</b>verified, ₹${SP.lakh(s.verifiedRupees)} L</div><div class="r"><b>${SP.tonnes(s.reviewTonnes)}</b>to review, ₹${SP.lakh(s.reviewRupees)} L</div><div class="h"><b>${SP.tonnes(s.heldTonnes)}</b>held</div></div>`
+}
+function flaggedHTML() {
+  const rows = D.bill.drains.filter((d) => d.verdict !== 'GREEN').sort((a, b) => b.heldTonnes - a.heldTonnes || b.reviewTonnes - a.reviewTonnes)
+  return `<h3>6 drains need you. 12 passed every check.</h3>` + rows.map((d) => {
+    const red = d.verdict === 'RED', amt = (red ? d.heldTonnes : d.reviewTonnes) * 1800
+    return `<button class="fl ${red ? 'red' : 'amber'}" data-drain="${d.drainId}"><span class="n">${d.drainId}</span><span class="t">${red ? 'Held' : 'Review'}, ${red ? d.heldTonnes : d.reviewTonnes} of ${d.claimedTonnes} t</span><span class="a">₹${SP.lakh(amt)} L</span><span class="w">${SP.reason(D.findings, d.drainId)}</span></button>`
+  }).join('')
+}
+
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 2600) }
+
+function showTip(id, x, y) {
+  $('.tip')?.remove()
+  const d = D.bill.drains.find((r) => r.drainId === id), shown = state.revealed.has(id)
+  const el = document.createElement('div'); el.className = 'tip'
+  el.style.left = x + 20 + 'px'; el.style.top = y - 40 + 'px'
+  el.innerHTML = `<b>Drain ${id}, ${d.name}</b>${d.claimedTonnes} t claimed over ${d.tripCount} trips` +
+    (shown && d.heldTonnes ? `<div class="amt">₹${SP.lakh(d.heldTonnes * 1800)} lakh held</div>${SP.reason(D.findings, id)}` : '') +
+    (shown && d.reviewTonnes ? `<div class="amt" style="color:var(--review)">${d.reviewTonnes} t to review</div>${SP.reason(D.findings, id)}` : '') +
+    (shown && d.verdict === 'GREEN' ? `<div style="color:var(--verified)">Every check passed</div>` : '') + (!shown ? `<div>Not checked yet</div>` : '') +
+    `<div class="open">Open the evidence</div>`
+  document.body.appendChild(el)
+}
+function setHover(id, x, y) {
+  state.hover = id
+  document.querySelectorAll('.fl').forEach((r) => r.classList.toggle('is-hover', r.dataset.drain === id))
+  paint()
+  map.setFeatureState
+  if (id && state.view !== 'case') { const f = D.drains.features.find((g) => g.properties.drainId === id); const p = map.project(barAt(f)); showTip(id, x ?? p.x, y ?? p.y) } else $('.tip')?.remove()
+}
+
+// ---------------------------------------------------------------- verification
+async function runVerification() {
+  const vb = $('#verifybox')
+  vb.innerHTML = `<button class="btn is-running" style="width:360px"><span id="vl">Checking trip 0 of 117</span><span class="progress" id="vp" style="transform:scaleX(0)"></span></button><div class="hint">Rules only. Textract and Bedrock read this evidence when it was uploaded.</div>`
+  const c = centre(), real = Object.fromEntries(D.bill.drains.map((d) => [d.drainId, d]))
+  const order = D.drains.features.map((f) => ({ id: f.properties.drainId, r: SP.metres(c, f.properties.centroid) })).sort((a, b) => a.r - b.r)
+  const maxR = order[order.length - 1].r + 300
+  const total = D.bill.drains.reduce((a, d) => a + d.tripCount, 0)
+  $('#money').classList.add('held')
+  map.easeTo({ bearing: map.getBearing() + 14, duration: 3600, easing: (t) => t })
+  await SP.tween(3400, (p) => {
+    const r = p * maxR
+    map.getSource('scan').setData({ type: 'Feature', geometry: SP.circle(c, Math.max(1, r)) })
+    map.setPaintProperty('scan', 'line-opacity', 1 - p * 0.6)
+    let changed = false
+    for (const o of order) if (o.r < r && !state.revealed.has(o.id)) { state.revealed.add(o.id); changed = true }
+    if (changed) {
+      paint()
+      const rev = [...state.revealed].map((id) => real[id]), sum = (k) => rev.reduce((a, d) => a + d[k], 0)
+      const s = { ...D.bill.summary, verifiedTonnes: sum('verifiedTonnes'), reviewTonnes: sum('reviewTonnes'), heldTonnes: sum('heldTonnes') }
+      s.verifiedRupees = s.verifiedTonnes * 1800; s.reviewRupees = s.reviewTonnes * 1800; s.heldRupees = s.heldTonnes * 1800
+      $('#money').innerHTML = moneyHeld(s, true)
+      $('#vl').textContent = `Checking trip ${sum('tripCount')} of ${total}`
+    }
+    $('#vp').style.transform = `scaleX(${p})`
+  }, SP.ease.inOut)
+  map.setPaintProperty('scan', 'line-opacity', 0)
+  enterVerified(false)
+}
+function enterVerified(instant = true) {
+  D.drains.features.forEach((f) => state.revealed.add(f.properties.drainId))
+  state.view = 'verified'
+  $('#money').classList.add('held'); $('#money').innerHTML = moneyHeld(D.bill.summary, false)
+  $('#verifybox').innerHTML = `<button class="btn btn-ghost" id="again">Run the checks again</button><div class="hint">117 trips checked in ${D.bill.verificationMs} ms.</div>`
+  $('#legend').innerHTML = legendHTML()
+  $('#flagged').innerHTML = flaggedHTML(); $('#flagged').classList.add('on')
+  paint()
+}
+
+// ---------------------------------------------------------------- drain 14
+function bearingTo(a, b) {
+  const toR = Math.PI / 180, y = Math.sin((b[0] - a[0]) * toR) * Math.cos(b[1] * toR)
+  const x = Math.cos(a[1] * toR) * Math.sin(b[1] * toR) - Math.sin(a[1] * toR) * Math.cos(b[1] * toR) * Math.cos((b[0] - a[0]) * toR)
+  return (Math.atan2(y, x) * 180) / Math.PI
+}
+function decideHTML() {
+  const amt = SP.rupees(D.drain14.heldTonnes * 1800)
+  if (state.decision) return `<div class="decided"><span class="seal"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 12l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></span><div><b style="font-size:18px">You held ${amt}</b><div style="color:var(--text-2);font-size:14px">8 Oct 2026, 17:42. The bill now reads ₹6.66 lakh held, 1 of 6 decided.</div></div></div>`
+  return `<label for="note">Note for the file</label><textarea id="note">Every trace stops ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site. Photo is drain 9's.</textarea>
+  <div class="two"><button class="btn btn-held" id="hold">Hold ${amt}</button><button class="btn btn-ghost" id="approve">Approve, release</button></div>`
+}
+function confirmHTML(kind) {
+  const amt = SP.rupees(D.drain14.heldTonnes * 1800)
+  return kind === 'hold'
+    ? `<div class="confirm" role="dialog"><h4>Hold ${amt} on drain 14?</h4><p>The contractor is not paid for these ${D.drain14.heldTonnes} t until you release them. Your note is saved with the decision.</p><div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-ghost" id="cancel">Keep reviewing</button><button class="btn btn-held" id="confirm">Confirm hold</button></div></div>`
+    : `<div class="confirm" role="dialog"><h4>Release ${amt} despite three failed checks?</h4><p>Approving overrules the evidence for all ${D.drain14.trips.length} trips.</p><div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn btn-ghost" id="cancel">Keep reviewing</button><button class="btn btn-primary" id="confirm">Approve, release</button></div></div>`
+}
+function railHTML() {
+  const f = D.facts, s = f.trip.slip, r3 = f.reuse
+  const row = (k, l, v) => `<dt>${l}</dt><dd class="${k === 'timeIn' ? 'hit' : ''}">${v}</dd><span class="c">${s.fields[k] ? s.fields[k].confidence.toFixed(0) + '%' : ''}</span>`
+  const ph = D.drain14.photos.find((p) => p.s3Key === r3.evidence.s3Key)
+  return `<div class="rail-in" data-shot="evidence">
+    <section><h2>After photo matches drain 9</h2><p class="sub">Perceptual hash against every photo on the bill.</p>
+      <div class="diff"><figure><div class="fr"><img src="${SP.evidence('d9-after-01.jpg')}" alt="Drain 9 after photo"><span class="tag">Simulated photo</span></div><figcaption><b>Drain 9, original</b>30 Sep 15:11</figcaption></figure>
+      <figure><div class="fr bad"><img src="${SP.evidence('d14-after-02.jpg')}" alt="Drain 14 after photo"><span class="tag">Simulated photo</span><span class="scanline"></span></div><figcaption><b>Drain 14, ${r3.evidence.s3Key.split('/').pop()}</b>${ph.timestamp.slice(8, 10)} Oct ${ph.timestamp.slice(11, 16)}</figcaption></figure></div>
+      <div class="verdict"><span class="bits">${'<i></i>'.repeat(16)}</span>0 of 64 hash bits differ. Same image.</div></section>
+    <section><h2>Slip printed before the truck could arrive</h2><p class="sub">Trip ${f.trip.tripNo}, read by Textract. Confidence per field.</p>
+      <div class="slip"><div class="slipcard"><div class="hd">Shree Sample Dharamkanta <span>SAMPLE DATA</span></div>
+        <dl>${row('ticketNo', 'Ticket', s.ticketNo)}${row('vehicleNo', 'Vehicle', s.vehicleNo)}${row('net', 'Net', s.net.toFixed(2) + ' t')}${row('timeIn', 'Time in', s.timeIn)}${row('timeOut', 'Time out', s.timeOut)}</dl></div>
+        <div class="clock"><div class="bad"><b>${f.slipTimeIn}</b>slip time in</div><div><b>${f.leftDrain}</b>truck leaves drain</div><div class="bad"><b>never</b>reaches the dump</div></div></div></section>
+    <section><h2>${f.tripsHeld} of ${D.drain14.trips.length} trips held</h2><div class="trips">${D.drain14.trips.map((t) => `<i title="Trip ${t.tripNo}"></i>`).join('')}</div></section>
+    <section><h2>Evidence summary</h2><div class="ai">${D.drain14.summary.replace('\n', ' ')}<cite>Amazon Bedrock, from the rule findings</cite></div></section>
+  </div>
+  <div class="decide" id="decide">${decideHTML()}</div>`
+}
+function scrubHTML() {
+  const f = D.facts, toMin = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b }
+  const evs = [[f.slipTimeIn, 'Slip: in', true], [f.leftDrain, 'Leaves drain', false], [f.slipTimeOut, 'Slip: out', true], [f.stopped, `Stops ${(f.shortOfDumpM / 1000).toFixed(1)} km short`, true]]
+  const lo = toMin(evs[0][0]) - 3, hi = toMin(evs[3][0]) + 3
+  scrubHTML.x = (t) => ((t - lo) / (hi - lo)) * 100
+  scrubHTML.lo = lo; scrubHTML.hi = hi
+  return `<div class="hd"><span><b>Trip ${f.trip.tripNo}, ${f.trip.vehicleNo}</b>&nbsp; 24 Sep. All 18 trips replay together on the map.</span><button class="play" id="play" aria-label="Replay the trips"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 1l10 6-10 6z" fill="currentColor"/></svg></button></div>
+  <div class="track"><div class="rail-l"></div><div class="fill" id="tfill"></div>${evs.map(([t, l, bad]) => `<div class="ev ${bad ? 'bad' : ''}" style="left:${scrubHTML.x(toMin(t))}%"><b>${t}</b><span class="lab">${l}</span></div>`).join('')}
+  <div class="head" id="thead" style="left:${scrubHTML.x(toMin(f.leftDrain))}%"></div></div>`
+}
+
+async function playTrucks(ms) {
+  const f = D.facts, trips = D.drain14.trips
+  const toMin = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b }
+  const t0 = toMin(f.leftDrain), t1 = toMin(f.stopped)
+  await SP.tween(ms, (p) => {
+    const feats = trips.map((t, i) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: SP.slice(t.actualRoute, Math.min(1, p * (1 + (i % 5) * 0.02))) }, properties: { hero: t === f.trip ? 1 : 0 } }))
+    map.getSource('trails').setData({ type: 'FeatureCollection', features: feats })
+    map.getSource('trucks').setData({ type: 'FeatureCollection', features: feats.map((g) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: g.geometry.coordinates[g.geometry.coordinates.length - 1] }, properties: g.properties })) })
+    const now = t0 + (t1 - t0) * p, x = scrubHTML.x(now)
+    $('#thead').style.left = x + '%'; $('#tfill').style.width = x + '%'
+  }, SP.ease.inOut)
+}
+
+async function openDrain(id, animate) {
+  if (id !== '14') { toast(`This prototype carries the full evidence for drain 14. Drain ${id} opens the same way.`); return }
+  state.view = 'case'; $('.tip')?.remove()
+  document.body.classList.add('case')
+  $('#flagged').classList.remove('on'); $('#legend').style.display = 'none'; $('#verifybox').style.display = 'none'; $('#money').style.display = 'none'
+  const f = D.facts, d = D.drain14
+  $('#casehead').innerHTML = `<button class="back" id="back"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>All drains</button>
+    <h1>Drain 14</h1><div class="held-amt">₹${SP.lakh(d.heldTonnes * 1800)} lakh held</div><div class="dims">${d.claimedTonnes} t claimed over ${d.trips.length} trips. 0 t verified.</div>
+    <ul class="findings">${[d.findings.find((x) => x.evidence.hammingDistance === 0), ...f.trip.findings.filter((x) => x.rule !== 'R3')].map((x) => `<li><span class="r">${x.rule}</span><span>${x.message}</span></li>`).join('')}</ul>`
+  $('#back').onclick = () => (location.search = '?view=verified')
+  $('#scrub').innerHTML = scrubHTML()
+  $('#rail').innerHTML = railHTML(); wireDecide()
+  $('#play').onclick = () => playTrucks(4000)
+  // only drain 14's own column stays, faded: the case is about routes, not tonnes
+  map.setPaintProperty('bars', 'fill-extrusion-opacity', 0.0)
+  Object.entries(labels).forEach(([k, l]) => (l.el.style.display = 'none'))
+  const brg = bearingTo(f.claimedRoute[0], f.dump)
+  const mid = [(f.claimedRoute[0][0] * 0.55 + f.dump[0] * 0.45), (f.claimedRoute[0][1] * 0.55 + f.dump[1] * 0.45)]
+  const cam = { center: mid, zoom: 13.25, pitch: 60, bearing: brg, padding: { left: 600, right: 580, top: 80, bottom: 190 } }
+  if (animate) { map.flyTo({ ...cam, duration: 2400, curve: 1.3 }); await SP.wait(2300) } else map.jumpTo(cam)
+  map.setPaintProperty('claimed', 'line-opacity', 0.9); map.setPaintProperty('dumpwall', 'fill-extrusion-opacity', 0.35)
+  new maplibregl.Marker({ element: Object.assign(document.createElement('div'), { className: 'dumplabel', textContent: 'Approved dump site. No trace enters.' }), anchor: 'bottom', offset: [0, -30] }).setLngLat(f.dump).addTo(map)
+  await playTrucks(animate ? 3200 : 0)
+  const b = document.createElement('div'); b.className = 'beacon'
+  new maplibregl.Marker({ element: b }).setLngLat(f.stop).addTo(map)
+  const bl = document.createElement('div'); bl.className = 'beacon-label'; bl.textContent = `All 18 trucks stop here, ${(f.shortOfDumpM / 1000).toFixed(1)} km short of the dump site.`
+  new maplibregl.Marker({ element: bl, anchor: 'left', offset: [22, 0] }).setLngLat(f.stop).addTo(map)
+  const lis = [...document.querySelectorAll('.findings li')]
+  for (const li of lis) { li.classList.add('on'); if (animate) await SP.wait(220) }
+}
+function wireDecide() {
+  $('#decide').onclick = async (e) => {
+    const id = e.target.closest('button')?.id
+    if (id === 'hold' || id === 'approve') { $('#decide').insertAdjacentHTML('beforeend', confirmHTML(id)); $('#confirm').focus() }
+    if (id === 'cancel') $('.confirm')?.remove()
+    if (id === 'confirm') { const b = $('#confirm'); b.disabled = true; b.textContent = 'Saving…'; await SP.wait(700); state.decision = 'HOLD'; $('#decide').innerHTML = decideHTML(); toast('Drain 14 held. ₹3,45,600 stays with the ward.') }
+  }
+}
+
+function systemHTML() {
+  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px"><h1 style="font-weight:300;font-size:48px;margin:0;letter-spacing:-.03em">Night Twin, components and states</h1><span class="sim">Simulated data</span></div>
+  <div class="sys-grid sys">
+    <div class="col"><h3>Colour</h3><div class="sw">${[['Night', '#0A1520'], ['Panel', '#0F1E2C'], ['Text', '#E6EDF2'], ['Claimed', '#9FB4C7'], ['Verified', '#3FC1A5'], ['Review', '#E9B24C'], ['Held', '#FF5E52'], ['Focus', '#8FD0FF']].map(([n, c]) => `<div style="background:${c};color:${['#E6EDF2', '#9FB4C7', '#3FC1A5', '#E9B24C', '#FF5E52', '#8FD0FF'].includes(c) ? '#0A1520' : '#E6EDF2'}">${n}<br>${c}</div>`).join('')}</div>
+      <h3 style="margin-top:12px">Type</h3><div style="font-weight:300;font-size:96px;line-height:.9;letter-spacing:-.045em;color:var(--held)">₹6.66<small style="font-size:.32em;color:var(--text-2)"> lakh</small></div><span class="lab">Geist 300 for the money, 400 to 600 for the rest. Tabular figures throughout.</span></div>
+    <div class="col"><h3>Primary action</h3>
+      <button class="btn btn-primary">Check all 117 trips</button><span class="lab">Default: the brightest thing on screen</span>
+      <button class="btn btn-primary is-hover">Check all 117 trips</button><span class="lab">Hover: halo widens</span>
+      <button class="btn btn-primary is-press">Check all 117 trips</button><span class="lab">Pressed</span>
+      <button class="btn btn-primary" style="outline:3px solid #8FD0FF;outline-offset:2px">Check all 117 trips</button><span class="lab">Keyboard focus</span>
+      <button class="btn is-running" style="width:340px"><span>Checking trip 64 of 117</span><span class="progress" style="transform:scaleX(.55)"></span></button><span class="lab">Running, while the scan ring crosses the ward</span>
+      <button class="btn btn-primary" disabled>Check all 117 trips</button><span class="lab">Disabled while the bill loads</span></div>
+    <div class="col"><h3>Decisions</h3>
+      <div style="display:flex;gap:10px"><button class="btn btn-held">Hold ₹3,45,600</button><button class="btn btn-ghost">Approve, release</button></div><span class="lab">Default</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held is-hover">Hold ₹3,45,600</button><button class="btn btn-ghost is-hover">Approve, release</button></div><span class="lab">Hover</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held" disabled>Hold ₹3,45,600</button><button class="btn btn-ghost" disabled>Approve, release</button></div><span class="lab">Disabled before verification</span>
+      <div class="decide" style="width:460px;margin-top:190px;border:1px solid var(--line);border-radius:12px">${confirmHTML('hold')}<div class="two" style="opacity:.3"><button class="btn btn-held">Hold</button><button class="btn btn-ghost">Approve</button></div></div><span class="lab">Confirmation names the amount and the consequence</span>
+      <div class="decided"><span class="seal"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 12l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></span><div><b>You held ₹3,45,600</b><div style="color:var(--text-2);font-size:14px">8 Oct 2026, 17:42</div></div></div></div>
+    <div class="col"><h3>Data bars</h3><svg width="300" height="170" viewBox="0 0 300 170"><g transform="translate(20,10)">
+      <rect x="0" y="40" width="40" height="110" fill="#9FB4C7" fill-opacity=".35" stroke="#9FB4C7"/><text x="20" y="166" fill="#93A8BA" font-size="12" text-anchor="middle">pending</text>
+      <rect x="90" y="40" width="40" height="80" fill="#3FC1A5"/><rect x="90" y="120" width="0" height="0"/><rect x="90" y="40" width="40" height="30" fill="#FF5E52"/><rect x="90" y="120" width="40" height="30" fill="#3FC1A5"/><text x="110" y="166" fill="#93A8BA" font-size="12" text-anchor="middle">mixed</text>
+      <rect x="180" y="0" width="40" height="150" fill="#FF5E52"/><text x="200" y="166" fill="#93A8BA" font-size="12" text-anchor="middle">all held</text></g></svg>
+      <span class="lab">Stacked from the ground: verified, review, held. Total height is claimed tonnes, 1 t to 3 m. Each column stands 110 m east of its drain, with a ground label, so it never reads as the drain.</span></div>
+    <div class="col"><h3>Loading</h3><div class="sk" style="width:380px"></div><div class="sk" style="width:300px"></div><div class="sk" style="width:340px"></div><span class="lab">Evidence rail while a drain loads. The camera move starts at once.</span></div>
+    <div class="col"><h3>Errors and gaps</h3><div style="border:1px solid var(--review);border-radius:8px;padding:10px 12px;max-width:420px;color:#F7DDA6">2 trips have no slip yet. They are in review, not held.</div><div style="border:1px solid var(--held);border-radius:8px;padding:10px 12px;max-width:420px;color:#FFD0CB">Could not reach the bill service. Showing the last saved snapshot. Try again.</div></div>
+  </div>`
+}
+
+;(async () => {
+  D = await SP.load()
+  const view = SP.params.get('view') ?? 'pre'
+  if (view === 'system') { $('#system').innerHTML = systemHTML(); $('#system').classList.add('on'); window.__ready = true; return }
+  $('#billname').textContent = `Bill B1, ${D.bill.contractor}, 21 Sep to 4 Oct`
+  $('#money').innerHTML = moneyPre()
+  $('#legend').innerHTML = legendHTML()
+  $('#verifybox').innerHTML = `<button class="btn btn-primary" id="verify">Check all 117 trips</button><div class="hint">Runs ten rules over evidence Textract and Bedrock read at upload. About a second.</div>`
+  const base = SP.basemapLayers(D.basemap, C)
+  const empty = { type: 'FeatureCollection', features: [] }
+  map = new maplibregl.Map({
+    container: 'map', attributionControl: false, maxPitch: 75,
+    style: { version: 8, sources: { ...base.sources, drains: { type: 'geojson', data: D.drains }, bars: { type: 'geojson', data: empty }, scan: { type: 'geojson', data: empty }, dump: { type: 'geojson', data: D.dumpsite },
+      claimed: { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: D.facts.claimedRoute } } }, trails: { type: 'geojson', data: empty }, trucks: { type: 'geojson', data: empty } },
+      layers: [...base.layers,
+        { id: 'drain-glow', type: 'line', source: 'drains', paint: { 'line-color': ['match', ['get', 'v'], 'RED', C.held, 'AMBER', C.review, 'GREEN', C.verified, C.ghost], 'line-width': 8, 'line-blur': 6, 'line-opacity': ['match', ['get', 'v'], 'P', 0.25, 0.8] } },
+        { id: 'drain-fill', type: 'fill', source: 'drains', paint: { 'fill-color': ['match', ['get', 'v'], 'RED', C.held, 'AMBER', C.review, 'GREEN', C.verified, C.ghost], 'fill-opacity': 0.55 } },
+        { id: 'scan', type: 'line', source: 'scan', paint: { 'line-color': '#8FD0FF', 'line-width': 3, 'line-blur': 2, 'line-opacity': 0 } },
+        { id: 'dumpwall', type: 'fill-extrusion', source: 'dump', paint: { 'fill-extrusion-color': C.verified, 'fill-extrusion-height': 60, 'fill-extrusion-opacity': 0.15 } },
+        { id: 'claimed', type: 'line', source: 'claimed', paint: { 'line-color': C.ghost, 'line-width': 3, 'line-dasharray': [2, 2], 'line-opacity': 0 } },
+        { id: 'trails', type: 'line', source: 'trails', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.held, 'line-width': ['case', ['==', ['get', 'hero'], 1], 5, 1.6], 'line-opacity': ['case', ['==', ['get', 'hero'], 1], 1, 0.55] } },
+        { id: 'trucks', type: 'circle', source: 'trucks', paint: { 'circle-radius': ['case', ['==', ['get', 'hero'], 1], 8, 4], 'circle-color': '#FFE6E3', 'circle-stroke-color': C.held, 'circle-stroke-width': 2 } },
+        { id: 'bars', type: 'fill-extrusion', source: 'bars', paint: { 'fill-extrusion-color': ['match', ['get', 'kind'], 'verified', C.verified, 'review', C.review, 'held', C.held, C.ghost], 'fill-extrusion-base': ['get', 'base'], 'fill-extrusion-height': ['get', 'top'], 'fill-extrusion-opacity': 0.88, 'fill-extrusion-vertical-gradient': true } },
+      ] },
+    center: centre(), zoom: 13.9, pitch: 56, bearing: -22,
+  })
+  await new Promise((r) => map.on('load', r))
+  // Frame the ward flat, then tilt: fitBounds under pitch frames the far edge too tightly.
+  const cam = map.cameraForBounds(SP.drainBounds(D.drains), { padding: { top: 60, bottom: 160, left: 120, right: 440 } })
+  map.jumpTo({ ...cam, zoom: cam.zoom + 0.25, pitch: 56, bearing: -22 })
+  for (const f of D.drains.features) {
+    const el = document.createElement('div'); el.dataset.drain = f.properties.drainId; el.tabIndex = 0; el.setAttribute('role', 'button')
+    const inner = document.createElement('div'); el.appendChild(inner)
+    labels[f.properties.drainId] = { el, inner, m: new maplibregl.Marker({ element: el, anchor: 'top' }).setLngLat(barAt(f)).addTo(map) }
+  }
+  paint()
+  document.addEventListener('mouseover', (e) => { const id = e.target.closest('[data-drain]')?.dataset.drain ?? null; if (id !== state.hover) setHover(id, e.clientX, e.clientY) })
+  document.addEventListener('click', (e) => { const t = e.target.closest('[data-drain]'); if (t && state.view !== 'case') openDrain(t.dataset.drain, true) })
+  map.on('click', 'bars', (e) => state.view !== 'case' && openDrain(e.features[0].properties.id, true))
+  $('#verify').onclick = () => runVerification()
+  if (view === 'verified' || view === 'drain14') enterVerified()
+  if (view === 'drain14') await openDrain('14', false)
+  if (SP.params.get('hover')) setHover(SP.params.get('hover'))
+  if (SP.params.get('confirm')) $('#decide').insertAdjacentHTML('beforeend', confirmHTML(SP.params.get('confirm')))
+  if (SP.params.get('decided')) { state.decision = 'HOLD'; $('#decide').innerHTML = decideHTML() }
+  await SP.mapReady(map)
+  window.__ready = true
+  // ?wait=1 holds the motion until the recorder says go, so a capture starts on a drawn frame
+  if (SP.params.get('wait')) await new Promise((r) => (window.__go = r))
+  if (SP.params.get('play') === 'scan') { await SP.wait(500); await runVerification(); window.__done = true }
+  if (SP.params.get('play') === 'open14') { await SP.wait(400); await openDrain('14', true); window.__done = true }
+})()
+</script>
+</body>
+</html>

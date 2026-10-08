@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiltProof · The Docket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="../shared/sp.js"></script>
+<style>
+/* Direction C: The Docket.
+   The contractor's bill is the interface. The rules mark it like an auditor:
+   only exceptions get colour (stamp red, review amber); a clean line gets a
+   plain tick. The engineer's own marks are ballpoint blue. */
+:root {
+  --desk: #DADDE0;
+  --paper: #FFFFFF;
+  --paper-2: #F3F4F5;
+  --ink: #1A1D21;
+  --ink-2: #555B62;
+  --ink-3: #8B9198;
+  --rule: #D5D8DC;
+  --stamp: #C8321E;
+  --stamp-wash: #FBE9E5;
+  --review: #B0730F;
+  --review-wash: #FBF1DD;
+  --pen: #2340A8;       /* the engineer's hand */
+  --f: 'Archivo', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--desk); color: var(--ink); font: 400 16px/1.4 var(--f); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--pen); outline-offset: 2px; }
+.cond { font-stretch: 72%; }
+
+.app { height: 100vh; display: grid; grid-template-columns: 1120px 1fr; gap: 24px; padding: 24px; transition: grid-template-columns 700ms cubic-bezier(.2,.7,.1,1); }
+.app.case { grid-template-columns: 430px 1fr; }
+
+/* ---------- the bill */
+.bill { background: var(--paper); box-shadow: 0 1px 0 #C2C6CB, 0 18px 40px -24px rgba(20,24,28,.45); display: flex; flex-direction: column; min-height: 0; position: relative; overflow: hidden; }
+.bill-head { display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; padding: 22px 30px 16px; border-bottom: 2px solid var(--ink); }
+.bill-head h1 { margin: 0; font-size: 34px; font-weight: 800; font-stretch: 80%; letter-spacing: -.01em; line-height: 1; }
+.bill-head .who { color: var(--ink-2); font-size: 15px; }
+.bill-head .right { text-align: right; font-size: 14px; color: var(--ink-2); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.sim { font-weight: 700; font-size: 13px; color: var(--ink); border: 1.5px dashed var(--ink); padding: 4px 9px; }
+.brand { font-weight: 800; font-stretch: 110%; font-size: 15px; letter-spacing: .01em; }
+.brand span { font-weight: 400; color: var(--ink-2); font-stretch: 100%; }
+
+table { width: 100%; border-collapse: collapse; }
+th { font-weight: 600; font-size: 13px; color: var(--ink-2); text-align: left; padding: 10px 10px 8px; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+th.n, td.n { text-align: right; }
+td { padding: 0 10px; height: 35px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+tbody tr { cursor: pointer; transition: background 120ms; position: relative; }
+tbody tr:hover, tbody tr.is-hover { background: var(--paper-2); }
+tbody tr:hover td:first-child, tbody tr.is-hover td:first-child { box-shadow: inset 4px 0 0 var(--pen); }
+td.no { font-weight: 700; width: 46px; padding-left: 30px; }
+td.name { width: 330px; max-width: 330px; }
+td.money { font-size: 16px; }
+.strip { display: flex; gap: 3px; }
+.strip i { width: 7px; height: 18px; background: var(--ink-3); opacity: .35; border-radius: 1px; }
+.strip i.ok { background: var(--ink); opacity: .8; }
+.strip i.rv { background: var(--review); opacity: 1; }
+.strip i.hd { background: var(--stamp); opacity: 1; }
+td.mark { width: 220px; }
+.tick { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 14px; }
+.stampbox { display: inline-block; border: 2px solid var(--stamp); color: var(--stamp); font-weight: 800; font-stretch: 80%; font-size: 14px; letter-spacing: .02em; padding: 2px 8px; transform: rotate(-2.5deg); background: rgba(251,233,229,.6); }
+.stampbox.rv { border-color: var(--review); color: var(--review); background: rgba(251,241,221,.6); border-style: dashed; }
+.stampbox.land { animation: land 260ms cubic-bezier(.3,1.7,.5,1); }
+@keyframes land { from { transform: rotate(-2.5deg) scale(1.9); opacity: 0; } }
+td.pay { font-weight: 600; width: 130px; }
+td.pay.zero { color: var(--stamp); }
+td .why { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; max-width: 310px; }
+tr.flag td { height: 46px; }
+.pen { color: var(--pen); font-weight: 600; font-size: 14px; }
+
+.auditline { position: absolute; left: 0; right: 0; height: 38px; border-top: 2px solid var(--pen); border-bottom: 2px solid var(--pen); background: rgba(35,64,168,.06); pointer-events: none; opacity: 0; transition: top 120ms linear; }
+
+.totals { margin-top: auto; border-top: 2px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr 1fr 1.25fr; }
+.totals div { padding: 14px 20px 18px; border-right: 1px solid var(--rule); }
+.totals div:first-child { padding-left: 30px; }
+.totals div:last-child { border: 0; background: var(--stamp-wash); }
+.totals span { display: block; font-size: 14px; color: var(--ink-2); }
+.totals b { display: block; font-size: 30px; font-weight: 700; font-stretch: 78%; letter-spacing: -.01em; margin-top: 2px; }
+.totals .held b { font-size: 46px; color: var(--stamp); font-weight: 800; line-height: 1; }
+.totals .pending b { color: var(--ink-3); }
+
+/* compressed bill (case view) */
+.case th.hide, .case td.hide { display: none; }
+.case td.name { width: auto; }
+.case td { height: 33px; }
+.case .bill-head .who { display: none; }
+.case .totals .held b { font-size: 36px; }
+.case tr.sel { background: var(--stamp-wash); }
+.case tr.sel td:first-child { box-shadow: inset 5px 0 0 var(--stamp); }
+.case .totals { grid-template-columns: 1fr; }
+.case .totals div:not(.held) { display: none; }
+.case .bill-head { grid-template-columns: 1fr; }
+.case .bill-head .right { align-items: flex-start; flex-direction: row; }
+
+/* ---------- right side: map plate + action */
+.side { display: grid; grid-template-rows: 1fr auto; gap: 24px; min-height: 0; }
+.plate { background: var(--paper); position: relative; box-shadow: 0 1px 0 #C2C6CB, 0 18px 40px -24px rgba(20,24,28,.45); min-height: 0; }
+#map { position: absolute; inset: 12px; }
+.plate-cap { position: absolute; left: 24px; top: 22px; z-index: 2; background: var(--paper); padding: 8px 12px; font-size: 14px; border: 1px solid var(--ink); max-width: 360px; }
+.plate-cap b { display: block; font-size: 16px; }
+.plate-key { position: absolute; right: 24px; bottom: 24px; z-index: 2; background: var(--paper); border: 1px solid var(--ink); padding: 10px 12px; font-size: 13px; display: grid; grid-template-columns: 22px 1fr; gap: 5px 8px; align-items: center; color: var(--ink-2); }
+.act { background: var(--ink); color: var(--paper); padding: 22px 26px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px; }
+.act p { margin: 0; font-size: 15px; color: #C9CDD2; max-width: 46ch; }
+.act p b { color: var(--paper); font-weight: 600; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border: 2px solid transparent; cursor: pointer; font-weight: 700; font-size: 17px; white-space: nowrap; position: relative; overflow: hidden; transition: background 140ms, transform 80ms, box-shadow 140ms; border-radius: 2px; }
+.btn-primary { background: var(--paper); color: var(--ink); box-shadow: 4px 4px 0 var(--pen); }
+.btn-primary:hover, .btn-primary.is-hover { box-shadow: 6px 6px 0 var(--pen); transform: translate(-2px, -2px); }
+.btn-primary:active, .btn-primary.is-press { box-shadow: 0 0 0 var(--pen); transform: translate(4px, 4px); }
+.btn-ghost { background: transparent; border-color: currentColor; }
+.btn-ghost:hover, .btn-ghost.is-hover { background: rgba(127,127,127,.12); }
+.btn-stamp { background: var(--stamp); color: #fff; box-shadow: 4px 4px 0 var(--ink); }
+.btn-stamp:hover, .btn-stamp.is-hover { box-shadow: 6px 6px 0 var(--ink); transform: translate(-2px, -2px); }
+.btn-stamp:active { box-shadow: none; transform: translate(4px, 4px); }
+.btn-pen { background: var(--paper); color: var(--pen); border-color: var(--pen); }
+.btn-pen:hover, .btn-pen.is-hover { background: #EEF1FB; }
+.btn[disabled], .btn.is-disabled { background: var(--paper-2); color: var(--ink-3); border-color: var(--rule); box-shadow: none; transform: none; cursor: not-allowed; }
+.btn.is-running { background: #2F343A; color: var(--paper); box-shadow: none; cursor: progress; border-color: #4A5058; }
+.btn .progress { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: #9FB0EE; transform-origin: left; }
+
+/* ---------- exhibits (drain 14) */
+.exhibits { display: none; grid-template-columns: 1fr 520px; grid-template-rows: auto 1fr auto; gap: 20px; min-height: 0; }
+.case .exhibits { display: grid; }
+.case .side { display: none; }
+.ex { background: var(--paper); box-shadow: 0 1px 0 #C2C6CB, 0 18px 40px -24px rgba(20,24,28,.45); position: relative; padding: 16px 20px 18px; min-height: 0; }
+.ex-tag { display: inline-flex; align-items: baseline; gap: 10px; font-size: 14px; color: var(--ink-2); margin-bottom: 8px; }
+.ex-tag b { font-weight: 800; font-stretch: 80%; color: var(--ink); font-size: 15px; border: 1.5px solid var(--ink); padding: 0 6px; }
+.ex h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; font-stretch: 85%; line-height: 1.15; }
+.ex .sub { color: var(--ink-2); font-size: 14px; margin: 0; }
+.case-title { grid-column: 1 / 3; display: flex; align-items: flex-end; justify-content: space-between; background: transparent; box-shadow: none; padding: 0; }
+.case-title h1 { margin: 0; font-size: 60px; font-weight: 800; font-stretch: 75%; line-height: .95; letter-spacing: -.01em; }
+.case-title .dims { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+.case-title .amt { text-align: right; }
+.case-title .amt b { font-size: 60px; font-weight: 800; font-stretch: 75%; color: var(--stamp); line-height: .95; display: block; }
+.case-title .amt span { font-size: 15px; color: var(--ink-2); }
+.back { background: none; border: 0; padding: 4px 0; color: var(--pen); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.back:hover { text-decoration: underline; }
+.exA { display: flex; flex-direction: column; }
+.exA .mapbox { position: relative; flex: 1; margin-top: 10px; border: 1px solid var(--ink); min-height: 0; }
+#casemap { position: absolute; inset: 0; }
+.exA .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 12px; border-top: 1px solid var(--ink); }
+.exA .facts div { padding: 10px 12px 0 0; font-size: 14px; color: var(--ink-2); }
+.exA .facts b { display: block; font-size: 26px; font-weight: 700; font-stretch: 80%; color: var(--ink); }
+.exA .facts .bad b { color: var(--stamp); }
+.right-stack { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+.slipgrid { display: grid; grid-template-columns: 1fr 150px; gap: 14px; margin-top: 10px; }
+.slipcard { border: 1px solid var(--ink-3); padding: 10px 12px; font-size: 14px; background: #FDFDFB; }
+.slipcard .hd { display: flex; justify-content: space-between; font-weight: 700; font-size: 13px; padding-bottom: 5px; margin-bottom: 5px; border-bottom: 1.5px solid var(--ink); }
+.slipcard .hd span { color: var(--stamp); border: 1px solid var(--stamp); font-size: 10.5px; padding: 0 4px; }
+.slipcard dl { display: grid; grid-template-columns: 66px 1fr auto; gap: 2px 8px; margin: 0; }
+.slipcard dt { color: var(--ink-2); } .slipcard dd { margin: 0; font-weight: 600; }
+.slipcard .c { color: var(--ink-3); font-size: 12px; }
+.slipcard .hit { color: var(--stamp); background: var(--stamp-wash); box-shadow: 0 0 0 2px var(--stamp); }
+.margin { border-left: 2px solid var(--stamp); padding-left: 12px; font-size: 14px; color: var(--ink-2); display: flex; flex-direction: column; justify-content: center; }
+.margin b { font-size: 34px; font-weight: 800; font-stretch: 75%; color: var(--stamp); line-height: 1; }
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.photos figure { margin: 0; }
+.photos .fr { position: relative; border: 1px solid var(--ink-3); }
+.photos .fr.bad { border: 3px solid var(--stamp); }
+.photos img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+.photos .t { position: absolute; left: 6px; bottom: 6px; background: var(--ink); color: #fff; font-size: 11.5px; font-weight: 600; padding: 2px 6px; }
+.photos figcaption { font-size: 13.5px; margin-top: 5px; color: var(--ink-2); }
+.photos figcaption b { color: var(--ink); display: block; }
+.same { margin-top: 10px; font-weight: 700; color: var(--stamp); font-size: 15px; }
+.decision { grid-column: 1 / 3; background: var(--paper); display: grid; grid-template-columns: 1fr 420px; gap: 24px; padding: 16px 20px; box-shadow: 0 1px 0 #C2C6CB, 0 18px 40px -24px rgba(20,24,28,.45); position: relative; align-items: center; }
+.decision .ai { font-size: 15.5px; line-height: 1.4; }
+.decision .ai cite { display: block; font-style: normal; color: var(--ink-3); font-size: 13px; margin-top: 4px; }
+.sign { border-left: 1px solid var(--rule); padding-left: 24px; }
+.sign label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 4px; color: var(--pen); }
+.sign textarea { width: 100%; height: 44px; resize: none; border: 0; border-bottom: 1.5px solid var(--pen); background: transparent; color: var(--pen); font-size: 15px; padding: 4px 0; }
+.sign textarea:focus { outline: none; border-bottom-width: 3px; }
+.sign .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.confirm { position: absolute; right: 20px; bottom: calc(100% + 12px); width: 440px; background: var(--paper); border: 2px solid var(--ink); padding: 18px; box-shadow: 8px 8px 0 var(--pen); animation: up 220ms cubic-bezier(.2,.7,.1,1); z-index: 5; }
+.confirm h4 { margin: 0 0 6px; font-size: 24px; font-weight: 800; font-stretch: 80%; }
+.confirm p { margin: 0 0 14px; color: var(--ink-2); font-size: 15px; }
+@keyframes up { from { opacity: 0; transform: translateY(8px) } }
+.signed { display: flex; align-items: center; gap: 16px; }
+.signature { font-family: 'Segoe Script', 'Bradley Hand', cursive; color: var(--pen); font-size: 26px; transform: rotate(-3deg); border-bottom: 1.5px solid var(--pen); padding: 0 8px; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; z-index: 20; display: none; font-weight: 500; }
+.maptip { position: absolute; z-index: 3; background: var(--paper); border: 1.5px solid var(--ink); padding: 8px 10px; font-size: 14px; width: 260px; pointer-events: none; box-shadow: 4px 4px 0 var(--pen); }
+.maptip b { display: block; }
+.cm-label { background: #fff; border: 1.5px solid var(--ink); padding: 4px 8px; font-size: 14px; white-space: nowrap; box-shadow: 3px 3px 0 var(--pen); }
+
+.system { position: fixed; inset: 0; background: var(--desk); z-index: 50; overflow: auto; padding: 36px 48px; display: none; }
+.system.on { display: block; }
+.sys-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.sys .col { background: var(--paper); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.sys h3 { margin: 0 0 4px; font-size: 20px; font-weight: 800; font-stretch: 80%; }
+.sys .lab { color: var(--ink-2); font-size: 13px; margin-top: -6px; }
+.sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+.sw div { height: 60px; border: 1px solid var(--rule); display: flex; align-items: flex-end; padding: 6px; font-size: 12px; }
+.sk { height: 14px; background: linear-gradient(90deg, var(--paper-2) 0, #E6E8EA 40%, var(--paper-2) 80%); background-size: 200% 100%; animation: sk 1.4s linear infinite; }
+@keyframes sk { to { background-position: -200% 0 } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <section class="bill" id="bill">
+    <header class="bill-head" id="billhead"></header>
+    <table><thead><tr><th style="padding-left:30px">Line</th><th>Drain</th><th class="hide">Trips</th><th class="n hide">Claimed</th><th class="n hide">Claimed ₹</th><th class="hide">Checked</th><th class="n">Payable ₹</th></tr></thead><tbody id="rows"></tbody></table>
+    <div class="auditline" id="auditline"></div>
+    <footer class="totals" id="totals"></footer>
+  </section>
+  <section class="side" id="side">
+    <div class="plate"><div id="map" role="img" aria-label="Map of the drains on this bill"></div><div class="plate-cap" id="platecap"></div><div class="plate-key" id="platekey"></div><div id="tipbox"></div></div>
+    <div class="act" id="act"></div>
+  </section>
+  <section class="exhibits" id="exhibits"></section>
+</div>
+<div class="toast" id="toast"></div>
+<section class="system" id="system"></section>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const C = { ground: '#EEF0F1', water: '#C7D2D9', minor: '#FFFFFF', major: '#FFFFFF', ink: '#1A1D21', stamp: '#C8321E', review: '#B0730F', pen: '#2340A8', ok: '#1A1D21', pend: '#8B9198' }
+let D, map, cmap, state = { view: 'pre', checked: new Set(), hover: null, decision: null }
+const real = () => Object.fromEntries(D.bill.drains.map((d) => [d.drainId, d]))
+
+function stripHTML(d, checked) {
+  const f = D.findings[d.drainId]
+  const held = checked ? f.tripsHeld : 0, rv = checked ? f.tripsReview : 0
+  return `<span class="strip">${Array.from({ length: d.tripCount }, (_, i) => `<i class="${!checked ? '' : i < held ? 'hd' : i < held + rv ? 'rv' : 'ok'}"></i>`).join('')}</span>`
+}
+function markHTML(d, checked, land) {
+  if (!checked) return `<span class="tick" style="color:var(--ink-3)">Not checked</span>`
+  if (d.verdict === 'RED') return `<span class="stampbox ${land ? 'land' : ''}">HELD ₹${SP.num(d.heldTonnes * 1800)}</span>`
+  if (d.verdict === 'AMBER') return `<span class="stampbox rv ${land ? 'land' : ''}">REVIEW ${d.reviewTonnes} t</span>`
+  return `<span class="tick"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7.5" fill="none" stroke="#1A1D21" stroke-width="2"/></svg>All checks pass</span>`
+}
+function rowHTML(d, checked, land) {
+  const flag = checked && d.verdict !== 'GREEN'
+  const pay = checked ? d.verifiedTonnes * 1800 : null
+  const sel = state.view === 'case' && d.drainId === '14'
+  const dec = state.decision && d.drainId === '14' ? `<span class="pen" style="display:block">Held by you</span>` : ''
+  return `<tr data-drain="${d.drainId}" class="${flag ? 'flag' : ''} ${sel ? 'sel' : ''} ${state.hover === d.drainId ? 'is-hover' : ''}">
+    <td class="no">${d.drainId}</td>
+    <td class="name">${d.name}${flag && state.view !== 'case' ? `<span class="why">${SP.reason(D.findings, d.drainId)}</span>` : ''}${state.view === 'case' && checked ? `<span class="why">${d.verdict === 'RED' ? 'Held' : d.verdict === 'AMBER' ? 'Review' : 'Clear'}, ${d.claimedTonnes} t</span>` : ''}</td>
+    <td class="hide">${stripHTML(d, checked)}</td>
+    <td class="n hide money">${d.claimedTonnes} t</td>
+    <td class="n hide money">${SP.num(d.claimedTonnes * 1800)}</td>
+    <td class="mark hide">${markHTML(d, checked, land)}</td>
+    <td class="n pay ${pay === 0 ? 'zero' : ''}">${pay === null ? '<span style="color:var(--ink-3)">pending</span>' : SP.num(pay)}${dec}</td></tr>`
+}
+function renderRows(landId) {
+  const r = real()
+  $('#rows').innerHTML = D.bill.drains.map((d) => rowHTML(state.checked.has(d.drainId) ? r[d.drainId] : d, state.checked.has(d.drainId), d.drainId === landId)).join('')
+}
+function totalsHTML(s, done) {
+  return `<div><span>Claimed, ${SP.tonnes(s.claimedTonnes)}</span><b>₹${SP.num(s.claimedRupees)}</b></div>
+    <div class="${done ? '' : 'pending'}"><span>Payable now, ${SP.tonnes(s.verifiedTonnes)}</span><b>₹${SP.num(s.verifiedRupees)}</b></div>
+    <div class="${done ? '' : 'pending'}"><span>Waiting on you, ${SP.tonnes(s.reviewTonnes)}</span><b>₹${SP.num(s.reviewRupees)}</b></div>
+    <div class="held"><span>Held, ${SP.tonnes(s.heldTonnes)} contradicted by evidence</span><b>₹${SP.lakh(s.heldRupees)} lakh</b></div>`
+}
+function partialSummary() {
+  const r = real(), rev = [...state.checked].map((id) => r[id]), sum = (k) => rev.reduce((a, d) => a + d[k], 0)
+  const s = { ...D.bill.summary, verifiedTonnes: sum('verifiedTonnes'), reviewTonnes: sum('reviewTonnes'), heldTonnes: sum('heldTonnes') }
+  s.verifiedRupees = s.verifiedTonnes * 1800; s.reviewRupees = s.reviewTonnes * 1800; s.heldRupees = s.heldTonnes * 1800
+  return s
+}
+function billHeadHTML() {
+  return `<div><div class="brand">SiltProof <span>checks this bill line by line</span></div><h1 style="margin-top:10px">Bill B1, drain desilting</h1><div class="who">${D.bill.contractor}. Work 21 Sep to 4 Oct 2026. ₹${SP.num(D.bill.summary.ratePerTonne)} a tonne.</div></div>
+  <div class="right"><span class="sim" title="Slips, GPS traces and the bill are simulated. Photos are placeholders until the photo shoot.">Simulated data</span><span>18 lines, ${D.bill.drains.reduce((a, d) => a + d.tripCount, 0)} trips</span></div>`
+}
+function actHTML() {
+  if (state.view === 'pre') return `<p><b>Nothing on this bill has been checked.</b> The rules compare every trip's slip, GPS trace and photos. Textract and Bedrock already read them at upload.</p><button class="btn btn-primary" id="verify">Check the bill</button>`
+  return `<p><b>6 lines need your decision.</b> 4 are held by hard evidence and 2 wait for your review. Open a line to see its exhibits.</p><button class="btn btn-ghost" id="again" style="color:#fff">Check again</button>`
+}
+function plateCap() {
+  return state.view === 'pre' ? `<b>Where the bill says the work was done</b>18 drain sections, shown at their surveyed positions` : `<b>The same 18 drains, marked</b>Only the exceptions carry colour`
+}
+function plateKey() {
+  const sq = (c, dash) => `<svg width="22" height="12"><rect x="1" y="1" width="20" height="10" fill="${dash ? 'none' : c}" stroke="${c}" stroke-width="2" ${dash ? 'stroke-dasharray="3 2"' : ''}/></svg>`
+  return state.view === 'pre' ? `${sq(C.pend)}<span>Drain section on the bill</span>` : `${sq(C.stamp)}<span>Held</span>${sq(C.review, 1)}<span>For your review</span>${sq(C.ink)}<span>Passed every check</span>`
+}
+
+function drainFC() {
+  return { ...D.drains, features: D.drains.features.map((f) => ({ ...f, properties: { ...f.properties, v: state.checked.has(f.properties.drainId) ? f.properties.verdict : 'P', h: state.hover === f.properties.drainId ? 1 : 0 } })) }
+}
+function paintMap() { map?.getSource('drains')?.setData(drainFC()); map?.getSource('labels')?.setData(labelFC()) }
+function labelFC() { return { type: 'FeatureCollection', features: D.drains.features.map((f) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: f.properties.centroid }, properties: { id: f.properties.drainId, v: state.checked.has(f.properties.drainId) ? f.properties.verdict : 'P', h: state.hover === f.properties.drainId ? 1 : 0 } })) } }
+
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 2600) }
+function setHover(id) {
+  state.hover = id
+  document.querySelectorAll('tbody tr').forEach((r) => r.classList.toggle('is-hover', r.dataset.drain === id))
+  paintMap()
+  $('#tipbox').innerHTML = ''
+  if (!id || state.view === 'case') return
+  const d = real()[id], f = D.drains.features.find((x) => x.properties.drainId === id), p = map.project(f.properties.centroid)
+  const shown = state.checked.has(id)
+  $('#tipbox').innerHTML = `<div class="maptip" style="left:${p.x + 34}px;top:${p.y - 20}px"><b>Line ${id}, ${d.name}</b>${d.claimedTonnes} t, ₹${SP.num(d.claimedTonnes * 1800)} claimed${shown && d.verdict !== 'GREEN' ? `<div style="color:${d.verdict === 'RED' ? 'var(--stamp)' : 'var(--review)'};font-weight:600">${SP.reason(D.findings, id)}</div>` : ''}</div>`
+}
+
+// ---------------------------------------------------------------- verification
+async function runVerification() {
+  const b = $('#verify'); b.className = 'btn is-running'; b.style.width = '260px'
+  b.innerHTML = `<span id="vl">Line 1 of 18</span><span class="progress" id="vp" style="transform:scaleX(0)"></span>`
+  const line = $('#auditline'); line.style.opacity = 1
+  const rows = [...document.querySelectorAll('#rows tr')]
+  const billTop = $('#bill').getBoundingClientRect().top
+  for (let i = 0; i < rows.length; i++) {
+    const id = rows[i].dataset.drain
+    const r = rows[i].getBoundingClientRect()
+    line.style.top = r.top - billTop + 'px'; line.style.height = r.height + 'px'
+    await SP.wait(70)
+    state.checked.add(id); state.hover = id
+    renderRows(id)
+    paintMap()
+    const s = partialSummary()
+    $('#totals').innerHTML = totalsHTML(s, false)
+    $('#vl').textContent = `Line ${i + 1} of 18, ${D.bill.drains.slice(0, i + 1).reduce((a, d) => a + d.tripCount, 0)} trips`
+    $('#vp').style.transform = `scaleX(${(i + 1) / rows.length})`
+    await SP.wait(real()[id].verdict === 'GREEN' ? 90 : 260)
+  }
+  line.style.opacity = 0; state.hover = null
+  enterVerified()
+}
+function enterVerified() {
+  D.bill.drains.forEach((d) => state.checked.add(d.drainId))
+  state.view = 'verified'
+  renderRows(); paintMap()
+  $('#totals').innerHTML = totalsHTML(D.bill.summary, true)
+  $('#act').innerHTML = actHTML(); $('#platecap').innerHTML = plateCap(); $('#platekey').innerHTML = plateKey()
+}
+
+// ---------------------------------------------------------------- drain 14
+function exhibitsHTML() {
+  const d = D.drain14, f = D.facts, s = f.trip.slip, r3 = f.reuse
+  const row = (k, l, v) => `<dt>${l}</dt><dd class="${k === 'timeIn' ? 'hit' : ''}">${v}</dd><span class="c">${s.fields[k] ? s.fields[k].confidence.toFixed(0) + '%' : ''}</span>`
+  const ph = d.photos.find((p) => p.s3Key === r3.evidence.s3Key)
+  return `
+  <div class="ex case-title"><div><button class="back" id="back"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>Back to the bill</button><h1>Line 14, ${d.name}</h1><div class="dims">${d.lengthM.toFixed(0)} m long, ${d.widthM} m wide, ${d.depthM} m deep. ${d.trips.length} trips, ${d.claimedTonnes} t claimed.</div></div>
+    <div class="amt"><b>₹${SP.num(d.heldTonnes * 1800)}</b><span>held by three hard checks on every trip</span></div></div>
+  <div class="ex exA"><div class="ex-tag"><b>Exhibit A</b>GPS traces, rule R5</div><h2>No truck reached the dump site</h2><p class="sub">The bill implies a ${f.claimedKm.toFixed(1)} km haul to the approved site. All 18 traces stop ${(f.shortOfDumpM / 1000).toFixed(1)} km short.</p>
+    <div class="mapbox"><div id="casemap"></div></div>
+    <div class="facts"><div><b>${f.claimedKm.toFixed(1)} km</b>to the dump site, as billed</div><div class="bad"><b>${(f.shortOfDumpM / 1000).toFixed(1)} km short</b>where every trace ends</div><div class="bad"><b>0 of 18</b>traces enter the dump site</div></div></div>
+  <div class="right-stack">
+    <div class="ex" data-shot="evidence"><div class="ex-tag"><b>Exhibit B</b>Weighbridge slip, rule R8</div><h2>Printed before the truck left the drain</h2>
+      <div class="slipgrid"><div class="slipcard"><div class="hd">Shree Sample Dharamkanta <span>SAMPLE DATA</span></div><dl>${row('ticketNo', 'Ticket', s.ticketNo)}${row('vehicleNo', 'Vehicle', s.vehicleNo)}${row('net', 'Net', s.net.toFixed(2) + ' t')}${row('timeIn', 'Time in', s.timeIn)}${row('timeOut', 'Time out', s.timeOut)}</dl></div>
+      <div class="margin"><b>${f.slipTimeIn}</b>slip time in<br><b style="color:var(--ink);margin-top:8px">${f.leftDrain}</b>truck leaves drain 14</div></div>
+      <div class="ex-tag" style="margin-top:16px"><b>Exhibit C</b>Photo hash, rule R3</div><h2>The after photo is drain 9's</h2>
+      <div class="photos"><figure><div class="fr"><img src="${SP.evidence('d9-after-01.jpg')}" alt="Drain 9 after photo"><span class="t">Simulated photo</span></div><figcaption><b>Drain 9, first filed</b>30 Sep, 15:11</figcaption></figure>
+        <figure><div class="fr bad"><img src="${SP.evidence('d14-after-02.jpg')}" alt="Drain 14 after photo"><span class="t">Simulated photo</span></div><figcaption><b>Drain 14, ${r3.evidence.s3Key.split('/').pop()}</b>${ph.timestamp.slice(8, 10)} Oct, ${ph.timestamp.slice(11, 16)}</figcaption></figure></div>
+      <div class="same">Hash distance ${r3.evidence.hammingDistance} of 64. The same image.</div></div>
+  </div>
+  <div class="decision" id="decision">${decisionHTML()}</div>`
+}
+function decisionHTML() {
+  const amt = SP.rupees(D.drain14.heldTonnes * 1800)
+  const ai = `<div class="ai">${D.drain14.summary.replace('\n', ' ')}<cite>Evidence summary by Amazon Bedrock, from the findings in exhibits A to C</cite></div>`
+  if (state.decision) return `${ai}<div class="sign"><div class="signed"><span class="stampbox land" style="font-size:18px">HELD ${amt}</span><div><span class="signature">Ward Engineer</span><div style="font-size:13px;color:var(--ink-2);margin-top:6px">Signed 8 Oct 2026, 17:42. Bill now holds ₹6.66 lakh.</div></div></div></div>`
+  return `${ai}<div class="sign"><label for="note">Your note on line 14</label><textarea id="note">Every trace stops ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site. Photo is drain 9's.</textarea>
+    <div class="two"><button class="btn btn-stamp" id="hold">Hold ${amt}</button><button class="btn btn-pen" id="approve">Approve, release</button></div></div>`
+}
+function confirmHTML(kind) {
+  const amt = SP.rupees(D.drain14.heldTonnes * 1800)
+  return kind === 'hold'
+    ? `<div class="confirm" role="dialog"><h4>Hold ${amt} on line 14?</h4><p>The contractor is not paid for these ${D.drain14.heldTonnes} t until you release them. Your note and signature go on the bill.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><button class="btn btn-pen" id="cancel">Keep reviewing</button><button class="btn btn-stamp" id="confirm">Sign and hold</button></div></div>`
+    : `<div class="confirm" role="dialog"><h4>Release ${amt} despite three failed checks?</h4><p>Approving overrules exhibits A to C for all ${D.drain14.trips.length} trips.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><button class="btn btn-pen" id="cancel">Keep reviewing</button><button class="btn btn-primary" id="confirm">Sign and release</button></div></div>`
+}
+function wireDecision() {
+  $('#decision').onclick = async (e) => {
+    const id = e.target.closest('button')?.id
+    if (id === 'hold' || id === 'approve') { $('#decision').insertAdjacentHTML('beforeend', confirmHTML(id)); $('#confirm').focus() }
+    if (id === 'cancel') $('.confirm')?.remove()
+    if (id === 'confirm') { const b = $('#confirm'); b.disabled = true; b.textContent = 'Signing…'; await SP.wait(700); state.decision = 'HOLD'; $('#decision').innerHTML = decisionHTML(); renderRows(); toast('Line 14 held and signed. ₹3,45,600 stays with the ward.') }
+  }
+}
+async function openDrain(id, animate) {
+  if (id !== '14') { toast(`This prototype carries the exhibits for line 14. Line ${id} opens the same way.`); return }
+  state.view = 'case'; $('#tipbox').innerHTML = ''
+  if (!animate) $('#app').style.transition = 'none'
+  $('#app').classList.add('case')
+  renderRows()
+  $('#exhibits').innerHTML = exhibitsHTML(); wireDecision()
+  $('#back').onclick = () => (location.search = '?view=verified')
+  const ex = [...document.querySelectorAll('#exhibits > .ex, #exhibits .right-stack > .ex, #exhibits > .decision')]
+  if (animate) ex.forEach((e) => { e.style.opacity = 0; e.style.transform = 'translateY(14px)' })
+  await SP.wait(animate ? 500 : 0)
+  const f = D.facts
+  cmap = new maplibregl.Map({ container: 'casemap', attributionControl: false, interactive: true,
+    style: { version: 8, sources: { ...SP.basemapLayers(D.basemap, C).sources, dump: { type: 'geojson', data: D.dumpsite }, drain: { type: 'geojson', data: { ...D.drains, features: D.drains.features.filter((g) => g.properties.drainId === '14') } },
+      claimed: { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: f.claimedRoute } } },
+      others: { type: 'geojson', data: { type: 'FeatureCollection', features: D.drain14.trips.filter((t) => t !== f.trip).map((t) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: t.actualRoute } })) } },
+      actual: { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [f.trip.actualRoute[0]] } } }, stop: { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Point', coordinates: f.stop } } } },
+      layers: [...SP.basemapLayers(D.basemap, C).layers,
+        { id: 'dump', type: 'fill', source: 'dump', paint: { 'fill-color': C.ink, 'fill-opacity': 0.1 } }, { id: 'dump-l', type: 'line', source: 'dump', paint: { 'line-color': C.ink, 'line-width': 2, 'line-dasharray': [2, 1] } },
+        { id: 'drain', type: 'fill', source: 'drain', paint: { 'fill-color': C.stamp } },
+        { id: 'claimed', type: 'line', source: 'claimed', paint: { 'line-color': C.ink, 'line-width': 2.5, 'line-dasharray': [3, 2] } },
+        { id: 'others', type: 'line', source: 'others', paint: { 'line-color': C.stamp, 'line-width': 1, 'line-opacity': 0 } },
+        { id: 'actual', type: 'line', source: 'actual', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.stamp, 'line-width': 5 } },
+        { id: 'stop', type: 'circle', source: 'stop', paint: { 'circle-radius': 0, 'circle-color': '#fff', 'circle-stroke-color': C.stamp, 'circle-stroke-width': 4 } }] },
+    bounds: SP.bounds([...f.claimedRoute, ...f.trip.actualRoute]), fitBoundsOptions: { padding: 60 } })
+  await new Promise((r) => cmap.on('load', r))
+  const mk = (txt, at, anchor, cls) => { const el = document.createElement('div'); el.className = 'cm-label'; if (cls) el.style.borderColor = cls; el.innerHTML = txt; new maplibregl.Marker({ element: el, anchor, offset: anchor === 'top-left' ? [10, 10] : [-10, -10] }).setLngLat(at).addTo(cmap); return el }
+  for (let i = 0; i < ex.length; i++) { if (animate) { ex[i].style.transition = 'opacity 400ms, transform 400ms'; ex[i].style.opacity = 1; ex[i].style.transform = 'none'; await SP.wait(140) } }
+  await SP.tween(animate ? 2200 : 0, (p) => cmap.getSource('actual').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: SP.slice(f.trip.actualRoute, p) } }), SP.ease.inOut)
+  cmap.setPaintProperty('others', 'line-opacity', 0.4); cmap.setPaintProperty('stop', 'circle-radius', 8)
+  mk('<b>Approved dump site</b>', f.dump, 'bottom-right')
+  mk(`<b style="color:var(--stamp)">Every trace ends here</b>`, f.stop, 'top-left', C.stamp)
+  mk('<b>Drain 14</b>', f.claimedRoute[0], 'top-left')
+  window.__caseReady = true
+}
+
+function systemHTML() {
+  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h1 style="margin:0;font-size:44px;font-weight:800;font-stretch:75%">The Docket, components and states</h1><span class="sim">Simulated data</span></div>
+  <div class="sys-grid sys">
+    <div class="col"><h3>Colour, exceptions only</h3><div class="sw">${[['Desk', '#DADDE0'], ['Paper', '#FFFFFF'], ['Ink', '#1A1D21'], ['Rule', '#D5D8DC'], ['Stamp: held', '#C8321E'], ['Review', '#B0730F'], ['Pen: you', '#2340A8'], ['Wash', '#FBE9E5']].map(([n, c]) => `<div style="background:${c};color:${['#1A1D21', '#C8321E', '#B0730F', '#2340A8'].includes(c) ? '#fff' : '#1A1D21'}">${n}<br>${c}</div>`).join('')}</div>
+      <span class="lab">A passed line stays black ink with a tick. Colour means something needs a person.</span>
+      <h3 style="margin-top:8px">Type</h3><div style="font-size:72px;font-weight:800;font-stretch:75%;color:var(--stamp);line-height:.9">₹6.66 lakh</div><span class="lab">Archivo, one family. Condensed 75% for money and titles, normal width for reading.</span></div>
+    <div class="col"><h3>Primary action</h3>
+      <div style="background:var(--ink);padding:18px;display:flex;flex-direction:column;gap:14px;align-items:flex-start;width:100%">
+      <button class="btn btn-primary">Check the bill</button><span class="lab" style="color:#C9CDD2">Default: offset blue shadow, a raised block</span>
+      <button class="btn btn-primary is-hover">Check the bill</button><span class="lab" style="color:#C9CDD2">Hover: lifts further</span>
+      <button class="btn btn-primary is-press">Check the bill</button><span class="lab" style="color:#C9CDD2">Pressed: sits flat into its shadow</span>
+      <button class="btn is-running" style="width:300px"><span>Line 9 of 18, 51 trips</span><span class="progress" style="transform:scaleX(.5)"></span></button><span class="lab" style="color:#C9CDD2">Running, while the audit line walks the bill</span>
+      <button class="btn btn-primary" disabled>Check the bill</button><span class="lab" style="color:#C9CDD2">Disabled while the bill loads</span></div></div>
+    <div class="col"><h3>Marks on a line</h3>
+      <span class="tick" style="color:var(--ink-3)">Not checked</span><span class="lab">Before the check</span>
+      <span class="tick"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7.5" fill="none" stroke="#1A1D21" stroke-width="2"/></svg>All checks pass</span><span class="lab">Passed: ink, no colour</span>
+      <span class="stampbox rv">REVIEW 55 t</span><span class="lab">Soft fail: dashed amber, waiting on you</span>
+      <span class="stampbox">HELD ₹2,26,800</span><span class="lab">Hard fail: stamped with the amount, lands with a small bounce</span>
+      <div class="signed"><span class="stampbox" style="font-size:16px">HELD ₹3,45,600</span><span class="signature">Ward Engineer</span></div><span class="lab">Signed by the engineer: ballpoint blue</span>
+      <span class="strip">${'<i class="ok"></i>'.repeat(4)}<i class="rv"></i></span><span class="lab">Trip strip: one bar per trip</span></div>
+    <div class="col" style="position:relative"><h3>Decisions</h3>
+      <div style="display:flex;gap:12px"><button class="btn btn-stamp">Hold ₹3,45,600</button><button class="btn btn-pen">Approve, release</button></div><span class="lab">Default</span>
+      <div style="display:flex;gap:12px"><button class="btn btn-stamp is-hover">Hold ₹3,45,600</button><button class="btn btn-pen is-hover">Approve, release</button></div><span class="lab">Hover</span>
+      <div style="display:flex;gap:12px"><button class="btn btn-stamp" disabled>Hold ₹3,45,600</button><button class="btn btn-pen" disabled>Approve, release</button></div><span class="lab">Disabled before the check</span></div>
+    <div class="col" style="position:relative;padding-top:250px"><div class="decision" style="grid-template-columns:1fr;box-shadow:none;border:1px solid var(--rule);width:100%">${confirmHTML('hold')}<div class="sign" style="border:0;padding:0"><div class="two" style="opacity:.3"><button class="btn btn-stamp">Hold</button><button class="btn btn-pen">Approve</button></div></div></div><span class="lab">Confirmation names the amount, the consequence and the signature</span></div>
+    <div class="col"><h3>Loading and gaps</h3><div class="sk" style="width:100%"></div><div class="sk" style="width:70%"></div><span class="lab">Exhibits while a line loads</span>
+      <div style="border-left:4px solid var(--review);background:var(--review-wash);padding:8px 12px">2 trips have no slip yet. They are in review, not held.</div>
+      <div style="border-left:4px solid var(--stamp);background:var(--stamp-wash);padding:8px 12px">Could not reach the bill service. Showing the last saved snapshot. Try again.</div></div>
+  </div>`
+}
+
+;(async () => {
+  D = await SP.load()
+  const view = SP.params.get('view') ?? 'pre'
+  if (view === 'system') { $('#system').innerHTML = systemHTML(); $('#system').classList.add('on'); window.__ready = true; return }
+  $('#billhead').innerHTML = billHeadHTML()
+  renderRows()
+  $('#totals').innerHTML = totalsHTML(D.pending.summary, false)
+  $('#act').innerHTML = actHTML(); $('#platecap').innerHTML = plateCap(); $('#platekey').innerHTML = plateKey()
+  const base = SP.basemapLayers(D.basemap, C)
+  map = new maplibregl.Map({ container: 'map', attributionControl: false,
+    style: { version: 8, sources: { ...base.sources, drains: { type: 'geojson', data: drainFC() }, labels: { type: 'geojson', data: labelFC() } }, layers: [...base.layers,
+      { id: 'drain-halo', type: 'line', source: 'drains', paint: { 'line-color': C.pen, 'line-width': ['case', ['==', ['get', 'h'], 1], 6, 0], 'line-offset': -2 } },
+      { id: 'drain-fill', type: 'fill', source: 'drains', paint: { 'fill-color': ['match', ['get', 'v'], 'RED', C.stamp, 'AMBER', '#F4DFB5', 'GREEN', C.ink, '#B9BEC4'] } },
+      { id: 'drain-line', type: 'line', source: 'drains', paint: { 'line-color': ['match', ['get', 'v'], 'RED', C.stamp, 'AMBER', C.review, 'GREEN', C.ink, C.pend], 'line-width': 2, 'line-dasharray': ['match', ['get', 'v'], 'AMBER', ['literal', [2, 1]], ['literal', [1, 0]]] } },
+      { id: 'pin', type: 'circle', source: 'labels', paint: { 'circle-radius': ['case', ['==', ['get', 'h'], 1], 15, 12], 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': ['match', ['get', 'v'], 'RED', C.stamp, 'AMBER', C.review, 'GREEN', C.ink, C.pend], 'circle-translate': [0, -22] } },
+    ] },
+    bounds: SP.drainBounds(D.drains), fitBoundsOptions: { padding: { top: 120, bottom: 80, left: 60, right: 60 } } })
+  await new Promise((r) => map.on('load', r))
+  // number labels as DOM, so they use the page's type without a glyph server
+  for (const f of D.drains.features) {
+    const el = document.createElement('div'); el.textContent = f.properties.drainId; el.dataset.drain = f.properties.drainId
+    el.style.cssText = 'font:700 13px Archivo;color:#1A1D21;cursor:pointer'
+    new maplibregl.Marker({ element: el, offset: [0, -22] }).setLngLat(f.properties.centroid).addTo(map)
+  }
+  document.addEventListener('mouseover', (e) => { const id = e.target.closest('[data-drain]')?.dataset.drain ?? null; if (id !== state.hover && state.view !== 'case') setHover(id) })
+  document.addEventListener('click', (e) => { const t = e.target.closest('[data-drain]'); if (t && state.view !== 'case') openDrain(t.dataset.drain, true) })
+  $('#act').onclick = (e) => { if (e.target.closest('#verify')) runVerification() }
+  if (view === 'verified' || view === 'drain14') enterVerified()
+  if (view === 'drain14') await openDrain('14', false)
+  if (SP.params.get('hover')) setHover(SP.params.get('hover'))
+  if (SP.params.get('confirm')) $('#decision').insertAdjacentHTML('beforeend', confirmHTML(SP.params.get('confirm')))
+  if (SP.params.get('decided')) { state.decision = 'HOLD'; $('#decision').innerHTML = decisionHTML(); renderRows() }
+  await SP.mapReady(map); if (cmap) await SP.mapReady(cmap)
+  window.__ready = true
+  // ?wait=1 holds the motion until the recorder says go, so a capture starts on a drawn frame
+  if (SP.params.get('wait')) await new Promise((r) => (window.__go = r))
+  if (SP.params.get('play') === 'scan') { await SP.wait(500); await runVerification(); window.__done = true }
+  if (SP.params.get('play') === 'open14') { await SP.wait(500); await openDrain('14', true); window.__done = true }
+})()
+</script>
+</body>
+</html>

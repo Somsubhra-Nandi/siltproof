@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiltProof · Survey Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="../shared/sp.js"></script>
+<style>
+/* Direction A: Survey Sheet.
+   The map is a surveyed sheet with a neatline and graticule; the left sheet is
+   the engineer's working paper laid over it. One boldness: the held figure. */
+:root {
+  --ground: #E3DED2;      /* limestone: map land */
+  --sheet: #F2EFE7;       /* working paper */
+  --sheet-2: #E9E5DA;     /* recessed paper */
+  --ink: #1C2A38;         /* survey ink, blue-black */
+  --ink-2: #4E5A64;       /* secondary text */
+  --ink-3: #7D868B;       /* tertiary, rules */
+  --rule: #CFC9BB;
+  --water: #AEC0C3;
+  --prussian: #1F4D78;    /* the one interactive colour */
+  --prussian-press: #163A5B;
+  --verified: #39684F;
+  --review: #A6731E;
+  --held: #8E2424;        /* madder */
+  --held-wash: #F1DFDA;
+  --serif: 'Newsreader', Georgia, serif;
+  --sans: 'Instrument Sans', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--ground); color: var(--ink); font: 400 16px/1.45 var(--sans);
+  font-variant-numeric: tabular-nums lining-nums; -webkit-font-smoothing: antialiased; overflow: hidden;
+}
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+
+.app {
+  height: 100vh; display: grid; grid-template-columns: 480px 1fr 0px;
+  transition: grid-template-columns 700ms cubic-bezier(.2,.7,.1,1);
+}
+.app.case { grid-template-columns: 480px 1fr 560px; }
+
+/* ---------- the working sheet (left) */
+.sheet {
+  background: var(--sheet); position: relative; z-index: 3; display: flex; flex-direction: column;
+  box-shadow: 1px 0 0 var(--rule), 12px 0 32px -18px rgba(40,32,20,.35); min-height: 0;
+}
+.masthead { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 32px 14px; border-bottom: 1px solid var(--rule); }
+.wordmark { font: 600 26px/1 var(--serif); letter-spacing: -.01em; }
+.wordmark i { font-weight: 400; color: var(--ink-2); }
+.sim {
+  font: 600 13px/1 var(--sans); color: var(--ink); padding: 6px 10px; border-radius: 4px;
+  background: repeating-linear-gradient(-45deg, #E6DFC9 0 6px, #EFE9D6 6px 12px); border: 1px solid #CDBF95;
+}
+.bill-meta { padding: 16px 32px 0; color: var(--ink-2); font-size: 15px; }
+.bill-meta strong { color: var(--ink); font-weight: 600; }
+
+.figure { padding: 12px 32px 20px; }
+.figure .amount { font: 500 80px/0.95 var(--serif); letter-spacing: -.035em; margin: 6px 0 10px; font-variation-settings: 'opsz' 72; }
+.figure .amount small { font-size: .42em; letter-spacing: -.01em; margin-left: .12em; font-weight: 400; }
+.figure.held .amount { color: var(--held); }
+.figure .caption { font: 400 18px/1.38 var(--serif); color: var(--ink); max-width: 30ch; margin: 0; }
+.figure .caption em { font-style: italic; }
+
+/* the ledger bar: one bar, 1,240 t, three honest segments */
+.ledger { padding: 4px 32px 18px; }
+.bar { height: 14px; display: flex; background: var(--sheet-2); border-radius: 2px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--rule); }
+.bar span { height: 100%; transition: width 300ms linear; }
+.bar .v { background: var(--verified); }
+.bar .r { background: repeating-linear-gradient(-45deg, var(--review) 0 3px, #C99A4E 3px 6px); }
+.bar .h { background: var(--held); }
+.bar-keys { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
+.bar-keys div { border-top: 3px solid; padding-top: 8px; }
+.bar-keys .v { border-color: var(--verified); }
+.bar-keys .r { border-color: var(--review); }
+.bar-keys .h { border-color: var(--held); }
+.bar-keys b { display: block; font: 500 24px/1.1 var(--serif); }
+.bar-keys span { display: block; color: var(--ink-2); font-size: 14px; }
+
+/* the primary control */
+.actions { padding: 0 32px 18px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 22px;
+  border-radius: 6px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: 16px; white-space: nowrap;
+  transition: background 150ms, box-shadow 150ms, transform 80ms;
+}
+.btn-primary { background: var(--prussian); color: #F6F3EC; box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 2px 0 var(--prussian-press), 0 6px 14px -6px rgba(31,77,120,.6); }
+.btn-primary:hover, .btn-primary.is-hover { background: #245A8B; }
+.btn-primary:active, .btn-primary.is-press { transform: translateY(2px); box-shadow: 0 0 0 var(--prussian-press), 0 2px 6px -4px rgba(31,77,120,.6); }
+.btn-quiet { background: transparent; border-color: var(--ink-3); color: var(--ink); }
+.btn-quiet:hover, .btn-quiet.is-hover { background: var(--sheet-2); border-color: var(--ink); }
+.btn-held { background: var(--held); color: #FBF3F0; box-shadow: 0 2px 0 #651616, 0 6px 14px -6px rgba(142,36,36,.6); }
+.btn-held:hover, .btn-held.is-hover { background: #9E2D2B; }
+.btn-held:active { transform: translateY(2px); box-shadow: none; }
+.btn[disabled], .btn.is-disabled { background: var(--sheet-2); color: var(--ink-3); border-color: var(--rule); box-shadow: none; cursor: not-allowed; transform: none; }
+.btn.wide { width: 100%; }
+.btn .progress { position: absolute; inset: auto 0 0 0; height: 4px; background: rgba(255,255,255,.35); transform-origin: left; }
+.btn.is-running { position: relative; overflow: hidden; background: var(--prussian-press); cursor: progress; }
+.hint { color: var(--ink-2); font-size: 14px; margin: 10px 2px 0; }
+
+/* the drain register */
+.register { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--rule); padding: 6px 0 12px; }
+.register h2 { font: 600 15px/1 var(--sans); color: var(--ink-2); margin: 14px 32px 6px; display: flex; justify-content: space-between; }
+.row {
+  display: grid; grid-template-columns: 40px 1fr auto; gap: 4px 12px; align-items: baseline; width: 100%;
+  padding: 7px 32px; border: 0; background: none; text-align: left; cursor: pointer; border-left: 4px solid transparent;
+}
+.row:hover, .row.is-hover { background: var(--sheet-2); border-left-color: var(--prussian); }
+.row .no { font: 500 22px/1 var(--serif); color: var(--ink-2); }
+.row .name { font-weight: 600; font-size: 15px; }
+.row .val { font: 500 18px/1 var(--serif); text-align: right; }
+.row .why { grid-column: 2 / 4; color: var(--ink-2); font-size: 14px; line-height: 1.35; }
+.row.held .no, .row.held .val { color: var(--held); }
+.row.review .no, .row.review .val { color: var(--review); }
+.row.compact { padding-block: 5px; }
+.row.compact .name { font-weight: 400; }
+.row .state { color: var(--ink-3); font-size: 14px; }
+.row.flash { animation: flash 900ms ease-out; }
+@keyframes flash { from { background: #E7DDC4; } to { background: transparent; } }
+
+/* ---------- the survey sheet (map) */
+.plate { position: relative; min-width: 0; padding: 28px 30px 30px; }
+.neat { position: absolute; inset: 28px 30px 30px; border: 1.5px solid var(--ink); box-shadow: 0 0 0 5px var(--ground), 0 0 0 6px var(--ink-3); }
+#map { position: absolute; inset: 28px 30px 30px; }
+.ticks { position: absolute; inset: 28px 30px 30px; pointer-events: none; z-index: 2; }
+.tick { position: absolute; font: 400 12px/1 var(--sans); color: var(--ink-2); white-space: nowrap; }
+.tick::before { content: ''; position: absolute; background: var(--ink); }
+.tick.top { top: -20px; transform: translateX(-50%); }
+.tick.top::before { left: 50%; top: 14px; width: 1px; height: 12px; }
+.tick.left { left: -26px; transform: translateY(-50%) rotate(-90deg); transform-origin: center; }
+.tick.left::before { display: none; }
+.titleblock {
+  position: absolute; right: 54px; bottom: 54px; z-index: 3; width: 330px; background: var(--sheet); border: 1.5px solid var(--ink);
+  padding: 14px 16px 12px; font-size: 14px; box-shadow: 4px 4px 0 rgba(28,42,56,.12);
+}
+.titleblock h3 { font: 600 17px/1.2 var(--serif); margin: 0 0 8px; }
+.legend { display: grid; grid-template-columns: 34px 1fr; gap: 6px 10px; align-items: center; color: var(--ink-2); }
+.legend svg { display: block; }
+.scale { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); color: var(--ink-2); }
+.scale i { display: block; height: 6px; border: 1.5px solid var(--ink); border-top: 0; }
+.north { position: absolute; left: 54px; top: 52px; z-index: 3; width: 44px; text-align: center; font: 600 14px/1 var(--serif); }
+
+/* ring symbols: area is tonnes billed */
+.ring { cursor: pointer; }
+.ring text { font: 600 13px var(--sans); fill: var(--ink); }
+.ring.is-hover circle.halo { stroke: var(--prussian); stroke-width: 3; }
+.maptip {
+  position: absolute; z-index: 4; pointer-events: none; background: var(--sheet); border: 1px solid var(--ink); padding: 10px 12px;
+  width: 280px; font-size: 14px; box-shadow: 4px 4px 0 rgba(28,42,56,.14); transform: translate(18px, -50%);
+}
+.maptip b { font: 600 16px/1.2 var(--serif); display: block; }
+.maptip .money { font: 500 20px/1.2 var(--serif); color: var(--held); }
+.offmap { position: absolute; z-index: 3; display: flex; align-items: center; gap: 8px; font-size: 14px; background: var(--sheet); border: 1px solid var(--ink-3); padding: 6px 10px; border-radius: 3px; white-space: nowrap; }
+
+/* the sweep */
+.sweep { position: absolute; left: 30px; right: 30px; height: 2px; background: var(--prussian); z-index: 2; pointer-events: none; opacity: 0; box-shadow: 0 0 0 1px rgba(242,239,231,.6); }
+.sweep::after { content: ''; position: absolute; left: 0; right: 0; bottom: 2px; height: 90px; background: linear-gradient(to top, rgba(31,77,120,.14), transparent); }
+.sweep-label { position: absolute; right: 8px; top: 6px; font: 600 13px/1 var(--sans); color: var(--prussian); background: var(--sheet); padding: 4px 6px; }
+
+/* ---------- case file (drain 14) */
+.case-head { padding: 18px 32px 10px; }
+.back { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 6px 0; cursor: pointer; color: var(--prussian); font-weight: 600; }
+.back:hover { text-decoration: underline; }
+.case-head h1 { font: 500 52px/1 var(--serif); letter-spacing: -.02em; margin: 8px 0 4px; }
+.case-head .dims { color: var(--ink-2); font-size: 15px; }
+.findings { list-style: none; margin: 0; padding: 0 32px; }
+.findings li { display: grid; grid-template-columns: 40px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.findings .rid { font: 600 14px/1.6 var(--sans); color: var(--held); }
+.findings p { margin: 0; font: 400 17px/1.35 var(--serif); }
+.findings small { display: block; color: var(--ink-2); font-size: 13px; margin-top: 3px; }
+.summary { margin: 12px 32px 0; padding: 12px 14px; background: var(--sheet-2); border-left: 3px solid var(--ink); font: italic 400 17px/1.4 var(--serif); }
+.summary cite { display: block; font: normal 400 13px/1.3 var(--sans); color: var(--ink-2); margin-top: 6px; }
+.decide { margin-top: auto; padding: 16px 32px 22px; border-top: 1px solid var(--rule); background: var(--sheet); position: relative; }
+.decide label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
+.decide textarea { width: 100%; min-height: 54px; resize: none; border: 1px solid var(--ink-3); border-radius: 4px; background: #FBFAF6; padding: 8px 10px; font-size: 15px; }
+.decide textarea:focus { outline: 3px solid var(--prussian); outline-offset: 0; border-color: var(--prussian); }
+.decide .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.confirm {
+  position: absolute; left: 24px; right: 24px; bottom: calc(100% - 8px); background: #FBFAF6; border: 1.5px solid var(--ink);
+  padding: 18px 18px 16px; box-shadow: 6px 6px 0 rgba(28,42,56,.16); animation: rise 220ms cubic-bezier(.2,.7,.1,1);
+}
+.confirm h4 { font: 500 24px/1.15 var(--serif); margin: 0 0 6px; }
+.confirm p { margin: 0 0 12px; color: var(--ink-2); font-size: 15px; }
+.confirm .two { margin-top: 0; grid-template-columns: 1fr 1.3fr; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.decided { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; }
+.stamp { border: 2.5px solid var(--held); color: var(--held); font: 600 18px/1 var(--serif); padding: 8px 12px; transform: rotate(-2deg); animation: stamp 260ms cubic-bezier(.3,1.6,.5,1); }
+@keyframes stamp { from { transform: rotate(-2deg) scale(1.6); opacity: 0; } }
+
+.evidence { background: var(--sheet); overflow: hidden; position: relative; z-index: 3; box-shadow: -1px 0 0 var(--rule), -12px 0 32px -18px rgba(40,32,20,.35); }
+.evidence .inner { width: 560px; padding: 22px 28px; display: flex; flex-direction: column; gap: 16px; height: 100%; }
+.evidence h2 { font: 600 20px/1.2 var(--serif); margin: 0 0 4px; }
+.evidence .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 10px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pair figure { margin: 0; }
+.pair .frame { position: relative; border: 1px solid var(--ink-3); background: var(--sheet-2); padding: 5px; }
+.pair img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+.pair .frame.reused { border: 2px solid var(--held); }
+.pair figcaption { font-size: 14px; margin-top: 6px; line-height: 1.3; }
+.pair figcaption b { display: block; }
+.pair figcaption span { color: var(--ink-2); }
+.tag-sim { position: absolute; left: 10px; bottom: 10px; background: rgba(28,42,56,.85); color: #F2EFE7; font-size: 12px; font-weight: 600; padding: 3px 7px; border-radius: 2px; }
+.match { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 12px; background: var(--held-wash); color: var(--held); font-weight: 600; font-size: 15px; }
+
+.slip { display: grid; grid-template-columns: 1fr 190px; gap: 14px; }
+.slip-paper { background: #FCFBF7; border: 1px solid var(--ink-3); padding: 12px 14px; font-size: 14px; box-shadow: 2px 3px 0 rgba(28,42,56,.08); position: relative; }
+.slip-paper .hd { text-align: left; padding-left: 8px; font-weight: 600; border: 1.5px solid var(--ink); padding: 4px; margin-bottom: 8px; font-size: 13px; }
+.slip-paper .sample { position: absolute; right: 18px; top: 17px; background: #FCFBF7; color: #9A2B2B; border: 1px solid #9A2B2B; font-size: 11px; padding: 1px 5px; }
+.slip-paper dl { display: grid; grid-template-columns: 78px 1fr auto; margin: 0; row-gap: 3px; column-gap: 8px; align-items: baseline; }
+.slip-paper dt { color: var(--ink-2); font-size: 13px; }
+.slip-paper dd { margin: 0; font-weight: 500; }
+.slip-paper .conf { color: var(--ink-3); font-size: 12px; }
+.slip-paper .hit { background: var(--held-wash); outline: 2px solid var(--held); outline-offset: 1px; color: var(--held); font-weight: 700; }
+.slip-note { font: 400 16px/1.35 var(--serif); border-left: 2px solid var(--held); padding-left: 12px; align-self: center; }
+.slip-note b { font-family: var(--sans); color: var(--held); display: block; font-size: 24px; margin-bottom: 4px; }
+.seen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.seen figure { margin: 0; font-size: 13px; line-height: 1.3; }
+.seen img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; border: 1px solid var(--ink-3); }
+.seen b { display: block; font-weight: 600; margin-top: 4px; }
+.seen em { display: block; font-style: normal; color: var(--held); font-weight: 600; }
+.trips { display: grid; grid-template-columns: repeat(18, 1fr); gap: 4px; }
+.trips i { height: 22px; background: var(--held); display: block; border-radius: 1px; }
+.trips-cap { display: flex; justify-content: space-between; color: var(--ink-2); font-size: 14px; margin-top: 6px; }
+
+/* timeline under the case map */
+.timeline { position: absolute; left: 54px; right: 54px; bottom: 54px; padding-right: 40px; z-index: 3; background: var(--sheet); border: 1.5px solid var(--ink); padding: 12px 18px 14px; display: none; box-shadow: 4px 4px 0 rgba(28,42,56,.12); }
+.case .timeline { display: block; }
+.case .titleblock { bottom: auto; top: 52px; right: auto; left: 110px; width: 300px; }
+.lane { display: grid; grid-template-columns: 128px 1fr; align-items: center; height: 40px; }
+.tl-ev.end { padding: 0 14px 0 0; }
+.tl-ev.end b { margin: 0 0 0 6px; }
+.tl-ev.end::after { left: auto; right: -6px; }
+.lane-name { font-size: 14px; color: var(--ink-2); }
+.lane-axis { position: relative; height: 40px; border-bottom: 1px solid var(--rule); }
+.lane-axis.gap { border: 0; height: 26px; }
+.lane-axis.gap span { position: absolute; left: var(--a); width: calc(var(--b) - var(--a)); top: 2px; border-top: 2px solid var(--held); color: var(--held); font-size: 13px; font-weight: 600; padding-top: 3px; white-space: nowrap; }
+
+.tl-ev { position: absolute; bottom: -6px; padding-left: 14px; font-size: 13px; color: var(--ink-2); line-height: 1.1; white-space: nowrap; opacity: 0; transition: opacity 300ms; }
+.tl-ev.on { opacity: 1; }
+.tl-ev b { font: 600 17px/1 var(--serif); color: var(--ink); margin-right: 6px; }
+.tl-ev::after { content: ''; position: absolute; left: -5px; bottom: 0; width: 11px; height: 11px; border-radius: 50%; background: var(--ink); border: 2px solid var(--sheet); }
+.tl-ev.bad b { color: var(--held); }
+.tl-ev.bad::after { background: var(--held); }
+.tl-title { display: flex; justify-content: space-between; font-weight: 600; font-size: 14px; }
+.tl-title span { font-weight: 400; color: var(--ink-2); }
+.callout { z-index: 3; opacity: 0; transition: opacity 400ms; }
+.callout div { background: var(--held); color: #FBF3F0; padding: 8px 12px; font: 500 16px/1.3 var(--serif); width: 230px; box-shadow: 3px 3px 0 rgba(28,42,56,.15); }
+.callout.on { opacity: 1; }
+.callout.flip { transform: translate(calc(-100% + 20px), calc(-100% - 22px)); }
+.callout.flip::after { left: calc(100% - 20px); }
+
+
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 12px 18px; border-radius: 4px; z-index: 20; font-size: 15px; display: none; }
+
+/* ---------- component sheet */
+.system { position: fixed; inset: 0; background: var(--sheet); z-index: 50; overflow: auto; padding: 40px 56px; display: none; }
+.system.on { display: block; }
+.sys-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 48px; }
+.sys h3 { font: 600 20px/1.2 var(--serif); margin: 0 0 12px; }
+.sys .col { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.sys .lab { color: var(--ink-2); font-size: 13px; margin-top: -6px; }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+.swatches div { height: 64px; border: 1px solid var(--rule); display: flex; align-items: flex-end; padding: 6px; font-size: 12px; }
+.skeleton { width: 360px; height: 16px; background: linear-gradient(90deg, var(--sheet-2) 0, #F6F3EC 40%, var(--sheet-2) 80%); background-size: 200% 100%; animation: sk 1.4s linear infinite; border-radius: 2px; }
+@keyframes sk { to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sheet" id="sheet"></aside>
+  <main class="plate" id="plate">
+    <div class="neat"></div>
+    <div id="map" role="img" aria-label="Map of the ward's drains"></div>
+    <div class="ticks" id="ticks"></div>
+    <div class="sweep" id="sweep"><span class="sweep-label">Checking</span></div>
+    <div class="north" aria-hidden="true"><svg width="28" height="40" viewBox="0 0 28 40"><path d="M14 2 L24 34 L14 27 L4 34 Z" fill="none" stroke="#1C2A38" stroke-width="1.5"/><path d="M14 2 L14 27 L4 34 Z" fill="#1C2A38"/></svg><div>N</div></div>
+    <div class="titleblock" id="titleblock"></div>
+    <div class="timeline" id="timeline"></div>
+    <div id="overlays"></div>
+  </main>
+  <aside class="evidence" id="evidence" aria-label="Evidence"></aside>
+</div>
+<div class="toast" id="toast"></div>
+<section class="system" id="system"></section>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s)
+const C = { ground: '#E3DED2', water: '#AEC0C3', minor: '#F4F1EA', major: '#FBF8F1', ink: '#1C2A38', verified: '#39684F', review: '#A6731E', held: '#8E2424', pending: '#7D868B' }
+const verdictColour = (v) => ({ GREEN: C.verified, AMBER: C.review, RED: C.held }[v] ?? C.pending)
+
+let D, map, state = { view: 'pre', revealed: new Set(), bill: null, decision: null, hover: null }
+const rings = {}
+
+function ringSVG(d, revealed) {
+  // Area, not radius, carries tonnes: r = k * sqrt(t)
+  const r = 6 + 2.1 * Math.sqrt(d.claimedTonnes), w = 5, size = (r + 4) * 2, c = size / 2
+  const circ = 2 * Math.PI * (r - w / 2)
+  let segs = ''
+  if (revealed) {
+    let off = 0
+    for (const [t, col] of [[d.verifiedTonnes, C.verified], [d.reviewTonnes, C.review], [d.heldTonnes, C.held]]) {
+      if (!t) continue
+      const len = (t / d.claimedTonnes) * circ
+      segs += `<circle cx="${c}" cy="${c}" r="${r - w / 2}" fill="none" stroke="${col}" stroke-width="${w}" stroke-dasharray="${len} ${circ}" stroke-dashoffset="${-off}" transform="rotate(-90 ${c} ${c})"/>`
+      off += len
+    }
+  } else {
+    segs = `<circle cx="${c}" cy="${c}" r="${r - w / 2}" fill="none" stroke="${C.pending}" stroke-width="${w}" stroke-dasharray="3 2"/>`
+  }
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle class="halo" cx="${c}" cy="${c}" r="${r + 1}" fill="#F2EFE7" stroke="none"/>${segs}
+    <text x="${c}" y="${c + 4.5}" text-anchor="middle">${d.drainId}</text></svg>`
+}
+
+function sheetPre() {
+  const s = D.bill.summary
+  return `
+  <header class="masthead"><span class="wordmark">SiltProof <i>ward bill check</i></span><span class="sim" title="Slips, GPS traces and the bill are simulated. Photos are placeholders until the photo shoot.">Simulated data</span></header>
+  <p class="bill-meta"><strong>Bill B1</strong>, drain desilting, 21 Sep to 4 Oct 2026<br>${D.bill.contractor}</p>
+  <div class="figure"><div class="amount" id="amount">₹${SP.lakh(s.claimedRupees)}<small>lakh</small></div>
+    <p class="caption" id="caption">claimed for <em>${SP.tonnes(s.claimedTonnes)}</em> of silt from ${s.drainCount} drains, at ₹${SP.num(s.ratePerTonne)} a tonne.</p></div>
+  <div class="ledger" id="ledger" hidden></div>
+  <div class="actions">
+    <button class="btn btn-primary wide" id="verify">Check all ${D.drain14 ? 117 : ''} trips against the evidence</button>
+    <p class="hint" id="hint">Runs ten rules over slips, GPS traces and photos that Textract and Bedrock read when they were uploaded. About a second.</p>
+  </div>
+  <div class="register" id="register"></div>`
+}
+
+function registerHTML(bill, revealed) {
+  const rows = bill.drains.map((d) => ({ ...d, shown: revealed.has(d.drainId) }))
+  const verified = bill.status === 'VERIFIED' && revealed.size === rows.length
+  if (!verified) {
+    return `<h2><span>18 drains on this bill</span><span>tonnes billed</span></h2>` + rows.map((d) => {
+      const cls = d.shown ? { RED: 'held', AMBER: 'review' }[d.verdict] ?? '' : ''
+      const state = d.shown ? ({ RED: 'Held', AMBER: 'In review', GREEN: 'Clear' }[d.verdict]) : 'Not checked'
+      return `<button class="row compact ${cls}" data-drain="${d.drainId}"><span class="no">${d.drainId}</span><span class="name">${d.name} <span class="state">${state}</span></span><span class="val">${d.claimedTonnes} t</span></button>`
+    }).join('')
+  }
+  const flagged = rows.filter((d) => d.verdict !== 'GREEN').sort((a, b) => b.heldTonnes - a.heldTonnes || b.reviewTonnes - a.reviewTonnes)
+  const clear = rows.filter((d) => d.verdict === 'GREEN')
+  const clearT = clear.reduce((a, d) => a + d.claimedTonnes, 0)
+  return `<h2><span>Needs your decision</span><span>amount</span></h2>` + flagged.map((d) => {
+    const held = d.verdict === 'RED'
+    const amt = held ? d.heldTonnes * 1800 : d.reviewTonnes * 1800
+    const dec = state.decision && d.drainId === '14' ? ' (you held it)' : ''
+    return `<button class="row ${held ? 'held' : 'review'}" data-drain="${d.drainId}"><span class="no">${d.drainId}</span><span class="name">${held ? 'Held' : 'In review'}: ${d.heldTonnes || d.reviewTonnes} of ${d.claimedTonnes} t${dec}</span><span class="val">₹${SP.lakh(amt)} L</span><span class="why">${SP.reason(D.findings, d.drainId)}</span></button>`
+  }).join('') + `<h2 style="margin-top:18px"><span>${clear.length} drains clear every check</span><span>${SP.tonnes(clearT)}</span></h2>
+  <div style="padding:0 32px;color:var(--ink-2);font-size:14px">${clear.map((d) => d.drainId).join(', ')}</div>`
+}
+
+function renderLedger(s) {
+  const pct = (t) => (100 * t) / s.claimedTonnes + '%'
+  $('#ledger').hidden = false
+  $('#ledger').innerHTML = `
+    <div class="bar" role="img" aria-label="${s.verifiedTonnes} t verified, ${s.reviewTonnes} t in review, ${s.heldTonnes} t held, of ${s.claimedTonnes} t claimed">
+      <span class="v" style="width:${pct(s.verifiedTonnes)}"></span><span class="r" style="width:${pct(s.reviewTonnes)}"></span><span class="h" style="width:${pct(s.heldTonnes)}"></span></div>
+    <div class="bar-keys">
+      <div class="v"><b>${SP.tonnes(s.verifiedTonnes)}</b><span>verified, ₹${SP.lakh(s.verifiedRupees)} lakh payable</span></div>
+      <div class="r"><b>${SP.tonnes(s.reviewTonnes)}</b><span>for you to review, ₹${SP.lakh(s.reviewRupees)} lakh</span></div>
+      <div class="h"><b>${SP.tonnes(s.heldTonnes)}</b><span>held, ₹${SP.lakh(s.heldRupees)} lakh</span></div>
+    </div>`
+}
+
+function setVerifiedSheet(s, live = true) {
+  const fig = $('.figure')
+  fig.classList.add('held')
+  $('#amount').innerHTML = `₹${SP.lakh(s.heldRupees)}<small>lakh</small>`
+  $('#caption').innerHTML = `held. <em>${SP.tonnes(s.heldTonnes)}</em> of the ${SP.tonnes(s.claimedTonnes)} billed has evidence that contradicts the bill, across ${s.red} drains.`
+  renderLedger(s)
+  const b = $('#verify')
+  b.className = 'btn btn-quiet wide'; b.textContent = 'Run the checks again'; b.disabled = false
+  $('#hint').textContent = `Checked 117 trips in ${D.bill.verificationMs} ms. Approving the two review drains moves 65 t to verified.`
+}
+
+function titleblockOverview() {
+  const pend = state.view === 'pre'
+  return `<h3>${pend ? 'Drains on this bill, not yet checked' : 'Drains by what the evidence supports'}</h3>
+  <div class="legend">
+    <svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#7D868B" stroke-width="5" stroke-dasharray="3 2"/></svg><span>Ring area is tonnes billed, ${tRange()}.</span>
+    ${pend ? '' : `<svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="${C.verified}" stroke-width="5" stroke-dasharray="50 100" transform="rotate(-90 17 17)"/><circle cx="17" cy="17" r="13" fill="none" stroke="${C.held}" stroke-width="5" stroke-dasharray="32 100" stroke-dashoffset="-50" transform="rotate(-90 17 17)"/></svg><span>Ring colour is the share <b style="color:${C.verified}">verified</b>, <b style="color:${C.review}">in review</b> or <b style="color:${C.held}">held</b>.</span>`}
+  </div>
+  <div class="scale"><i id="scalebar" style="width:80px"></i><span id="scaletext">500 m</span></div>`
+}
+
+function updateScale() {
+  const y = map.getContainer().clientHeight / 2
+  const a = map.unproject([0, y]), b = map.unproject([100, y])
+  const mPer100 = SP.metres([a.lng, a.lat], [b.lng, b.lat])
+  const nice = [100, 200, 250, 500, 1000, 2000, 5000].find((n) => (n / mPer100) * 100 > 60) ?? 5000
+  const el = $('#scalebar'); if (!el) return
+  el.style.width = (nice / mPer100) * 100 + 'px'
+  $('#scaletext').textContent = nice >= 1000 ? `${nice / 1000} km` : `${nice} m`
+}
+
+function updateTicks() {
+  const b = map.getBounds(), w = map.getContainer().clientWidth, h = map.getContainer().clientHeight
+  const step = b.getEast() - b.getWest() > 0.08 ? 0.02 : 0.01
+  let html = ''
+  for (let x = Math.ceil(b.getWest() / step) * step; x < b.getEast(); x += step) {
+    const p = map.project([x, b.getNorth()])
+    if (p.x > 40 && p.x < w - 40) html += `<span class="tick top" style="left:${p.x}px">${x.toFixed(2)}° E</span>`
+  }
+  for (let y = Math.ceil(b.getSouth() / step) * step; y < b.getNorth(); y += step) {
+    const p = map.project([b.getWest(), y])
+    if (p.y > 40 && p.y < h - 40) html += `<span class="tick left" style="top:${p.y}px">${y.toFixed(2)}° N</span>`
+  }
+  $('#ticks').innerHTML = html
+  updateScale()
+  placeOffmap()
+}
+
+function placeOffmap() {
+  const el = $('#offmap'); if (!el) return
+  const W = map.getContainer().clientWidth, H = map.getContainer().clientHeight
+  const p = map.project(D.facts.dump)
+  if (p.x > 0 && p.x < W && p.y > 0 && p.y < H) { el.style.display = 'none'; return }
+  el.style.display = 'flex'
+  const cx = W / 2, cy = H / 2, dx = p.x - cx, dy = p.y - cy
+  const k = Math.min((W / 2 - 150) / Math.abs(dx || 1), (H / 2 - 40) / Math.abs(dy || 1))
+  el.style.left = 30 + cx + dx * k - 110 + 'px'; el.style.top = 28 + cy + dy * k - 16 + 'px'
+  const ang = (Math.atan2(dy, dx) * 180) / Math.PI
+  el.querySelector('svg').style.transform = `rotate(${ang}deg)`
+}
+
+function addRings() {
+  for (const f of D.drains.features) {
+    const id = f.properties.drainId
+    const el = document.createElement('div')
+    el.dataset.drain = id
+    el.setAttribute('role', 'button'); el.setAttribute('aria-label', `Drain ${id}`); el.tabIndex = 0
+    rings[id] = { el, marker: new maplibregl.Marker({ element: el }).setLngLat(f.properties.centroid).addTo(map) }
+  }
+  paintRings()
+}
+function paintRings() {
+  const rows = Object.fromEntries((state.bill ?? D.pending).drains.map((d) => [d.drainId, d]))
+  const real = Object.fromEntries(D.bill.drains.map((d) => [d.drainId, d]))
+  for (const [id, r] of Object.entries(rings)) {
+    const shown = state.revealed.has(id)
+    r.el.innerHTML = ringSVG(shown ? real[id] : rows[id], shown)
+    r.el.firstChild.classList.toggle('is-hover', state.hover === id)
+  }
+  map.getSource('drains')?.setData({ ...D.drains, features: D.drains.features.map((f) => ({ ...f, properties: { ...f.properties, v: state.revealed.has(f.properties.drainId) ? f.properties.verdict : 'P' } })) })
+}
+
+function showTip(id) {
+  const d = D.bill.drains.find((x) => x.drainId === id)
+  const f = D.drains.features.find((x) => x.properties.drainId === id)
+  const p = map.project(f.properties.centroid)
+  const shown = state.revealed.has(id)
+  $('#overlays').querySelector('.maptip')?.remove()
+  const tip = document.createElement('div')
+  tip.className = 'maptip'
+  tip.style.left = 30 + p.x + 'px'; tip.style.top = 28 + p.y + 'px'
+  tip.innerHTML = `<b>Drain ${id}, ${d.name}</b>${d.claimedTonnes} t billed over ${d.tripCount} trips` +
+    (shown && d.heldTonnes ? `<div class="money">₹${SP.lakh(d.heldTonnes * 1800)} lakh held</div><div>${SP.reason(D.findings, id)}</div>` : '') +
+    (shown && d.reviewTonnes ? `<div class="money" style="color:var(--review)">${d.reviewTonnes} t for review</div><div>${SP.reason(D.findings, id)}</div>` : '') +
+    (shown && d.verdict === 'GREEN' ? `<div style="color:var(--verified);font-weight:600">Every check passed</div>` : '') +
+    (!shown ? `<div style="color:var(--ink-2)">Not checked yet</div>` : '') +
+    `<div style="color:var(--prussian);font-weight:600;margin-top:6px">Open the evidence</div>`
+  $('#overlays').appendChild(tip)
+}
+
+function wireHover() {
+  document.addEventListener('mouseover', (e) => {
+    const t = e.target.closest('[data-drain]'); const id = t?.dataset.drain ?? null
+    if (id === state.hover) return
+    state.hover = id
+    document.querySelectorAll('.row').forEach((r) => r.classList.toggle('is-hover', r.dataset.drain === id))
+    for (const [k, r] of Object.entries(rings)) r.el.firstChild?.classList.toggle('is-hover', k === id)
+    if (id && state.view !== 'case') showTip(id); else $('#overlays .maptip')?.remove()
+  })
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-drain]')
+    if (t && state.view !== 'case') openDrain(t.dataset.drain)
+  })
+}
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 2600) }
+
+// ---------------------------------------------------------------- verification
+async function runVerification() {
+  const btn = $('#verify')
+  btn.disabled = false; btn.classList.add('is-running'); btn.innerHTML = `<span id="vlabel">Checking trip 0 of 117</span><span class="progress" id="vprog" style="transform:scaleX(0)"></span>`
+  const H = map.getContainer().clientHeight
+  const order = D.drains.features.map((f) => ({ id: f.properties.drainId, y: map.project(f.properties.centroid).y })).sort((a, b) => a.y - b.y)
+  const real = Object.fromEntries(D.bill.drains.map((d) => [d.drainId, d]))
+  const sweep = $('#sweep'); sweep.style.opacity = 1
+  const totalTrips = D.bill.drains.reduce((a, d) => a + d.tripCount, 0)
+  state.bill = D.bill
+  const s0 = { ...D.bill.summary }
+  $('.figure').classList.add('held')
+  await SP.tween(3200, (p) => {
+    const y = -20 + p * (H + 40)
+    sweep.style.top = 28 + y + 'px'
+    let changed = false
+    for (const o of order) if (o.y < y && !state.revealed.has(o.id)) { state.revealed.add(o.id); changed = true; document.querySelector(`.row[data-drain="${o.id}"]`)?.classList.add('flash') }
+    if (changed) {
+      paintRings()
+      const rev = [...state.revealed].map((id) => real[id])
+      const sum = (k) => rev.reduce((a, d) => a + d[k], 0)
+      const s = { ...s0, verifiedTonnes: sum('verifiedTonnes'), reviewTonnes: sum('reviewTonnes'), heldTonnes: sum('heldTonnes') }
+      s.verifiedRupees = s.verifiedTonnes * 1800; s.reviewRupees = s.reviewTonnes * 1800; s.heldRupees = s.heldTonnes * 1800
+      s.red = rev.filter((d) => d.verdict === 'RED').length
+      $('#register').innerHTML = registerHTML({ ...D.bill, status: 'PENDING' }, state.revealed)
+      renderLedger(s)
+      $('#amount').innerHTML = `₹${SP.lakh(s.heldRupees)}<small>lakh</small>`
+      $('#caption').innerHTML = `held so far, from ${state.revealed.size} of 18 drains checked.`
+      const trips = sum('tripCount')
+      $('#vlabel').textContent = `Checking trip ${trips} of ${totalTrips}`
+    }
+    $('#vprog').style.transform = `scaleX(${p})`
+  }, SP.ease.linear)
+  sweep.style.opacity = 0
+  btn.classList.remove('is-running')
+  setVerifiedSheet(D.bill.summary)
+  $('#register').innerHTML = registerHTML(D.bill, state.revealed)
+  state.view = 'verified'
+  $('#titleblock').innerHTML = titleblockOverview(); updateScale()
+}
+
+function enterVerified() {
+  state.bill = D.bill
+  D.drains.features.forEach((f) => state.revealed.add(f.properties.drainId))
+  state.view = 'verified'
+  setVerifiedSheet(D.bill.summary)
+  $('#register').innerHTML = registerHTML(D.bill, state.revealed)
+  $('#titleblock').innerHTML = titleblockOverview()
+  paintRings(); updateScale()
+}
+
+// ---------------------------------------------------------------- drain 14
+function caseSheet() {
+  const d = D.drain14, f = D.facts, held = d.heldTonnes * 1800
+  const fs = [...d.findings.filter((x) => x.evidence.hammingDistance === 0), ...f.trip.findings.filter((x) => x.rule !== 'R3')]
+  return `
+  <div class="case-head"><button class="back" id="back"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>All 18 drains</button>
+    <h1>Drain ${d.drainId}</h1><div class="dims">${d.name}, ${d.lengthM.toFixed(0)} m long, ${d.widthM} m wide, ${d.depthM} m deep</div></div>
+  <div class="figure held" style="padding-top:4px"><div class="amount" style="font-size:72px">₹${SP.lakh(held)}<small>lakh</small></div>
+    <p class="caption">held on this drain. All ${d.trips.length} trips, ${d.claimedTonnes} t, failed the same three hard checks.</p></div>
+  <ul class="findings">${fs.map((x) => `<li><span class="rid">${x.rule}</span><p>${x.message}<small>${x.rule_text}</small></p></li>`).join('')}</ul>
+  <div class="summary">${d.summary.replace('\n', ' ')}<cite>Evidence summary written by Amazon Bedrock from the findings above.</cite></div>
+  <div class="decide" id="decide">${decideHTML()}</div>`
+}
+function decideHTML() {
+  const held = SP.rupees(D.drain14.heldTonnes * 1800)
+  if (state.decision) return `<div class="decided"><span class="stamp">Held</span><div><b>You held ${held}</b><br><span style="color:var(--ink-2);font-size:14px">8 Oct 2026, 17:42. Note: ${state.decision.note || 'none'}</span></div></div><button class="back" id="undo" style="margin-top:8px">Change decision</button>`
+  return `<label for="note">Note for the file</label>
+  <textarea id="note" placeholder="Why you are holding or approving this drain">Trace stops ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site on every trip. Photo is drain 9's.</textarea>
+  <div class="two"><button class="btn btn-held" id="hold">Hold ${held}</button><button class="btn btn-quiet" id="approve">Approve, release</button></div>`
+}
+function confirmHTML(kind) {
+  const amt = SP.rupees(D.drain14.heldTonnes * 1800)
+  return kind === 'hold'
+    ? `<div class="confirm" role="dialog" aria-label="Confirm hold"><h4>Hold ${amt} on drain 14?</h4><p>The contractor is not paid for these ${D.drain14.heldTonnes} t until you release them. Your note goes on the file with your name.</p>
+       <div class="two"><button class="btn btn-quiet" id="cancel">Keep reviewing</button><button class="btn btn-held" id="confirm">Confirm hold</button></div></div>`
+    : `<div class="confirm" role="dialog" aria-label="Confirm approval"><h4>Release ${amt} despite three failed checks?</h4><p>Approving overrules the evidence for all ${D.drain14.trips.length} trips. Add a note saying what you saw on site.</p>
+       <div class="two"><button class="btn btn-quiet" id="cancel">Keep reviewing</button><button class="btn btn-primary" id="confirm">Approve and release</button></div></div>`
+}
+function wireDecide() {
+  $('#decide').onclick = async (e) => {
+    const id = e.target.closest('button')?.id
+    if (id === 'hold' || id === 'approve') { $('#decide').insertAdjacentHTML('beforeend', confirmHTML(id)); $('#confirm').focus() }
+    if (id === 'cancel') $('.confirm')?.remove()
+    if (id === 'confirm') {
+      const b = $('#confirm'); b.disabled = true; b.textContent = 'Saving decision…'
+      await SP.wait(700)
+      state.decision = { kind: 'HOLD', note: $('#note')?.value }
+      $('#decide').innerHTML = decideHTML(); toast('Drain 14 held. ₹3,45,600 stays with the ward.')
+    }
+    if (id === 'undo') { state.decision = null; $('#decide').innerHTML = decideHTML() }
+  }
+}
+
+function evidenceHTML() {
+  const f = D.facts, r3 = f.reuse, s = f.trip.slip
+  const orig = D.drain14.photos.find((p) => p.s3Key === r3.evidence.s3Key)
+  const row = (k, label, v) => { const fld = s.fields[k]; return `<dt>${label}</dt><dd class="${k === 'timeIn' ? 'hit' : ''}">${v}</dd><span class="conf">${fld ? fld.confidence.toFixed(0) + '%' : ''}</span>` }
+  return `<div class="inner" data-shot="evidence">
+  <section><h2>The after photo is drain 9's</h2><p class="sub">Perceptual hash comparison against every photo on the bill.</p>
+    <div class="pair">
+      <figure><div class="frame"><img src="${SP.evidence('d9-after-01.jpg')}" alt="Drain 9 after photo"><span class="tag-sim">Simulated photo</span></div>
+        <figcaption><b>Drain 9, first submitted</b><span>30 Sep, 15:11, inside drain 9</span></figcaption></figure>
+      <figure><div class="frame reused"><img src="${SP.evidence('d14-after-02.jpg')}" alt="Drain 14 after photo, a copy"><span class="tag-sim">Simulated photo</span></div>
+        <figcaption><b>Drain 14, ${r3.evidence.s3Key.split('/').pop()}</b><span>${orig.timestamp.slice(8, 10)} Oct, ${orig.timestamp.slice(11, 16)}, billed as cleared</span></figcaption></figure>
+    </div>
+    <div class="match"><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 9h8" stroke="currentColor" stroke-width="2"/></svg>Same image: hash distance ${r3.evidence.hammingDistance} of 64 bits. Duplicates start at 12 or below.</div>
+  </section>
+  <section><h2>The slip was printed before the truck could arrive</h2><p class="sub">Weighbridge slip for trip ${f.trip.tripNo}, read by Textract. Field confidence on the right.</p>
+    <div class="slip">
+      <div class="slip-paper"><div class="hd">Shree Sample Dharamkanta</div><span class="sample">SAMPLE DATA</span>
+        <dl>${row('ticketNo', 'Ticket', s.ticketNo)}${row('vehicleNo', 'Vehicle', s.vehicleNo)}${row('gross', 'Gross', s.gross.toFixed(2) + ' t')}${row('tare', 'Tare', s.tare.toFixed(2) + ' t')}${row('net', 'Net', s.net.toFixed(2) + ' t')}${row('timeIn', 'Time in', s.timeIn)}${row('timeOut', 'Time out', s.timeOut)}</dl></div>
+      <div class="slip-note"><b>${f.minutesEarly} min early</b>The truck left the drain at ${f.leftDrain} and its trace ends at ${f.traceEnds}, ${(f.shortOfDumpM / 1000).toFixed(1)} km from the weighbridge.</div>
+    </div>
+  </section>
+  <section><h2>What Bedrock saw in the drain 14 photos</h2><p class="sub">Bedrock vision on each photo at upload. The vision checks passed; the reuse did not.</p>
+    <div class="seen">${D.drain14.photos.map((ph) => `<figure><img src="${SP.evidence('d14-' + ph.s3Key.split('/').pop())}" alt=""><figcaption><b>${ph.s3Key.split('/').pop()}</b>${ph.bedrock.cleared ? 'Cleared' : 'Not cleared'}, ${Math.round(ph.bedrock.confidence * 100)}%${ph.s3Key === f.reuse.evidence.s3Key || D.drain14.findings.some((x) => x.evidence.s3Key === ph.s3Key) ? '<em>Reused</em>' : ''}</figcaption></figure>`).join('')}</div></section>
+  <section><h2>${f.tripsHeld} of ${D.drain14.trips.length} trips held</h2>
+    <div class="trips">${D.drain14.trips.map((t) => `<i title="Trip ${t.tripNo}, ${t.claimedTonnes} t"></i>`).join('')}</div>
+    <div class="trips-cap"><span>Trip 001, 24 Sep</span><span>Trip 018, 29 Sep</span></div></section>
+  </div>`
+}
+
+function timelineHTML() {
+  const f = D.facts
+  const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
+  const lanes = [
+    ['The slip says', [[f.slipTimeIn, 'on the weighbridge', true], [f.slipTimeOut, 'off the weighbridge', true]]],
+    ['The GPS trace says', [[f.leftDrain, 'leaves drain', false], [f.stopped, `stops ${(f.shortOfDumpM / 1000).toFixed(1)} km short`, true]]],
+  ]
+  const all = lanes.flatMap(([, e]) => e.map((x) => toMin(x[0])))
+  const lo = Math.min(...all) - 2, hi = Math.max(...all) + 2
+  const x = (t) => ((toMin(t) - lo) / (hi - lo)) * 100
+  return `<div class="tl-title">Trip ${f.trip.tripNo}, ${f.trip.vehicleNo}, ${f.trip.startTime.slice(8, 10)} Sep <span>All 18 trips repeat this pattern</span></div>
+  ${lanes.map(([name, evs]) => `<div class="lane"><span class="lane-name">${name}</span><div class="lane-axis">${evs.map(([t, l, bad]) => (x(t) > 85 ? `<div class="tl-ev end ${bad ? 'bad' : ''}" style="right:${100 - x(t)}%">${l}<b>${t}</b></div>` : `<div class="tl-ev ${bad ? 'bad' : ''}" style="left:${x(t)}%"><b>${t}</b>${l}</div>`)).join('')}</div></div>`).join('')}
+  <div class="lane"><span class="lane-name"></span><div class="lane-axis gap" style="--a:${x(f.slipTimeIn)}%;--b:${x(f.leftDrain)}%"><span>Slip printed ${toMin(f.leftDrain) - toMin(f.slipTimeIn)} min before the truck left the drain</span></div></div>`
+}
+
+function addCaseLayers() {
+  const f = D.facts
+  const others = D.drain14.trips.filter((t) => t !== f.trip).map((t) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: t.actualRoute } }))
+  map.addSource('claimed', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: f.claimedRoute } } })
+  map.addSource('others', { type: 'geojson', data: { type: 'FeatureCollection', features: others } })
+  map.addSource('actual', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [f.trip.actualRoute[0]] } } })
+  map.addSource('stop', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Point', coordinates: f.stop } } })
+  map.addLayer({ id: 'claimed', type: 'line', source: 'claimed', paint: { 'line-color': C.ink, 'line-width': 2.5, 'line-dasharray': [3, 2], 'line-opacity': 0 } })
+  map.addLayer({ id: 'others', type: 'line', source: 'others', paint: { 'line-color': C.held, 'line-width': 1.2, 'line-opacity': 0 } })
+  map.addLayer({ id: 'actual-case', type: 'line', source: 'actual', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F2EFE7', 'line-width': 8 } })
+  map.addLayer({ id: 'actual', type: 'line', source: 'actual', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.held, 'line-width': 4.5 } })
+  map.addLayer({ id: 'stop', type: 'circle', source: 'stop', paint: { 'circle-radius': 0, 'circle-color': C.held, 'circle-stroke-color': '#F2EFE7', 'circle-stroke-width': 3 } })
+}
+
+async function openDrain(id, animate = true) {
+  if (id !== '14') { toast(`This prototype carries the full evidence for drain 14. Drain ${id} opens the same way in the app.`); return }
+  state.view = 'case'
+  if (!animate) $('#app').style.transition = 'none'
+  $('#overlays .maptip')?.remove()
+  $('#app').classList.add('case')
+  $('#sheet').innerHTML = caseSheet(); wireDecide()
+  $('#back').onclick = () => location.search = '?view=verified'
+  $('#evidence').innerHTML = evidenceHTML()
+  $('#timeline').innerHTML = timelineHTML()
+  $('#titleblock').innerHTML = `<h3>Drain 14 to the dump site</h3><div class="legend">
+    <svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="${C.ink}" stroke-width="2.5" stroke-dasharray="6 4"/></svg><span>Route the bill claims, ${D.facts.claimedKm.toFixed(1)} km</span>
+    <svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="${C.held}" stroke-width="4.5"/></svg><span>GPS trace, trip ${D.facts.trip.tripNo}</span>
+    <svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="${C.held}" stroke-width="1.2"/></svg><span>The other 17 traces</span>
+    <svg width="34" height="20"><rect x="4" y="2" width="26" height="16" fill="url(#hatch)" stroke="${C.ink}"/></svg><span>Approved dump site</span></div>
+    <div class="scale"><i id="scalebar" style="width:80px"></i><span id="scaletext"></span></div>`
+  for (const r of Object.values(rings)) r.el.firstChild.style.opacity = r.el.dataset.drain === '14' ? 1 : 0
+  const dur = animate ? 1 : 0
+  const steps = dur ? 700 : 0
+  const t0 = performance.now()
+  await SP.tween(steps, () => map.resize())
+  map.resize()
+  const box = SP.bounds([...D.facts.claimedRoute, ...D.facts.trip.actualRoute])
+  map.fitBounds(box, { padding: { top: 90, bottom: 250, left: 120, right: 120 }, pitch: 18, bearing: 0, duration: dur ? 1600 : 0 })
+  if (dur) await SP.wait(1500)
+  map.setPaintProperty('claimed', 'line-opacity', 1)
+  const evs = [...document.querySelectorAll('.tl-ev')]
+  await SP.tween(dur ? 2200 : 0, (p) => {
+    map.getSource('actual').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: SP.slice(D.facts.trip.actualRoute, p) } })
+    evs.forEach((e, i) => e.classList.toggle('on', p >= i / evs.length))
+  }, SP.ease.inOut)
+  evs.forEach((e) => e.classList.add('on'))
+  map.setPaintProperty('others', 'line-opacity', 0.35)
+  map.setPaintProperty('stop', 'circle-radius', 9)
+  const p = map.project(D.facts.stop)
+  const co = document.createElement('div'); co.className = 'callout'
+  co.innerHTML = `<div>All 18 traces stop here, ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site.</div>`
+  new maplibregl.Marker({ element: co, anchor: 'bottom-right', offset: [-8, -14] }).setLngLat(D.facts.stop).addTo(map)
+  requestAnimationFrame(() => co.classList.add('on'))
+  updateTicks()
+}
+
+// ---------------------------------------------------------------- system sheet
+function systemHTML() {
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px"><h1 style="font:500 44px/1 var(--serif);margin:0">Survey Sheet, components and states</h1><span class="sim">Simulated data</span></div>
+  <div class="sys-grid sys">
+    <div class="col"><h3>Colour</h3><div class="swatches">
+      ${[['Paper', '#F2EFE7'], ['Limestone', '#E3DED2'], ['Survey ink', '#1C2A38'], ['Prussian (action)', '#1F4D78'], ['Verified', '#39684F'], ['Review', '#A6731E'], ['Held', '#8E2424'], ['Water', '#AEC0C3']].map(([n, c]) => `<div style="background:${c};color:${['#F2EFE7', '#E3DED2', '#AEC0C3'].includes(c) ? '#1C2A38' : '#F2EFE7'}">${n}<br>${c}</div>`).join('')}</div>
+      <h3 style="margin-top:12px">Type</h3><div style="font:500 64px/1 var(--serif);color:var(--held);letter-spacing:-.03em">₹6.66<small style="font-size:.42em"> lakh</small></div><span class="lab">Newsreader 500, money and headings. Tabular lining figures.</span>
+      <div style="font:400 16px/1.45 var(--sans)">Instrument Sans for controls, labels and tables.</div></div>
+    <div class="col"><h3>Primary action</h3>
+      <button class="btn btn-primary">Check all 117 trips</button><span class="lab">Default</span>
+      <button class="btn btn-primary is-hover">Check all 117 trips</button><span class="lab">Hover: lighter, keeps its lip</span>
+      <button class="btn btn-primary is-press">Check all 117 trips</button><span class="lab">Pressed: drops 2 px onto its lip</span>
+      <button class="btn btn-primary" style="outline:3px solid var(--prussian);outline-offset:2px">Check all 117 trips</button><span class="lab">Keyboard focus</span>
+      <button class="btn btn-primary is-running" style="width:300px"><span>Checking trip 64 of 117</span><span class="progress" style="transform:scaleX(.55)"></span></button><span class="lab">Running: counts real trips, progress along the bottom edge</span>
+      <button class="btn btn-primary" disabled>Check all 117 trips</button><span class="lab">Disabled while the bill loads</span></div>
+    <div class="col"><h3>Decisions</h3>
+      <div style="display:flex;gap:10px"><button class="btn btn-held">Hold ₹3,45,600</button><button class="btn btn-quiet">Approve and release</button></div><span class="lab">Default pair. Hold is the weighted action on a red drain.</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held is-hover">Hold ₹3,45,600</button><button class="btn btn-quiet is-hover">Approve and release</button></div><span class="lab">Hover</span>
+      <div style="display:flex;gap:10px"><button class="btn btn-held" disabled>Hold ₹3,45,600</button><button class="btn btn-quiet" disabled>Approve and release</button></div><span class="lab">Disabled before verification has run</span>
+      <div class="decide" style="width:420px;margin-top:150px;border:1px solid var(--rule)">${confirmHTML('hold')}<div class="two" style="opacity:.3"><button class="btn btn-held">Hold</button><button class="btn btn-quiet">Approve</button></div></div><span class="lab">Confirmation: states the amount and the consequence</span>
+      <div class="decided"><span class="stamp">Held</span><div><b>You held ₹3,45,600</b><br><span style="color:var(--ink-2);font-size:14px">8 Oct 2026, 17:42</span></div></div><span class="lab">Done: stamped, with time and note, reversible</span></div>
+    <div class="col"><h3>Map symbols</h3><div style="display:flex;gap:18px;align-items:center">
+      ${['3', '6', '1'].map((id) => ringSVG(D.bill.drains.find((d) => d.drainId === id), true)).join('')}${ringSVG(D.pending.drains.find((d) => d.drainId === '14'), false)}</div>
+      <span class="lab">Ring area is tonnes billed, never drain size. Colour splits the ring by verified, review and held tonnes. Dashed grey: not checked.</span></div>
+    <div class="col"><h3>Loading</h3><div class="skeleton"></div><div class="skeleton" style="width:260px"></div><div class="skeleton" style="width:300px"></div><span class="lab">Evidence panel while a drain loads. The map keeps the last frame.</span></div>
+    <div class="col"><h3>Errors and gaps</h3><div style="border-left:3px solid var(--review);padding:8px 12px;background:#F3EAD7;max-width:420px">2 trips have no slip yet. They are in review, not held.</div>
+      <div style="border-left:3px solid var(--held);padding:8px 12px;background:var(--held-wash);max-width:420px">Could not reach the bill service. Showing the last saved snapshot. Try again.</div></div>
+  </div>`
+}
+
+function wardCentre() { const cs = D.drains.features.map((f) => f.properties.centroid); return [cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length] }
+function tRange() { const ts = D.bill.drains.map((d) => d.claimedTonnes); return `${Math.min(...ts)} t to ${Math.max(...ts)} t` }
+function hatchImage() {
+  const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d')
+  g.strokeStyle = '#1C2A38'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, 8); g.lineTo(8, 0); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke()
+  return g.getImageData(0, 0, 8, 8)
+}
+
+// ---------------------------------------------------------------- boot
+;(async () => {
+  D = await SP.load()
+  const view = SP.params.get('view') ?? 'pre'
+  if (view === 'system') { $('#system').innerHTML = systemHTML(); $('#system').classList.add('on'); window.__ready = true; return }
+  $('#sheet').innerHTML = sheetPre()
+  $('#register').innerHTML = registerHTML(D.pending, state.revealed)
+  $('#titleblock').innerHTML = titleblockOverview()
+  $('#verify').onclick = () => (state.view === 'pre' ? runVerification() : null)
+  document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#1C2A38" stroke-width="1.5"/></pattern></defs></svg>`)
+
+  const base = SP.basemapLayers(D.basemap, C)
+  map = new maplibregl.Map({
+    container: 'map', attributionControl: false, pitch: 0, maxPitch: 60,
+    style: { version: 8, sources: { ...base.sources, drains: { type: 'geojson', data: D.drains }, dump: { type: 'geojson', data: D.dumpsite } }, layers: [
+      ...base.layers,
+      
+      { id: 'dump-line', type: 'line', source: 'dump', paint: { 'line-color': C.ink, 'line-width': 1.5 } },
+      { id: 'drain-fill', type: 'fill', source: 'drains', paint: { 'fill-color': ['match', ['get', 'v'], 'RED', C.held, 'AMBER', C.review, 'GREEN', C.verified, C.pending], 'fill-opacity': 0.5 } },
+      { id: 'drain-line', type: 'line', source: 'drains', paint: { 'line-color': C.ink, 'line-width': 1 } },
+    ] },
+    bounds: SP.drainBounds(D.drains), fitBoundsOptions: { padding: { top: 80, bottom: 80, left: 80, right: 440 } },
+  })
+  map.on('move', updateTicks)
+  await new Promise((r) => map.on('load', r))
+  map.addImage('hatch', hatchImage())
+  map.addLayer({ id: 'dump-fill', type: 'fill', source: 'dump', paint: { 'fill-pattern': 'hatch' } }, 'dump-line')
+  addRings(); addCaseLayers(); wireHover()
+  map.getContainer().insertAdjacentHTML('beforeend', '')
+  $('#overlays').insertAdjacentHTML('beforeend', `<div class="offmap" id="offmap"><svg width="18" height="12" viewBox="0 0 18 12"><path d="M0 6h14M10 1l5 5-5 5" fill="none" stroke="#1C2A38" stroke-width="1.8"/></svg>Approved dump site, ${(SP.metres(wardCentre(), D.facts.dump) / 1000).toFixed(1)} km from the ward</div>`)
+  updateTicks()
+  if (view === 'verified' || view === 'drain14') enterVerified()
+  if (view === 'drain14') await openDrain('14', SP.params.get('play') === 'open')
+  if (SP.params.get('hover')) { const id = SP.params.get('hover'); state.hover = id; document.querySelectorAll('.row').forEach((r) => r.classList.toggle('is-hover', r.dataset.drain === id)); rings[id]?.el.firstChild.classList.add('is-hover'); showTip(id) }
+  if (SP.params.get('confirm')) { $('#decide').insertAdjacentHTML('beforeend', confirmHTML(SP.params.get('confirm'))) }
+  if (SP.params.get('decided')) { state.decision = { kind: 'HOLD', note: `Trace stops ${(D.facts.shortOfDumpM / 1000).toFixed(1)} km short of the dump site on every trip.` }; $('#decide').innerHTML = decideHTML() }
+  await SP.mapReady(map)
+  window.__ready = true
+  // ?wait=1 holds the motion until the recorder says go, so a capture starts on a drawn frame
+  if (SP.params.get('wait')) await new Promise((r) => (window.__go = r))
+  if (SP.params.get('play') === 'scan') { await SP.wait(600); await runVerification(); window.__done = true }
+  if (SP.params.get('play') === 'open14') { await SP.wait(400); await openDrain('14', true); window.__done = true }
+})()
+</script>
+</body>
+</html>
