@@ -204,6 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain9/after-01.jpg",
+   "imageUrl": "/data/demo/evidence/photos/B1/drain9/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.07985,
@@ -217,12 +218,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain9/before-01.jpg",
+   "imageUrl": null,
    "role": "before",
    "status": "OK",
    "lat": 19.0797806,
@@ -236,12 +239,14 @@
     "loadType": "unclear",
     "confidence": 0.86,
     "notes": "Channel is full of wet silt up to the kerb line.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain9/load-01.jpg",
+   "imageUrl": null,
    "role": "load",
    "status": "OK",
    "lat": 19.080525,
@@ -255,7 +260,8 @@
     "loadType": "silt",
     "confidence": 0.93,
     "notes": "Load is wet grey-black drain silt.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   }
@@ -347,6 +353,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.865236,
@@ -651,6 +658,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.865266,
@@ -955,6 +963,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.865289,
@@ -1259,6 +1268,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.865319,
@@ -1573,6 +1583,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.865226,
@@ -1887,6 +1898,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.865224,
@@ -2106,6 +2118,7 @@
    "traceProblem": null
   }
  ],
+ "evidenceUrlExpiresInSeconds": null,
  "rules": {
   "R1": "Photo GPS must fall inside the drain's 30 m geofence",
   "R2": "Photo must have been taken inside the bill's work window",

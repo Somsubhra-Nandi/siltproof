@@ -26,6 +26,11 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(REPO / "backend"), str(REPO / "data")]
 
+# Drains whose images are copied into the snapshot, so the offline demo can
+# show them. The originals of any photo these drains reuse come along too.
+# Every other image link is null offline: presigned links never go in here.
+OFFLINE_IMAGE_DRAINS = ("14",)
+
 BUCKET = "siltproof-demo-evidence"
 TABLE = "siltproof-demo"
 OUT = REPO / "frontend" / "public" / "data" / "demo"
@@ -57,6 +62,43 @@ def call(api_app, route_key, *, path=None, body=None, query=None):
 
     result = api_app.lambda_handler(event, None)
     return result["statusCode"], json.loads(result["body"])
+
+
+def localise_images(responses, evidence_root):
+    """Swap presigned links for local copies, or null, in the drain responses.
+
+    The live API signs a 5-minute link for every image. A snapshot must not
+    keep those: they expire, and they point at a bucket. The hero drain's
+    images, and the originals its reused photos copy, are copied next to the
+    snapshot instead and linked by path; everything else is null.
+    """
+    keep = set()
+    for drain_id in OFFLINE_IMAGE_DRAINS:
+        drain = responses.get(drain_id) or {}
+        keep.update(photo["s3Key"] for photo in drain.get("photos", []))
+        keep.update(trip["slipKey"] for trip in drain.get("trips", []) if trip.get("slipKey"))
+        for trip in drain.get("trips", []):
+            for item in trip.get("findings", []):
+                if item["rule"] == "R3" and item["evidence"].get("original"):
+                    keep.add(item["evidence"]["original"])
+
+    def local(key):
+        source = evidence_root / key
+        if key not in keep or not source.exists():
+            return None
+        target = OUT / "evidence" / key
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        return f"/data/demo/evidence/{key}"
+
+    for drain in responses.values():
+        drain["evidenceUrlExpiresInSeconds"] = None
+        for photo in drain.get("photos", []):
+            photo["imageUrl"] = local(photo["s3Key"])
+        for trip in drain.get("trips", []):
+            trip["slipImageUrl"] = local(trip["slipKey"]) if trip.get("slipKey") else None
+
+    return len(list((OUT / "evidence").rglob("*.*"))) if (OUT / "evidence").exists() else 0
 
 
 def main(argv=None):
@@ -164,6 +206,7 @@ def main(argv=None):
 
         (OUT / "bill.json").write_text(json.dumps(bill, indent=1) + "\n")
         written = 1
+        responses = {}
 
         for row in bill["drains"]:
             drain_id = row["drainId"]
@@ -185,7 +228,14 @@ def main(argv=None):
                 )
                 drain["summary"] = summary.get("summary")
 
-            (OUT / f"drain-{drain_id}.json").write_text(json.dumps(drain, indent=1) + "\n")
+            responses[drain_id] = drain
+
+        copied = localise_images(responses, work / "evidence")
+        for drain_id, drain in responses.items():
+            text = json.dumps(drain, indent=1) + "\n"
+            if "X-Amz-" in text:
+                raise SystemExit(f"drain {drain_id}: a presigned link reached the snapshot")
+            (OUT / f"drain-{drain_id}.json").write_text(text)
             written += 1
 
         # The map reads the same geometry the snapshot was built from.
@@ -204,6 +254,7 @@ def main(argv=None):
         f"claimed {summary['claimedTonnes']:.0f} t · verified {summary['verifiedTonnes']:.0f} t"
         f" · review {summary['reviewTonnes']:.0f} t · hold Rs {summary['heldRupees'] / 100000:.2f} lakh"
     )
+    print(f"images {copied} copied for the offline demo (drains {', '.join(OFFLINE_IMAGE_DRAINS)})")
     print("\nStart the app with no VITE_API_BASE_URL and it will use this snapshot.")
     return 0
 

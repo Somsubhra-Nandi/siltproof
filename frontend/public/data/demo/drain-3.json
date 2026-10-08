@@ -213,11 +213,12 @@
  "failedRules": [
   "R4"
  ],
- "summary": "The truck left drain 14 but its GPS trace never entered the approved dump site, and the weighbridge slip was printed 40 minutes before the truck arrived anywhere.\nThe after photo is a reused copy of a photo from drain 9.",
+ "summary": "Offline summary, no model was called. The load in load-01.jpg is construction debris, not drain silt.",
  "summaryModelId": null,
  "photos": [
   {
    "s3Key": "photos/B1/drain3/after-01.jpg",
+   "imageUrl": null,
    "role": "after",
    "status": "OK",
    "lat": 19.0866167,
@@ -231,12 +232,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain3/before-01.jpg",
+   "imageUrl": null,
    "role": "before",
    "status": "OK",
    "lat": 19.0856333,
@@ -250,12 +253,14 @@
     "loadType": "unclear",
     "confidence": 0.86,
     "notes": "Channel is full of wet silt up to the kerb line.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain3/load-01.jpg",
+   "imageUrl": null,
    "role": "load",
    "status": "OK",
    "lat": 19.0861639,
@@ -269,7 +274,8 @@
     "loadType": "debris",
     "confidence": 0.88,
     "notes": "Load is broken brick, concrete rubble and tile fragments, not drain silt.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   }
@@ -375,6 +381,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888226,
@@ -645,6 +652,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888153,
@@ -915,6 +923,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888248,
@@ -1185,6 +1194,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888235,
@@ -1465,6 +1475,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888218,
@@ -1745,6 +1756,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888224,
@@ -2025,6 +2037,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888155,
@@ -2295,6 +2308,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888184,
@@ -2565,6 +2579,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888215,
@@ -2845,6 +2860,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888144,
@@ -3115,6 +3131,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888168,
@@ -3395,6 +3412,7 @@
      "vehicleNo"
     ]
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.888237,
@@ -3566,6 +3584,7 @@
    "traceProblem": null
   }
  ],
+ "evidenceUrlExpiresInSeconds": null,
  "rules": {
   "R1": "Photo GPS must fall inside the drain's 30 m geofence",
   "R2": "Photo must have been taken inside the bill's work window",

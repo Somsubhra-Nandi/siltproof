@@ -212,11 +212,12 @@
  "failedRules": [
   "R1"
  ],
- "summary": "The truck left drain 14 but its GPS trace never entered the approved dump site, and the weighbridge slip was printed 40 minutes before the truck arrived anywhere.\nThe after photo is a reused copy of a photo from drain 9.",
+ "summary": "Offline summary, no model was called. after-01.jpg was taken 45 m outside the geofence, within the margin of a consumer GPS fix.",
  "summaryModelId": null,
  "photos": [
   {
    "s3Key": "photos/B1/drain8/after-01.jpg",
+   "imageUrl": null,
    "role": "after",
    "status": "OK",
    "lat": 19.0845139,
@@ -230,12 +231,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain8/before-01.jpg",
+   "imageUrl": null,
    "role": "before",
    "status": "OK",
    "lat": 19.0843444,
@@ -249,7 +252,8 @@
     "loadType": "unclear",
     "confidence": 0.86,
     "notes": "Channel is full of wet silt up to the kerb line.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   }
@@ -354,6 +358,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.864509,
@@ -663,6 +668,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.864532,
@@ -972,6 +978,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.864498,
@@ -1281,6 +1288,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.864504,
@@ -1590,6 +1598,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.864551,
@@ -1801,6 +1810,7 @@
    "traceProblem": null
   }
  ],
+ "evidenceUrlExpiresInSeconds": null,
  "rules": {
   "R1": "Photo GPS must fall inside the drain's 30 m geofence",
   "R2": "Photo must have been taken inside the bill's work window",

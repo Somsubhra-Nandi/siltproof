@@ -226,11 +226,12 @@
  "failedRules": [
   "R3"
  ],
- "summary": "The truck left drain 14 but its GPS trace never entered the approved dump site, and the weighbridge slip was printed 40 minutes before the truck arrived anywhere.\nThe after photo is a reused copy of a photo from drain 9.",
+ "summary": "Offline summary, no model was called. after-02.jpg is the same image as after-01.jpg, already submitted for drain 9. The truck's GPS trace never enters the approved dump site. The slip records time-in at 06:53, 19 minutes before the truck left the drain at 07:12. The GPS trace never reaches the dump site; its last fix, at 07:37, is 44 minutes after the slip's time-in.",
  "summaryModelId": null,
  "photos": [
   {
    "s3Key": "photos/B1/drain14/after-01.jpg",
+   "imageUrl": "/data/demo/evidence/photos/B1/drain14/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0718083,
@@ -244,12 +245,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain14/after-02.jpg",
+   "imageUrl": "/data/demo/evidence/photos/B1/drain14/after-02.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0712833,
@@ -263,12 +266,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain14/after-03.jpg",
+   "imageUrl": "/data/demo/evidence/photos/B1/drain14/after-03.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0712833,
@@ -282,12 +287,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain14/before-01.jpg",
+   "imageUrl": "/data/demo/evidence/photos/B1/drain14/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0727278,
@@ -301,7 +308,8 @@
     "loadType": "unclear",
     "confidence": 0.86,
     "notes": "Channel is full of wet silt up to the kerb line.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   }
@@ -361,11 +369,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 06:53, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 06:53, 19 minutes before the truck left the drain at 07:12. The GPS trace never reaches the dump site; its last fix, at 07:37, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-001.png",
       "timeIn": "06:53",
       "arrival": "2026-09-24T07:37:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-24T07:12:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -447,6 +457,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-001.png",
    "actualRoute": [
     [
      72.877555,
@@ -715,11 +726,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 09:48, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 09:48, 19 minutes before the truck left the drain at 10:07. The GPS trace never reaches the dump site; its last fix, at 10:32, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-002.png",
       "timeIn": "09:48",
       "arrival": "2026-09-24T10:32:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-24T10:07:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -801,6 +814,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-002.png",
    "actualRoute": [
     [
      72.87759,
@@ -1069,11 +1083,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 12:22, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 12:22, 19 minutes before the truck left the drain at 12:41. The GPS trace never reaches the dump site; its last fix, at 13:06, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-003.png",
       "timeIn": "12:22",
       "arrival": "2026-09-24T13:06:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-24T12:41:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -1155,6 +1171,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-003.png",
    "actualRoute": [
     [
      72.877618,
@@ -1423,11 +1440,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 06:43, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 06:43, 19 minutes before the truck left the drain at 07:02. The GPS trace never reaches the dump site; its last fix, at 07:27, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-004.png",
       "timeIn": "06:43",
       "arrival": "2026-09-25T07:27:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-25T07:02:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -1509,6 +1528,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-004.png",
    "actualRoute": [
     [
      72.877603,
@@ -1777,11 +1797,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 09:31, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 09:31, 19 minutes before the truck left the drain at 09:50. The GPS trace never reaches the dump site; its last fix, at 10:15, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-005.png",
       "timeIn": "09:31",
       "arrival": "2026-09-25T10:15:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-25T09:50:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -1863,6 +1885,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-005.png",
    "actualRoute": [
     [
      72.877652,
@@ -2131,11 +2154,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 12:30, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 12:30, 19 minutes before the truck left the drain at 12:49. The GPS trace never reaches the dump site; its last fix, at 13:14, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-006.png",
       "timeIn": "12:30",
       "arrival": "2026-09-25T13:14:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-25T12:49:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -2217,6 +2242,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-006.png",
    "actualRoute": [
     [
      72.877651,
@@ -2485,11 +2511,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 06:51, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 06:51, 19 minutes before the truck left the drain at 07:10. The GPS trace never reaches the dump site; its last fix, at 07:35, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-007.png",
       "timeIn": "06:51",
       "arrival": "2026-09-26T07:35:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-26T07:10:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -2571,6 +2599,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-007.png",
    "actualRoute": [
     [
      72.877627,
@@ -2839,11 +2868,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 09:40, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 09:40, 19 minutes before the truck left the drain at 09:59. The GPS trace never reaches the dump site; its last fix, at 10:24, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-008.png",
       "timeIn": "09:40",
       "arrival": "2026-09-26T10:24:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-26T09:59:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -2925,6 +2956,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-008.png",
    "actualRoute": [
     [
      72.877598,
@@ -3193,11 +3225,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 12:35, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 12:35, 19 minutes before the truck left the drain at 12:54. The GPS trace never reaches the dump site; its last fix, at 13:19, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-009.png",
       "timeIn": "12:35",
       "arrival": "2026-09-26T13:19:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-26T12:54:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -3279,6 +3313,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-009.png",
    "actualRoute": [
     [
      72.877596,
@@ -3547,11 +3582,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 07:04, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 07:04, 19 minutes before the truck left the drain at 07:23. The GPS trace never reaches the dump site; its last fix, at 07:48, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-010.png",
       "timeIn": "07:04",
       "arrival": "2026-09-27T07:48:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-27T07:23:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -3633,6 +3670,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-010.png",
    "actualRoute": [
     [
      72.877574,
@@ -3901,11 +3939,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 09:31, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 09:31, 19 minutes before the truck left the drain at 09:50. The GPS trace never reaches the dump site; its last fix, at 10:15, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-011.png",
       "timeIn": "09:31",
       "arrival": "2026-09-27T10:15:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-27T09:50:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -3987,6 +4027,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-011.png",
    "actualRoute": [
     [
      72.877648,
@@ -4255,11 +4296,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 12:34, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 12:34, 19 minutes before the truck left the drain at 12:53. The GPS trace never reaches the dump site; its last fix, at 13:18, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-012.png",
       "timeIn": "12:34",
       "arrival": "2026-09-27T13:18:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-27T12:53:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -4341,6 +4384,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-012.png",
    "actualRoute": [
     [
      72.877569,
@@ -4609,11 +4653,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 06:45, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 06:45, 19 minutes before the truck left the drain at 07:04. The GPS trace never reaches the dump site; its last fix, at 07:29, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-013.png",
       "timeIn": "06:45",
       "arrival": "2026-09-28T07:29:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-28T07:04:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -4695,6 +4741,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-013.png",
    "actualRoute": [
     [
      72.877614,
@@ -4963,11 +5010,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 09:37, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 09:37, 19 minutes before the truck left the drain at 09:56. The GPS trace never reaches the dump site; its last fix, at 10:21, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-014.png",
       "timeIn": "09:37",
       "arrival": "2026-09-28T10:21:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-28T09:56:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -5049,6 +5098,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-014.png",
    "actualRoute": [
     [
      72.877649,
@@ -5317,11 +5367,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 12:30, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 12:30, 19 minutes before the truck left the drain at 12:49. The GPS trace never reaches the dump site; its last fix, at 13:14, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-015.png",
       "timeIn": "12:30",
       "arrival": "2026-09-28T13:14:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-28T12:49:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -5403,6 +5455,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-015.png",
    "actualRoute": [
     [
      72.877583,
@@ -5671,11 +5724,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 07:03, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 07:03, 19 minutes before the truck left the drain at 07:22. The GPS trace never reaches the dump site; its last fix, at 07:47, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-016.png",
       "timeIn": "07:03",
       "arrival": "2026-09-29T07:47:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-29T07:22:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -5757,6 +5812,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-016.png",
    "actualRoute": [
     [
      72.877558,
@@ -6025,11 +6081,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 09:28, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 09:28, 19 minutes before the truck left the drain at 09:47. The GPS trace never reaches the dump site; its last fix, at 10:12, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-017.png",
       "timeIn": "09:28",
       "arrival": "2026-09-29T10:12:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-29T09:47:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -6111,6 +6169,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-017.png",
    "actualRoute": [
     [
      72.877631,
@@ -6379,11 +6438,13 @@
      "rule": "R8",
      "severity": "hard",
      "rule_text": "Slip time-in must match the GPS arrival at the dump site",
-     "message": "The slip was printed at 12:23, 44 minutes before the truck arrived anywhere.",
+     "message": "The slip records time-in at 12:23, 19 minutes before the truck left the drain at 12:42. The GPS trace never reaches the dump site; its last fix, at 13:07, is 44 minutes after the slip's time-in.",
      "evidence": {
       "slipKey": "slips/B1/14-018.png",
       "timeIn": "12:23",
       "arrival": "2026-09-29T13:07:30+05:30",
+      "arrivalKind": "lastFix",
+      "departure": "2026-09-29T12:42:00+05:30",
       "minutesEarly": 44.5
      }
     }
@@ -6465,6 +6526,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": "/data/demo/evidence/slips/B1/14-018.png",
    "actualRoute": [
     [
      72.877652,
@@ -6680,6 +6742,7 @@
    "traceProblem": null
   }
  ],
+ "evidenceUrlExpiresInSeconds": null,
  "rules": {
   "R1": "Photo GPS must fall inside the drain's 30 m geofence",
   "R2": "Photo must have been taken inside the bill's work window",

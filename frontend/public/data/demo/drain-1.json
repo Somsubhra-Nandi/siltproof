@@ -204,6 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain1/after-01.jpg",
+   "imageUrl": null,
    "role": "after",
    "status": "OK",
    "lat": 19.0748806,
@@ -217,12 +218,14 @@
     "loadType": "unclear",
     "confidence": 0.9,
     "notes": "Channel bed and invert are visible; the section looks cleared.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain1/before-01.jpg",
+   "imageUrl": null,
    "role": "before",
    "status": "OK",
    "lat": 19.0750889,
@@ -236,7 +239,8 @@
     "loadType": "unclear",
     "confidence": 0.86,
     "notes": "Channel is full of wet silt up to the kerb line.",
-    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelId": null,
+    "mocked": true,
     "ok": true
    }
   }
@@ -328,6 +332,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.891571,
@@ -596,6 +601,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.891546,
@@ -864,6 +870,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.891599,
@@ -1132,6 +1139,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.891558,
@@ -1400,6 +1408,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
+   "slipImageUrl": null,
    "actualRoute": [
     [
      72.891525,
@@ -1583,6 +1592,7 @@
    "traceProblem": null
   }
  ],
+ "evidenceUrlExpiresInSeconds": null,
  "rules": {
   "R1": "Photo GPS must fall inside the drain's 30 m geofence",
   "R2": "Photo must have been taken inside the bill's work window",
