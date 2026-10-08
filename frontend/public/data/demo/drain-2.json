@@ -1,0 +1,1583 @@
+{
+ "billId": "B1",
+ "drainId": "2",
+ "name": "Ditch section 2",
+ "verdict": "GREEN",
+ "decision": null,
+ "note": null,
+ "decidedAt": null,
+ "claimedTonnes": 56,
+ "verifiedTonnes": 56,
+ "reviewTonnes": 0,
+ "heldTonnes": 0,
+ "lengthM": 282.8,
+ "widthM": 3.5,
+ "depthM": 1.2,
+ "plausibleMaxTonnes": 1995.4,
+ "geofence": {
+  "type": "Polygon",
+  "coordinates": [
+   [
+    [
+     72.8922731,
+     19.079969
+    ],
+    [
+     72.8922818,
+     19.0799672
+    ],
+    [
+     72.8931545,
+     19.079771
+    ],
+    [
+     72.8932016,
+     19.0797562
+    ],
+    [
+     72.8940251,
+     19.0794201
+    ],
+    [
+     72.894089,
+     19.079384
+    ],
+    [
+     72.8941408,
+     19.0793335
+    ],
+    [
+     72.894177,
+     19.0792721
+    ],
+    [
+     72.8941952,
+     19.0792039
+    ],
+    [
+     72.8941941,
+     19.0791335
+    ],
+    [
+     72.8941738,
+     19.0790659
+    ],
+    [
+     72.8941356,
+     19.0790055
+    ],
+    [
+     72.8940822,
+     19.0789565
+    ],
+    [
+     72.8940172,
+     19.0789222
+    ],
+    [
+     72.893945,
+     19.078905
+    ],
+    [
+     72.8938706,
+     19.0789061
+    ],
+    [
+     72.8937989,
+     19.0789253
+    ],
+    [
+     72.8929983,
+     19.0792521
+    ],
+    [
+     72.8921541,
+     19.0794418
+    ],
+    [
+     72.8912798,
+     19.0796113
+    ],
+    [
+     72.8912095,
+     19.0796343
+    ],
+    [
+     72.8911478,
+     19.0796737
+    ],
+    [
+     72.8910991,
+     19.0797269
+    ],
+    [
+     72.8910665,
+     19.0797902
+    ],
+    [
+     72.8910525,
+     19.0798593
+    ],
+    [
+     72.8910578,
+     19.0799294
+    ],
+    [
+     72.8910821,
+     19.0799959
+    ],
+    [
+     72.8911238,
+     19.0800542
+    ],
+    [
+     72.8911801,
+     19.0801003
+    ],
+    [
+     72.891247,
+     19.080131
+    ],
+    [
+     72.8913201,
+     19.0801443
+    ],
+    [
+     72.8913944,
+     19.0801393
+    ],
+    [
+     72.8922731,
+     19.079969
+    ]
+   ]
+  ]
+ },
+ "claimedRoute": [
+  [
+   72.8926407,
+   19.0795716
+  ],
+  [
+   72.9318789,
+   19.1272037
+  ]
+ ],
+ "dumpsite": {
+  "name": "Approved dumping ground",
+  "center": [
+   72.9318789,
+   19.1272037
+  ],
+  "geofence": {
+   "type": "Polygon",
+   "coordinates": [
+    [
+     [
+      72.9297872,
+      19.1252275
+     ],
+     [
+      72.9339707,
+      19.1252275
+     ],
+     [
+      72.9339707,
+      19.12918
+     ],
+     [
+      72.9297872,
+      19.12918
+     ],
+     [
+      72.9297872,
+      19.1252275
+     ]
+    ]
+   ]
+  }
+ },
+ "findings": [],
+ "failedRules": [],
+ "summary": null,
+ "summaryModelId": null,
+ "photos": [
+  {
+   "s3Key": "photos/B1/drain2/after-01.jpg",
+   "role": "after",
+   "status": "OK",
+   "lat": 19.0797472,
+   "lon": 72.8920722,
+   "timestamp": "2026-09-23T10:28:50+05:30",
+   "hasGps": true,
+   "pHash": "ac1b1c3864735b67",
+   "problems": [],
+   "bedrock": {
+    "cleared": true,
+    "loadType": "unclear",
+    "confidence": 0.9,
+    "notes": "Channel bed and invert are visible; the section looks cleared.",
+    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "ok": true
+   }
+  },
+  {
+   "s3Key": "photos/B1/drain2/before-01.jpg",
+   "role": "before",
+   "status": "OK",
+   "lat": 19.079275,
+   "lon": 72.8936694,
+   "timestamp": "2026-09-22T15:04:27+05:30",
+   "hasGps": true,
+   "pHash": "91493f3247c95937",
+   "problems": [],
+   "bedrock": {
+    "cleared": false,
+    "loadType": "unclear",
+    "confidence": 0.86,
+    "notes": "Channel is full of wet silt up to the kerb line.",
+    "modelId": "in.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "ok": true
+   }
+  }
+ ],
+ "trips": [
+  {
+   "tripId": "2#001",
+   "tripNo": "001",
+   "vehicleNo": "MH 03 AM 2507",
+   "claimedTonnes": 10.7,
+   "verdict": "VERIFIED",
+   "hardFails": [],
+   "softFails": [],
+   "findings": [],
+   "startTime": "2026-09-22T07:21:00+05:30",
+   "arrivalTime": "2026-09-22T07:38:00+05:30",
+   "slipKey": "slips/B1/2-001.png",
+   "traceKey": "traces/B1/2-001.json",
+   "slip": {
+    "s3Key": "slips/B1/2-001.png",
+    "status": "OK",
+    "ticketNo": "WB-2026-28657",
+    "vehicleNo": "MH 03 AM 2507",
+    "gross": 21.9,
+    "tare": 11.2,
+    "net": 10.7,
+    "timeIn": "07:37",
+    "timeOut": "07:59",
+    "site": "Ward storm water drain desilting",
+    "fields": {
+     "ticketNo": {
+      "value": "WB-2026-28657",
+      "raw": "WB-2026-28657",
+      "confidence": 99.1,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "vehicleNo": {
+      "value": "MH 03 AM 2507",
+      "raw": "MH 03 AM 2507",
+      "confidence": 98.4,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "gross": {
+      "value": 21.9,
+      "raw": "21.9",
+      "confidence": 97.8,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "tare": {
+      "value": 11.2,
+      "raw": "11.2",
+      "confidence": 97.2,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "net": {
+      "value": 10.7,
+      "raw": "10.7",
+      "confidence": 98.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeIn": {
+      "value": "07:37",
+      "raw": "07:37",
+      "confidence": 96.5,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeOut": {
+      "value": "07:59",
+      "raw": "07:59",
+      "confidence": 95.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "site": {
+      "value": "Ward storm water drain desilting",
+      "raw": "Ward storm water drain desilting",
+      "confidence": 93.2,
+      "ok": true,
+      "lowConfidence": false
+     }
+    },
+    "confidenceAvg": 97.12,
+    "missingFields": [],
+    "lowConfidenceFields": []
+   },
+   "actualRoute": [
+    [
+     72.8926,
+     19.079612
+    ],
+    [
+     72.893937,
+     19.080868
+    ],
+    [
+     72.895308,
+     19.082142
+    ],
+    [
+     72.896652,
+     19.083447
+    ],
+    [
+     72.897943,
+     19.084713
+    ],
+    [
+     72.899159,
+     19.086137
+    ],
+    [
+     72.89981,
+     19.087817
+    ],
+    [
+     72.90056,
+     19.089472
+    ],
+    [
+     72.901309,
+     19.091121
+    ],
+    [
+     72.902043,
+     19.092801
+    ],
+    [
+     72.902822,
+     19.094416
+    ],
+    [
+     72.904201,
+     19.095669
+    ],
+    [
+     72.905546,
+     19.096946
+    ],
+    [
+     72.906821,
+     19.098176
+    ],
+    [
+     72.908233,
+     19.099441
+    ],
+    [
+     72.909571,
+     19.100688
+    ],
+    [
+     72.911173,
+     19.101771
+    ],
+    [
+     72.91265,
+     19.102823
+    ],
+    [
+     72.914171,
+     19.103989
+    ],
+    [
+     72.915597,
+     19.105088
+    ],
+    [
+     72.916934,
+     19.106325
+    ],
+    [
+     72.918112,
+     19.10779
+    ],
+    [
+     72.919164,
+     19.109265
+    ],
+    [
+     72.920366,
+     19.110632
+    ],
+    [
+     72.92143,
+     19.112104
+    ],
+    [
+     72.922367,
+     19.113651
+    ],
+    [
+     72.923243,
+     19.115293
+    ],
+    [
+     72.924002,
+     19.116917
+    ],
+    [
+     72.924917,
+     19.118588
+    ],
+    [
+     72.92577,
+     19.120116
+    ],
+    [
+     72.926877,
+     19.121624
+    ],
+    [
+     72.928083,
+     19.122942
+    ],
+    [
+     72.929256,
+     19.124356
+    ],
+    [
+     72.930509,
+     19.125663
+    ],
+    [
+     72.931792,
+     19.127115
+    ],
+    [
+     72.931989,
+     19.127313
+    ],
+    [
+     72.931779,
+     19.12737
+    ],
+    [
+     72.931927,
+     19.127278
+    ],
+    [
+     72.931981,
+     19.127304
+    ],
+    [
+     72.931688,
+     19.127246
+    ],
+    [
+     72.932023,
+     19.127299
+    ],
+    [
+     72.931891,
+     19.12742
+    ],
+    [
+     72.931793,
+     19.127147
+    ]
+   ],
+   "actualRouteDistanceM": 6991.7,
+   "tracePointCount": 43,
+   "traceProblem": null
+  },
+  {
+   "tripId": "2#002",
+   "tripNo": "002",
+   "vehicleNo": "MH 04 AN 2644",
+   "claimedTonnes": 10.5,
+   "verdict": "VERIFIED",
+   "hardFails": [],
+   "softFails": [],
+   "findings": [],
+   "startTime": "2026-09-22T09:49:00+05:30",
+   "arrivalTime": "2026-09-22T10:06:00+05:30",
+   "slipKey": "slips/B1/2-002.png",
+   "traceKey": "traces/B1/2-002.json",
+   "slip": {
+    "s3Key": "slips/B1/2-002.png",
+    "status": "OK",
+    "ticketNo": "WB-2026-25454",
+    "vehicleNo": "MH 04 AN 2644",
+    "gross": 23.1,
+    "tare": 12.6,
+    "net": 10.5,
+    "timeIn": "10:04",
+    "timeOut": "10:18",
+    "site": "Ward storm water drain desilting",
+    "fields": {
+     "ticketNo": {
+      "value": "WB-2026-25454",
+      "raw": "WB-2026-25454",
+      "confidence": 99.1,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "vehicleNo": {
+      "value": "MH 04 AN 2644",
+      "raw": "MH 04 AN 2644",
+      "confidence": 98.4,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "gross": {
+      "value": 23.1,
+      "raw": "23.1",
+      "confidence": 97.8,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "tare": {
+      "value": 12.6,
+      "raw": "12.6",
+      "confidence": 97.2,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "net": {
+      "value": 10.5,
+      "raw": "10.5",
+      "confidence": 98.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeIn": {
+      "value": "10:04",
+      "raw": "10:04",
+      "confidence": 96.5,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeOut": {
+      "value": "10:18",
+      "raw": "10:18",
+      "confidence": 95.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "site": {
+      "value": "Ward storm water drain desilting",
+      "raw": "Ward storm water drain desilting",
+      "confidence": 93.2,
+      "ok": true,
+      "lowConfidence": false
+     }
+    },
+    "confidenceAvg": 97.12,
+    "missingFields": [],
+    "lowConfidenceFields": []
+   },
+   "actualRoute": [
+    [
+     72.892633,
+     19.07952
+    ],
+    [
+     72.893991,
+     19.080855
+    ],
+    [
+     72.895278,
+     19.082103
+    ],
+    [
+     72.896598,
+     19.083489
+    ],
+    [
+     72.897915,
+     19.084704
+    ],
+    [
+     72.899109,
+     19.086127
+    ],
+    [
+     72.899798,
+     19.087757
+    ],
+    [
+     72.900522,
+     19.089394
+    ],
+    [
+     72.901265,
+     19.091097
+    ],
+    [
+     72.902007,
+     19.092728
+    ],
+    [
+     72.902851,
+     19.094413
+    ],
+    [
+     72.904195,
+     19.09564
+    ],
+    [
+     72.905541,
+     19.096909
+    ],
+    [
+     72.906833,
+     19.098135
+    ],
+    [
+     72.908238,
+     19.099458
+    ],
+    [
+     72.909564,
+     19.100653
+    ],
+    [
+     72.911125,
+     19.10175
+    ],
+    [
+     72.912604,
+     19.102859
+    ],
+    [
+     72.91414,
+     19.103914
+    ],
+    [
+     72.915676,
+     19.105026
+    ],
+    [
+     72.916956,
+     19.106333
+    ],
+    [
+     72.918078,
+     19.10774
+    ],
+    [
+     72.919221,
+     19.109199
+    ],
+    [
+     72.920366,
+     19.110697
+    ],
+    [
+     72.921492,
+     19.112172
+    ],
+    [
+     72.922336,
+     19.113734
+    ],
+    [
+     72.923237,
+     19.115334
+    ],
+    [
+     72.924059,
+     19.116877
+    ],
+    [
+     72.92491,
+     19.11854
+    ],
+    [
+     72.925718,
+     19.120149
+    ],
+    [
+     72.926903,
+     19.121545
+    ],
+    [
+     72.928061,
+     19.122938
+    ],
+    [
+     72.929326,
+     19.124386
+    ],
+    [
+     72.930494,
+     19.12576
+    ],
+    [
+     72.931821,
+     19.127073
+    ],
+    [
+     72.931802,
+     19.127204
+    ],
+    [
+     72.931991,
+     19.126994
+    ],
+    [
+     72.931831,
+     19.127187
+    ],
+    [
+     72.932008,
+     19.127256
+    ],
+    [
+     72.931718,
+     19.127276
+    ],
+    [
+     72.931817,
+     19.127226
+    ],
+    [
+     72.931777,
+     19.127206
+    ],
+    [
+     72.931805,
+     19.127051
+    ]
+   ],
+   "actualRouteDistanceM": 6954.8,
+   "tracePointCount": 43,
+   "traceProblem": null
+  },
+  {
+   "tripId": "2#003",
+   "tripNo": "003",
+   "vehicleNo": "MH 06 AW 3740",
+   "claimedTonnes": 11.8,
+   "verdict": "VERIFIED",
+   "hardFails": [],
+   "softFails": [],
+   "findings": [],
+   "startTime": "2026-09-22T12:46:00+05:30",
+   "arrivalTime": "2026-09-22T13:03:00+05:30",
+   "slipKey": "slips/B1/2-003.png",
+   "traceKey": "traces/B1/2-003.json",
+   "slip": {
+    "s3Key": "slips/B1/2-003.png",
+    "status": "OK",
+    "ticketNo": "WB-2026-24736",
+    "vehicleNo": "MH 06 AW 3740",
+    "gross": 24.4,
+    "tare": 12.6,
+    "net": 11.8,
+    "timeIn": "13:04",
+    "timeOut": "13:23",
+    "site": "Ward storm water drain desilting",
+    "fields": {
+     "ticketNo": {
+      "value": "WB-2026-24736",
+      "raw": "WB-2026-24736",
+      "confidence": 99.1,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "vehicleNo": {
+      "value": "MH 06 AW 3740",
+      "raw": "MH 06 AW 3740",
+      "confidence": 98.4,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "gross": {
+      "value": 24.4,
+      "raw": "24.4",
+      "confidence": 97.8,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "tare": {
+      "value": 12.6,
+      "raw": "12.6",
+      "confidence": 97.2,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "net": {
+      "value": 11.8,
+      "raw": "11.8",
+      "confidence": 98.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeIn": {
+      "value": "13:04",
+      "raw": "13:04",
+      "confidence": 96.5,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeOut": {
+      "value": "13:23",
+      "raw": "13:23",
+      "confidence": 95.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "site": {
+      "value": "Ward storm water drain desilting",
+      "raw": "Ward storm water drain desilting",
+      "confidence": 93.2,
+      "ok": true,
+      "lowConfidence": false
+     }
+    },
+    "confidenceAvg": 97.12,
+    "missingFields": [],
+    "lowConfidenceFields": []
+   },
+   "actualRoute": [
+    [
+     72.892632,
+     19.079564
+    ],
+    [
+     72.893948,
+     19.08089
+    ],
+    [
+     72.895315,
+     19.082142
+    ],
+    [
+     72.896562,
+     19.083425
+    ],
+    [
+     72.897974,
+     19.084706
+    ],
+    [
+     72.899172,
+     19.086133
+    ],
+    [
+     72.89983,
+     19.087731
+    ],
+    [
+     72.900619,
+     19.0894
+    ],
+    [
+     72.901327,
+     19.091078
+    ],
+    [
+     72.902006,
+     19.092796
+    ],
+    [
+     72.902815,
+     19.094394
+    ],
+    [
+     72.904136,
+     19.095664
+    ],
+    [
+     72.905469,
+     19.096956
+    ],
+    [
+     72.906833,
+     19.098146
+    ],
+    [
+     72.908244,
+     19.099442
+    ],
+    [
+     72.909653,
+     19.1007
+    ],
+    [
+     72.911089,
+     19.101708
+    ],
+    [
+     72.912576,
+     19.102852
+    ],
+    [
+     72.914099,
+     19.103965
+    ],
+    [
+     72.915694,
+     19.105018
+    ],
+    [
+     72.916986,
+     19.106262
+    ],
+    [
+     72.918096,
+     19.107803
+    ],
+    [
+     72.919165,
+     19.109171
+    ],
+    [
+     72.920341,
+     19.110727
+    ],
+    [
+     72.921454,
+     19.112183
+    ],
+    [
+     72.922378,
+     19.113669
+    ],
+    [
+     72.923181,
+     19.11535
+    ],
+    [
+     72.924044,
+     19.116874
+    ],
+    [
+     72.924896,
+     19.118529
+    ],
+    [
+     72.925778,
+     19.120121
+    ],
+    [
+     72.926827,
+     19.121628
+    ],
+    [
+     72.928032,
+     19.123022
+    ],
+    [
+     72.929343,
+     19.124307
+    ],
+    [
+     72.930512,
+     19.125729
+    ],
+    [
+     72.931816,
+     19.127134
+    ],
+    [
+     72.931641,
+     19.127252
+    ],
+    [
+     72.931735,
+     19.127031
+    ],
+    [
+     72.931652,
+     19.127351
+    ],
+    [
+     72.931704,
+     19.127412
+    ],
+    [
+     72.931787,
+     19.127319
+    ],
+    [
+     72.931962,
+     19.127303
+    ],
+    [
+     72.932099,
+     19.127198
+    ],
+    [
+     72.931832,
+     19.127209
+    ]
+   ],
+   "actualRouteDistanceM": 6976.2,
+   "tracePointCount": 43,
+   "traceProblem": null
+  },
+  {
+   "tripId": "2#004",
+   "tripNo": "004",
+   "vehicleNo": "MH 06 AX 3877",
+   "claimedTonnes": 12.6,
+   "verdict": "VERIFIED",
+   "hardFails": [],
+   "softFails": [],
+   "findings": [],
+   "startTime": "2026-09-23T07:12:00+05:30",
+   "arrivalTime": "2026-09-23T07:29:00+05:30",
+   "slipKey": "slips/B1/2-004.png",
+   "traceKey": "traces/B1/2-004.json",
+   "slip": {
+    "s3Key": "slips/B1/2-004.png",
+    "status": "OK",
+    "ticketNo": "WB-2026-76917",
+    "vehicleNo": "MH 06 AX 3877",
+    "gross": 23.8,
+    "tare": 11.2,
+    "net": 12.6,
+    "timeIn": "07:29",
+    "timeOut": "07:48",
+    "site": "Ward storm water drain desilting",
+    "fields": {
+     "ticketNo": {
+      "value": "WB-2026-76917",
+      "raw": "WB-2026-76917",
+      "confidence": 99.1,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "vehicleNo": {
+      "value": "MH 06 AX 3877",
+      "raw": "MH 06 AX 3877",
+      "confidence": 98.4,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "gross": {
+      "value": 23.8,
+      "raw": "23.8",
+      "confidence": 97.8,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "tare": {
+      "value": 11.2,
+      "raw": "11.2",
+      "confidence": 97.2,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "net": {
+      "value": 12.6,
+      "raw": "12.6",
+      "confidence": 98.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeIn": {
+      "value": "07:29",
+      "raw": "07:29",
+      "confidence": 96.5,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeOut": {
+      "value": "07:48",
+      "raw": "07:48",
+      "confidence": 95.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "site": {
+      "value": "Ward storm water drain desilting",
+      "raw": "Ward storm water drain desilting",
+      "confidence": 93.2,
+      "ok": true,
+      "lowConfidence": false
+     }
+    },
+    "confidenceAvg": 97.12,
+    "missingFields": [],
+    "lowConfidenceFields": []
+   },
+   "actualRoute": [
+    [
+     72.892647,
+     19.079596
+    ],
+    [
+     72.894018,
+     19.080892
+    ],
+    [
+     72.895292,
+     19.082187
+    ],
+    [
+     72.896605,
+     19.083461
+    ],
+    [
+     72.897971,
+     19.08473
+    ],
+    [
+     72.89913,
+     19.086122
+    ],
+    [
+     72.899846,
+     19.087754
+    ],
+    [
+     72.900578,
+     19.089393
+    ],
+    [
+     72.901323,
+     19.091076
+    ],
+    [
+     72.902,
+     19.092793
+    ],
+    [
+     72.902813,
+     19.094341
+    ],
+    [
+     72.904121,
+     19.095687
+    ],
+    [
+     72.905562,
+     19.096872
+    ],
+    [
+     72.906896,
+     19.098148
+    ],
+    [
+     72.908245,
+     19.099434
+    ],
+    [
+     72.909638,
+     19.100692
+    ],
+    [
+     72.911162,
+     19.101727
+    ],
+    [
+     72.912676,
+     19.102836
+    ],
+    [
+     72.914092,
+     19.103956
+    ],
+    [
+     72.915679,
+     19.105063
+    ],
+    [
+     72.916927,
+     19.10627
+    ],
+    [
+     72.918129,
+     19.107753
+    ],
+    [
+     72.91921,
+     19.109218
+    ],
+    [
+     72.92034,
+     19.110692
+    ],
+    [
+     72.921401,
+     19.112154
+    ],
+    [
+     72.922397,
+     19.113709
+    ],
+    [
+     72.923206,
+     19.115351
+    ],
+    [
+     72.9241,
+     19.116915
+    ],
+    [
+     72.924891,
+     19.118487
+    ],
+    [
+     72.925753,
+     19.120125
+    ],
+    [
+     72.926808,
+     19.121568
+    ],
+    [
+     72.928067,
+     19.122966
+    ],
+    [
+     72.929367,
+     19.124332
+    ],
+    [
+     72.930582,
+     19.125762
+    ],
+    [
+     72.931802,
+     19.127036
+    ],
+    [
+     72.931952,
+     19.127358
+    ],
+    [
+     72.931777,
+     19.127148
+    ],
+    [
+     72.931797,
+     19.127215
+    ],
+    [
+     72.932008,
+     19.127386
+    ],
+    [
+     72.931861,
+     19.127426
+    ],
+    [
+     72.931692,
+     19.127147
+    ],
+    [
+     72.931926,
+     19.127159
+    ],
+    [
+     72.931995,
+     19.126989
+    ]
+   ],
+   "actualRouteDistanceM": 6988.7,
+   "tracePointCount": 43,
+   "traceProblem": null
+  },
+  {
+   "tripId": "2#005",
+   "tripNo": "005",
+   "vehicleNo": "MH 02 AE 1548",
+   "claimedTonnes": 10.4,
+   "verdict": "VERIFIED",
+   "hardFails": [],
+   "softFails": [],
+   "findings": [],
+   "startTime": "2026-09-23T09:49:00+05:30",
+   "arrivalTime": "2026-09-23T10:06:00+05:30",
+   "slipKey": "slips/B1/2-005.png",
+   "traceKey": "traces/B1/2-005.json",
+   "slip": {
+    "s3Key": "slips/B1/2-005.png",
+    "status": "OK",
+    "ticketNo": "WB-2026-41431",
+    "vehicleNo": "MH 02 AE 1548",
+    "gross": 21.6,
+    "tare": 11.2,
+    "net": 10.4,
+    "timeIn": "10:05",
+    "timeOut": "10:30",
+    "site": "Ward storm water drain desilting",
+    "fields": {
+     "ticketNo": {
+      "value": "WB-2026-41431",
+      "raw": "WB-2026-41431",
+      "confidence": 99.1,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "vehicleNo": {
+      "value": "MH 02 AE 1548",
+      "raw": "MH 02 AE 1548",
+      "confidence": 98.4,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "gross": {
+      "value": 21.6,
+      "raw": "21.6",
+      "confidence": 97.8,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "tare": {
+      "value": 11.2,
+      "raw": "11.2",
+      "confidence": 97.2,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "net": {
+      "value": 10.4,
+      "raw": "10.4",
+      "confidence": 98.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeIn": {
+      "value": "10:05",
+      "raw": "10:05",
+      "confidence": 96.5,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "timeOut": {
+      "value": "10:30",
+      "raw": "10:30",
+      "confidence": 95.9,
+      "ok": true,
+      "lowConfidence": false
+     },
+     "site": {
+      "value": "Ward storm water drain desilting",
+      "raw": "Ward storm water drain desilting",
+      "confidence": 93.2,
+      "ok": true,
+      "lowConfidence": false
+     }
+    },
+    "confidenceAvg": 97.12,
+    "missingFields": [],
+    "lowConfidenceFields": []
+   },
+   "actualRoute": [
+    [
+     72.892681,
+     19.07953
+    ],
+    [
+     72.893965,
+     19.080896
+    ],
+    [
+     72.89532,
+     19.082115
+    ],
+    [
+     72.896616,
+     19.083431
+    ],
+    [
+     72.897933,
+     19.084701
+    ],
+    [
+     72.899188,
+     19.086052
+    ],
+    [
+     72.899832,
+     19.087769
+    ],
+    [
+     72.900618,
+     19.0894
+    ],
+    [
+     72.901261,
+     19.091119
+    ],
+    [
+     72.901957,
+     19.092793
+    ],
+    [
+     72.902787,
+     19.094402
+    ],
+    [
+     72.904112,
+     19.095677
+    ],
+    [
+     72.905504,
+     19.096934
+    ],
+    [
+     72.906899,
+     19.098138
+    ],
+    [
+     72.908194,
+     19.099434
+    ],
+    [
+     72.909593,
+     19.100677
+    ],
+    [
+     72.91107,
+     19.101703
+    ],
+    [
+     72.912607,
+     19.102807
+    ],
+    [
+     72.914084,
+     19.103985
+    ],
+    [
+     72.91567,
+     19.105064
+    ],
+    [
+     72.917034,
+     19.106327
+    ],
+    [
+     72.91812,
+     19.107746
+    ],
+    [
+     72.919262,
+     19.109178
+    ],
+    [
+     72.920321,
+     19.110687
+    ],
+    [
+     72.921396,
+     19.11209
+    ],
+    [
+     72.922379,
+     19.113675
+    ],
+    [
+     72.923261,
+     19.115361
+    ],
+    [
+     72.924015,
+     19.116974
+    ],
+    [
+     72.924927,
+     19.118587
+    ],
+    [
+     72.925724,
+     19.120133
+    ],
+    [
+     72.9269,
+     19.121621
+    ],
+    [
+     72.928135,
+     19.122924
+    ],
+    [
+     72.929363,
+     19.124328
+    ],
+    [
+     72.930565,
+     19.12573
+    ],
+    [
+     72.931777,
+     19.127043
+    ],
+    [
+     72.932066,
+     19.127067
+    ],
+    [
+     72.931711,
+     19.127401
+    ],
+    [
+     72.931721,
+     19.127005
+    ],
+    [
+     72.931707,
+     19.127229
+    ],
+    [
+     72.932084,
+     19.127276
+    ],
+    [
+     72.932069,
+     19.127395
+    ],
+    [
+     72.932,
+     19.12714
+    ],
+    [
+     72.931672,
+     19.127375
+    ]
+   ],
+   "actualRouteDistanceM": 7072.8,
+   "tracePointCount": 43,
+   "traceProblem": null
+  }
+ ],
+ "rules": {
+  "R1": "Photo GPS must fall inside the drain's 30 m geofence",
+  "R2": "Photo must have been taken inside the bill's work window",
+  "R3": "Photo must not be a reused copy of another photo on this bill",
+  "R4": "After-photo must show a cleared drain, and the load must be silt",
+  "R5": "GPS trace must enter the approved dump site",
+  "R6": "Consecutive trips by one truck must be physically possible",
+  "R7": "Slip net weight must not exceed the truck's capacity",
+  "R8": "Slip time-in must match the GPS arrival at the dump site",
+  "R9": "Slip vehicle number must match the trip's truck",
+  "R10": "Drain total must fit the section's length, width and depth",
+  "GPS_GAP": "GPS trace must not go dark for more than three minutes",
+  "SLIP_MISSING": "A weighbridge slip must exist for the trip",
+  "TRACE_MISSING": "A GPS trace must exist for the trip",
+  "PHOTOS_MISSING": "The drain must have photo evidence",
+  "EVIDENCE_ERROR": "Evidence must have been read successfully"
+ }
+}

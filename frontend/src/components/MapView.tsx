@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapLibreMap, NavigationControl, ScaleControl } from 'maplibre-gl'
-import type { ErrorEvent, LngLatBoundsLike } from 'maplibre-gl'
+import type {
+  ErrorEvent,
+  GeoJSONSource,
+  LngLatBoundsLike,
+  MapGeoJSONFeature,
+} from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+import type { Drain, DrainRow } from '../types'
 
 const region = import.meta.env.VITE_AWS_REGION
 const apiKey = import.meta.env.VITE_LOCATION_API_KEY
@@ -15,23 +22,35 @@ const zoom = Number(import.meta.env.VITE_MAP_ZOOM ?? 13)
 // no map resource to create.
 const styleUrl = `https://maps.geo.${region}.amazonaws.com/v2/styles/Standard/descriptor?key=${apiKey}&color-scheme=Light`
 
-// Written by data/osm_drains.py and copied into public/data.
 const DRAINS_URL = '/data/drains.geojson'
 const DUMPSITE_URL = '/data/dumpsite.geojson'
 
-// Every drain is neutral grey today. Day 2 colours them by verdict.
-const DRAIN_FILL = '#8c99a6'
-const DRAIN_LINE = '#5b6773'
-const DUMPSITE_FILL = '#6b8fa8'
+const COLOURS = {
+  RED: '#d1453b',
+  AMBER: '#d99a08',
+  GREEN: '#2f9e55',
+  PENDING: '#8c99a6',
+}
 
-// Missing env is knowable before render, so it is not effect state.
+const DUMPSITE_FILL = '#6b8fa8'
+const CLAIMED_ROUTE = '#2f6fed'
+const ACTUAL_ROUTE = '#d1453b'
+
 const configError =
   !region || !apiKey
     ? 'Set VITE_AWS_REGION and VITE_LOCATION_API_KEY in frontend/.env'
     : null
 
+interface Props {
+  drains: DrainRow[]
+  selectedDrainId: string | null
+  detail: Drain | null
+  selectedTripId: string | null
+  onSelect: (drainId: string) => void
+}
+
 type FeatureCollection = {
-  features: Array<{ geometry: { coordinates: number[][][] } }>
+  features: Array<{ properties: Record<string, unknown>; geometry: { coordinates: number[][][] } }>
 }
 
 function boundsOf(collections: FeatureCollection[]): LngLatBoundsLike | null {
@@ -60,12 +79,24 @@ function boundsOf(collections: FeatureCollection[]): LngLatBoundsLike | null {
   ]
 }
 
-function MapView() {
+function lineFeature(coordinates: [number, number][]) {
+  return {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: { type: 'LineString' as const, coordinates },
+  }
+}
+
+const EMPTY = { type: 'FeatureCollection' as const, features: [] }
+
+function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
+  const [ready, setReady] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
-  const [drainCount, setDrainCount] = useState<number | null>(null)
   const error = configError ?? mapError
 
+  // ---- create the map once
   useEffect(() => {
     if (!containerRef.current || configError) return
 
@@ -75,6 +106,7 @@ function MapView() {
       center,
       zoom,
     })
+    mapRef.current = map
 
     map.addControl(new NavigationControl(), 'bottom-right')
     map.addControl(new ScaleControl(), 'bottom-left')
@@ -82,39 +114,49 @@ function MapView() {
       setMapError(event.error?.message ?? 'Map failed to load'),
     )
 
-    let cancelled = false
-
     const addLayers = async () => {
-      const [drains, dumpsite] = await Promise.all([
+      const [drainGeo, dumpsite] = await Promise.all([
         fetch(DRAINS_URL).then((response) => response.json()),
         fetch(DUMPSITE_URL).then((response) => response.json()),
       ])
-      if (cancelled) return
 
-      map.addSource('drains', { type: 'geojson', data: drains })
+      map.addSource('drains', { type: 'geojson', data: drainGeo, promoteId: 'drainId' })
       map.addLayer({
         id: 'drains-fill',
         type: 'fill',
         source: 'drains',
-        paint: { 'fill-color': DRAIN_FILL, 'fill-opacity': 0.45 },
+        paint: {
+          'fill-color': [
+            'match',
+            ['coalesce', ['feature-state', 'verdict'], 'PENDING'],
+            'RED', COLOURS.RED,
+            'AMBER', COLOURS.AMBER,
+            'GREEN', COLOURS.GREEN,
+            COLOURS.PENDING,
+          ],
+          'fill-opacity': [
+            'case', ['boolean', ['feature-state', 'selected'], false], 0.85, 0.55,
+          ],
+        },
       })
       map.addLayer({
         id: 'drains-outline',
         type: 'line',
         source: 'drains',
-        paint: { 'line-color': DRAIN_LINE, 'line-width': 1.5 },
+        paint: {
+          'line-color': '#15202b',
+          'line-width': [
+            'case', ['boolean', ['feature-state', 'selected'], false], 3, 1,
+          ],
+        },
       })
       map.addLayer({
         id: 'drains-label',
         type: 'symbol',
         source: 'drains',
-        layout: {
-          'text-field': ['get', 'drainId'],
-          'text-size': 13,
-          'text-allow-overlap': false,
-        },
+        layout: { 'text-field': ['get', 'drainId'], 'text-size': 13 },
         paint: {
-          'text-color': '#1d262f',
+          'text-color': '#13202c',
           'text-halo-color': '#ffffff',
           'text-halo-width': 1.4,
         },
@@ -125,7 +167,7 @@ function MapView() {
         id: 'dumpsite-fill',
         type: 'fill',
         source: 'dumpsite',
-        paint: { 'fill-color': DUMPSITE_FILL, 'fill-opacity': 0.35 },
+        paint: { 'fill-color': DUMPSITE_FILL, 'fill-opacity': 0.3 },
       })
       map.addLayer({
         id: 'dumpsite-outline',
@@ -134,39 +176,131 @@ function MapView() {
         paint: { 'line-color': DUMPSITE_FILL, 'line-width': 2, 'line-dasharray': [2, 1] },
       })
 
-      const bounds = boundsOf([drains, dumpsite])
+      // The two routes of the drill-down, empty until a drain is picked.
+      map.addSource('claimed-route', { type: 'geojson', data: EMPTY })
+      map.addLayer({
+        id: 'claimed-route-line',
+        type: 'line',
+        source: 'claimed-route',
+        paint: {
+          'line-color': CLAIMED_ROUTE,
+          'line-width': 3,
+          'line-dasharray': [2, 1.5],
+          'line-opacity': 0.9,
+        },
+      })
+
+      map.addSource('actual-route', { type: 'geojson', data: EMPTY })
+      map.addLayer({
+        id: 'actual-route-line',
+        type: 'line',
+        source: 'actual-route',
+        paint: { 'line-color': ACTUAL_ROUTE, 'line-width': 4, 'line-opacity': 0.95 },
+      })
+
+      const bounds = boundsOf([drainGeo, dumpsite])
       if (bounds) map.fitBounds(bounds, { padding: 64, duration: 0 })
 
-      setDrainCount(drains.features.length)
+      map.on('click', 'drains-fill', (event) => {
+        const feature = event.features?.[0] as MapGeoJSONFeature | undefined
+        const drainId = feature?.properties?.drainId
+        if (drainId) onSelect(String(drainId))
+      })
+      map.on('mouseenter', 'drains-fill', () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      map.on('mouseleave', 'drains-fill', () => {
+        map.getCanvas().style.cursor = ''
+      })
+
+      setReady(true)
     }
 
     map.on('load', () => {
       addLayers().catch((cause: unknown) =>
         setMapError(
-          `Could not load the drain geometry. Run data/osm_drains.py and copy ` +
+          'Could not load the drain geometry. Run data/osm_drains.py and copy ' +
             `drains.geojson into frontend/public/data. (${String(cause)})`,
         ),
       )
     })
 
     return () => {
-      cancelled = true
+      mapRef.current = null
       map.remove()
     }
+    // onSelect is stable for the life of the app.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ---- colour the polygons by verdict
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+
+    for (const drain of drains) {
+      map.setFeatureState(
+        { source: 'drains', id: drain.drainId },
+        { verdict: drain.verdict ?? 'PENDING', selected: drain.drainId === selectedDrainId },
+      )
+    }
+  }, [drains, selectedDrainId, ready])
+
+  // ---- draw the claimed and actual routes for the selected trip
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+
+    const claimed = map.getSource('claimed-route') as GeoJSONSource | undefined
+    const actual = map.getSource('actual-route') as GeoJSONSource | undefined
+    if (!claimed || !actual) return
+
+    if (!detail) {
+      claimed.setData(EMPTY)
+      actual.setData(EMPTY)
+      return
+    }
+
+    const trip =
+      detail.trips.find((entry) => entry.tripId === selectedTripId) ?? detail.trips[0]
+
+    claimed.setData(
+      detail.claimedRoute
+        ? { type: 'FeatureCollection', features: [lineFeature(detail.claimedRoute)] }
+        : EMPTY,
+    )
+    actual.setData(
+      trip && trip.actualRoute.length > 1
+        ? { type: 'FeatureCollection', features: [lineFeature(trip.actualRoute)] }
+        : EMPTY,
+    )
+
+    const points = [...(detail.claimedRoute ?? []), ...(trip?.actualRoute ?? [])]
+    if (points.length > 1) {
+      const lons = points.map(([lon]) => lon)
+      const lats = points.map(([, lat]) => lat)
+      map.fitBounds(
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
+        { padding: 90, duration: 600 },
+      )
+    }
+  }, [detail, selectedTripId, ready])
 
   return (
     <div className="map-wrap">
       <div ref={containerRef} className="map" />
 
-      {drainCount !== null && (
-        <div className="map-legend">
-          <span className="swatch swatch-drain" />
-          {drainCount} drain sections
-          <span className="swatch swatch-dump" />
-          approved dump site
-        </div>
-      )}
+      <div className="map-legend">
+        <span className="swatch" style={{ background: COLOURS.GREEN }} /> verified
+        <span className="swatch" style={{ background: COLOURS.AMBER }} /> review
+        <span className="swatch" style={{ background: COLOURS.RED }} /> hold
+        <span className="legend-divider" />
+        <span className="line-key line-claimed" /> claimed route
+        <span className="line-key line-actual" /> actual GPS
+      </div>
 
       {error && <div className="map-error">{error}</div>}
     </div>

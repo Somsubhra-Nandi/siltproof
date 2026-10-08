@@ -3,24 +3,24 @@
   --bar-fg: #f4f7fa;
   --bar-border: #2c3a48;
   --muted: #93a4b5;
+
+  --panel-bg: #ffffff;
+  --panel-fg: #16212b;
+  --panel-border: #dde3ea;
+  --muted-ink: #6b7682;
+
   --verified: #4ade80;
   --hold: #f87171;
   --review: #fbbf24;
 
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body,
-#root {
-  height: 100%;
-}
+html, body, #root { height: 100%; }
 
 body {
   margin: 0;
