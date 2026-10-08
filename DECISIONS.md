@@ -62,8 +62,12 @@ that leaves fewer than 10 unreserved, so the first `sam deploy` rolled back.
 quota of 10 the account itself caps ingest below the throttling risk. Once the
 quota is raised, deploy with `IngestReservedConcurrency=3`.
 
-`temperature` is deliberately **not** sent: it is removed on the Claude 5 family
-and returns a 400 there, and omitting it works on every entitled model.
+Sampling is fixed at `temperature` 0 and `topP` 1.0 on both Bedrock calls, so
+the same photo gets the same verdict every run (unset, Nova Pro called one
+photo `unclear` at 0.0 and then `silt` at 0.8). Anthropic model ids get
+`maxTokens` only: the Claude 5 family returns a 400 on `temperature`, and
+Claude 4.5 refuses `temperature` and `topP` together.
+`bedrock.inference_config()` holds that rule.
 
 ## Bedrock vision uses Converse + forced tool use
 

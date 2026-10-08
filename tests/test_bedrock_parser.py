@@ -146,3 +146,40 @@ def test_summarise_returns_text(fixture_response):
     text = bedrock.response_text(bedrock.summarise("why was this held?"))
 
     assert "dump site" in text
+
+
+class RecordingClient:
+    """Stands in for bedrock-runtime and keeps the kwargs of each converse call."""
+
+    def __init__(self):
+        self.calls = []
+
+    def converse(self, **kwargs):
+        self.calls.append(kwargs)
+        return {"output": {"message": {"content": [{"text": "ok"}]}}}
+
+
+@pytest.fixture
+def recording_client(monkeypatch):
+    monkeypatch.delenv("MOCK_AWS", raising=False)
+    recorder = RecordingClient()
+    monkeypatch.setattr(bedrock.awsclients, "client", lambda service: recorder)
+    return recorder
+
+
+def test_nova_gets_fixed_sampling_on_both_calls(recording_client):
+    model = "apac.amazon.nova-pro-v1:0"
+    bedrock.check_photo(b"bytes", key="a.jpg", model_id=model)
+    bedrock.summarise("why?", model_id=model, max_tokens=300)
+
+    photo, summary = (call["inferenceConfig"] for call in recording_client.calls)
+    assert photo == {"maxTokens": 512, "temperature": 0.0, "topP": 1.0}
+    assert summary == {"maxTokens": 300, "temperature": 0.0, "topP": 1.0}
+
+
+def test_anthropic_models_get_max_tokens_only(recording_client):
+    # Claude 5 rejects temperature; Claude 4.5 rejects temperature with topP.
+    for model in ("in.anthropic.claude-haiku-4-5-20251001-v1:0", "global.anthropic.claude-sonnet-5"):
+        bedrock.check_photo(b"bytes", key="a.jpg", model_id=model)
+
+    assert [call["inferenceConfig"] for call in recording_client.calls] == [{"maxTokens": 512}] * 2

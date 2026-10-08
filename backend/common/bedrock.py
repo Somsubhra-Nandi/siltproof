@@ -95,6 +95,24 @@ def image_format(content_type=None, key=""):
 
 
 # ------------------------------------------------------------------ the call
+# Fixed sampling, so the same photo gets the same verdict on every run.
+TEMPERATURE = 0.0
+TOP_P = 1.0
+
+
+def inference_config(model_id, max_tokens):
+    """maxTokens, plus fixed sampling on models that accept it.
+
+    Anthropic models get maxTokens only: the Claude 5 family rejects temperature
+    and Claude 4.5 rejects temperature and topP together (DECISIONS.md).
+    """
+    settings = {"maxTokens": max_tokens}
+    if "anthropic." not in model_id:
+        settings["temperature"] = TEMPERATURE
+        settings["topP"] = TOP_P
+    return settings
+
+
 def check_photo(image_bytes, *, key="", content_type=None, model_id=None):
     """Return the raw Converse response for one photo (real or mocked)."""
     if config.mock_aws():
@@ -104,8 +122,6 @@ def check_photo(image_bytes, *, key="", content_type=None, model_id=None):
     client = awsclients.client("bedrock-runtime")
     model = model_id or config.vision_model_id()
 
-    # temperature is deliberately omitted: it is rejected on the Claude 5
-    # family and the default is fine for a forced-tool call.
     return call_with_retry(
         lambda: client.converse(
             modelId=model,
@@ -127,7 +143,7 @@ def check_photo(image_bytes, *, key="", content_type=None, model_id=None):
                 "tools": [PHOTO_TOOL],
                 "toolChoice": {"tool": {"name": TOOL_NAME}},
             },
-            inferenceConfig={"maxTokens": 512},
+            inferenceConfig=inference_config(model, 512),
         ),
         what="bedrock.converse.photo",
     )
@@ -146,7 +162,7 @@ def summarise(prompt, *, model_id=None, max_tokens=300):
         lambda: client.converse(
             modelId=model,
             messages=[{"role": "user", "content": [{"text": prompt}]}],
-            inferenceConfig={"maxTokens": max_tokens},
+            inferenceConfig=inference_config(model, max_tokens),
         ),
         what="bedrock.converse.text",
     )
