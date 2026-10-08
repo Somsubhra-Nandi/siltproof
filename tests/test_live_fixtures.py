@@ -60,8 +60,20 @@ def test_live_textract_answers_hang_off_query_relationships():
 
 
 # ----------------------------------------------------------------- bedrock
-def test_live_bedrock_photo_check_comes_back_as_a_tool_use():
-    parsed = bedrock.parse_photo_check(live("bedrock_converse_photo"))
+# Haiku 4.5 from the smoke run, then Nova Pro and Lite (apac.* profiles) on two
+# generated photos, captured when Haiku was blocked by a Marketplace payment error.
+PHOTO_FIXTURES = [
+    "bedrock_converse_photo",
+    "bedrock_converse_photo_nova_pro_drain9",
+    "bedrock_converse_photo_nova_pro_drain17",
+    "bedrock_converse_photo_nova_lite_drain9",
+    "bedrock_converse_photo_nova_lite_drain17",
+]
+
+
+@pytest.mark.parametrize("name", PHOTO_FIXTURES)
+def test_live_bedrock_photo_check_comes_back_as_a_tool_use(name):
+    parsed = bedrock.parse_photo_check(live(name))
 
     assert parsed["source"] == "tool_use"
     assert parsed["ok"], parsed["problems"]

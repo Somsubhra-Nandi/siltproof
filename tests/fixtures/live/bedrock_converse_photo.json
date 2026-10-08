@@ -1,0 +1,33 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_dx400lii8pVA6dVdrgQpU4",
+            "name": "record_photo_check",
+            "input": {
+              "cleared": false,
+              "load_type": "unclear",
+              "confidence": 0.3,
+              "notes": "This appears to be a simulated or artistic rendering rather than an actual drain photo; the colored shapes and overlays do not depict a real drain channel, making a genuine assessment impossible."
+            },
+            "type": "tool_use"
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 1778,
+    "outputTokens": 124,
+    "totalTokens": 1902,
+    "cacheReadInputTokens": 0,
+    "cacheWriteInputTokens": 0
+  },
+  "metrics": {
+    "latencyMs": 1181
+  }
+}

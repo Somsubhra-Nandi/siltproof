@@ -1,0 +1,30 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_yU2k6ywGy26M8kaFA9BL5n",
+            "name": "record_photo_check",
+            "input": {
+              "load_type": "unclear",
+              "notes": "The photo is too abstract and lacks clarity to discern the load type.",
+              "confidence": 0.5,
+              "cleared": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 2344,
+    "outputTokens": 48,
+    "totalTokens": 2392
+  },
+  "metrics": {
+    "latencyMs": 807
+  }
+}

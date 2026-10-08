@@ -1,0 +1,30 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_lL8wQPCDXQZskt7YeYkqdl",
+            "name": "record_photo_check",
+            "input": {
+              "load_type": "unclear",
+              "notes": "The image is a simulated representation and does not show actual evidence.",
+              "confidence": 0.5,
+              "cleared": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 2344,
+    "outputTokens": 48,
+    "totalTokens": 2392
+  },
+  "metrics": {
+    "latencyMs": 1083
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_Y2hntAXBEj2sB0kAYSutcn",
+            "name": "record_photo_check",
+            "input": {
+              "load_type": "unclear",
+              "notes": "The image is too blurred to judge the load type.",
+              "confidence": 0.0,
+              "cleared": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 2344,
+    "outputTokens": 45,
+    "totalTokens": 2389
+  },
+  "metrics": {
+    "latencyMs": 939
+  }
+}

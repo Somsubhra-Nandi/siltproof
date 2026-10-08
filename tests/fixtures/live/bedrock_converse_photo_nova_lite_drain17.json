@@ -1,0 +1,30 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_OAtOWMXPwlnX1oFvkNkyB4",
+            "name": "record_photo_check",
+            "input": {
+              "load_type": "unclear",
+              "notes": "The image is too abstract and lacks any visible drain or load, making it impossible to assess.",
+              "confidence": 0.1,
+              "cleared": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 2344,
+    "outputTokens": 53,
+    "totalTokens": 2397
+  },
+  "metrics": {
+    "latencyMs": 769
+  }
+}
