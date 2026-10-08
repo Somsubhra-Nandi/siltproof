@@ -153,7 +153,7 @@ sam deploy --guided --template infra/template.yaml
 ```
 
 Accept `ap-south-1`, stack name `siltproof`, and the defaults for
-`BedrockModelId` (`in.anthropic.claude-opus-5`) and `BedrockVisionModelId`
+`BedrockModelId` (`in.anthropic.claude-haiku-4-5-20251001-v1:0`) and `BedrockVisionModelId`
 (`in.anthropic.claude-haiku-4-5-20251001-v1:0`). Allow IAM role creation; do
 *not* save arguments to a committed file other than `infra/samconfig.toml`,
 which is git-ignored.

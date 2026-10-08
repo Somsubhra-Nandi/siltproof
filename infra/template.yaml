@@ -5,7 +5,7 @@ Description: SiltProof - desilting bill verification (hackathon MVP)
 Parameters:
   BedrockModelId:
     Type: String
-    Default: in.anthropic.claude-opus-5
+    Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
     Description: >-
       Bedrock model for the text evidence summary. Use an inference profile id
       (in.* / apac.* / global.*) if the region requires one. Verify with
@@ -19,10 +19,22 @@ Parameters:
       so this defaults to the cheapest entitled model rather than the one used
       for summaries.
 
+  IngestReservedConcurrency:
+    Type: Number
+    Default: 0
+    Description: >-
+      Reserved concurrency for the ingest function; 0 leaves it unreserved.
+      Set 3 once the account's Lambda concurrency quota is above 13: a new
+      account's quota is 10, and Lambda refuses any reservation that leaves
+      fewer than 10 unreserved. At a quota of 10 the account itself is the cap.
+
   BillId:
     Type: String
     Default: B1
     Description: The single bill this deployment serves (plan section 1).
+
+Conditions:
+  ReserveIngestConcurrency: !Not [!Equals [!Ref IngestReservedConcurrency, 0]]
 
 Globals:
   Function:
@@ -113,7 +125,10 @@ Resources:
       Layers:
         - !Ref PhotoDepsLayer
       # Keeps Bedrock/Textract calls from throttling while seeding ~40 photos.
-      ReservedConcurrentExecutions: 3
+      ReservedConcurrentExecutions: !If
+        - ReserveIngestConcurrency
+        - !Ref IngestReservedConcurrency
+        - !Ref AWS::NoValue
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}

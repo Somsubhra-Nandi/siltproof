@@ -41,7 +41,7 @@ def region():
 
 def text_model_id():
     """Model for the Day 2 evidence summary."""
-    return os.environ.get("BEDROCK_MODEL_ID", "in.anthropic.claude-opus-5")
+    return os.environ.get("BEDROCK_MODEL_ID", "in.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 
 def vision_model_id():

@@ -67,7 +67,9 @@ import `from common import ...`.
 - Heavy AI runs at **ingestion** (S3-triggered), never on page load and never
   inside `POST /verify`, which stays fast deterministic rules only.
 - Keep the ingest Lambda's reserved concurrency low (3) so Bedrock and Textract
-  do not throttle during a seed.
+  do not throttle during a seed. It is the `IngestReservedConcurrency`
+  parameter, 0 by default because the account's quota of 10 forbids any
+  reservation (DECISIONS.md).
 - Small, clear commits.
 - **Every script that can reach AWS defaults to not reaching it.** `seed.py`,
   `reset.py` and `gen_trips.py` are dry-run/offline unless `--live` is passed,

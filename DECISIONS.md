@@ -43,12 +43,24 @@ is red.
 
 ## Two Bedrock model parameters
 
-`BedrockModelId` (default `in.anthropic.claude-opus-5`) stays for the Day 2
-evidence summary. Photo vision gets its own `BedrockVisionModelId`, defaulting
+`BedrockModelId` stays for the Day 2 evidence summary. Photo vision gets its own `BedrockVisionModelId`, defaulting
 to `in.anthropic.claude-haiku-4-5-20251001-v1:0` as instructed — ~40 photo calls
 per seed is the main recurring cost, and Haiku is the cheapest entitled model in
 ap-south-1. Both are stack parameters and plain env vars, so either can change
 without a code edit.
+
+Both now default to Haiku 4.5. `check_region.py` passed it in ap-south-1 on
+2026-10-08, while `in.anthropic.claude-sonnet-5` came back "not available for
+this account" and the old Opus default was never verified.
+
+## Ingest concurrency is not reserved by default
+
+Plan and CLAUDE.md ask for reserved concurrency 3 on the ingest function. A new
+account's Lambda concurrency quota is 10, and Lambda refuses any reservation
+that leaves fewer than 10 unreserved, so the first `sam deploy` rolled back.
+`IngestReservedConcurrency` (default 0 = unreserved) makes it a parameter; at a
+quota of 10 the account itself caps ingest below the throttling risk. Once the
+quota is raised, deploy with `IngestReservedConcurrency=3`.
 
 `temperature` is deliberately **not** sent: it is removed on the Claude 5 family
 and returns a 400 there, and omitting it works on every entitled model.

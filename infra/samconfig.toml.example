@@ -14,7 +14,7 @@ region = "ap-south-1"
 capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 confirm_changeset = true
-parameter_overrides = "BedrockModelId=in.anthropic.claude-opus-5"
+parameter_overrides = "BedrockModelId=in.anthropic.claude-haiku-4-5-20251001-v1:0 BedrockVisionModelId=in.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 [default.sync.parameters]
 watch = true
