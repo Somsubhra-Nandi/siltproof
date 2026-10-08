@@ -1,0 +1,21 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "text": "The evidence shows that the GPS trace for trip 9-003 did not come close to Drain 9, and the load photo for trip 9-001 contained construction debris instead of silt. Therefore, the payment for the claimed 60 tonnes of silt removal is being queried."
+        }
+      ]
+    }
+  },
+  "stopReason": "end_turn",
+  "usage": {
+    "inputTokens": 140,
+    "outputTokens": 62,
+    "totalTokens": 202
+  },
+  "metrics": {
+    "latencyMs": 659
+  }
+}

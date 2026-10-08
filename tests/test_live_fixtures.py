@@ -81,6 +81,18 @@ def test_live_bedrock_photo_check_comes_back_as_a_tool_use(name):
     assert 0.0 <= parsed["confidence"] <= 1.0
 
 
+
+def test_live_bedrock_summary_is_plain_text():
+    # Nova Pro at temperature 0, given the API's SUMMARY_PROMPT for two findings.
+    response = live("bedrock_converse_summary")
+    text = bedrock.response_text(response)
+
+    assert response["stopReason"] == "end_turn"
+    assert not any("toolUse" in block for block in response["output"]["message"]["content"])
+    assert "9-003" in text and "9-001" in text
+    assert text.count(". ") + 1 == 2, text   # the prompt asks for exactly two sentences
+
+
 # ---------------------------------------------------------------- location
 def test_live_route_geometry_and_summary_are_parsed():
     response = live("location_calculate_routes")
