@@ -118,7 +118,7 @@ Table `siltproof` with partition key `pk` and sort key `sk`.
 
 | # | Rule | Severity |
 |---|---|---|
-| R1 | Photo GPS lies inside the drain geofence (30 m buffer) | Hard |
+| R1 | Photo GPS lies inside the drain geofence (30 m buffer) | **Soft** 30–60 m, **Hard** beyond 60 m |
 | R2 | Photo timestamp falls inside the bill's work window | Hard |
 | R3 | Photo is not a duplicate (pHash Hamming distance above threshold) of any other photo in this bill or earlier bills | Hard |
 | R4 | Bedrock: the after-photo shows a cleared drain, and the load is silt, not construction debris | Hard if debris, Soft if unclear |
@@ -130,6 +130,10 @@ Table `siltproof` with partition key `pk` and sort key `sk`.
 | R10 | Drain total ≤ length × width × depth × silt density × 1.2 | Soft |
 
 Extra soft flag: a GPS gap of more than 3 min goes to **review**, not hold.
+
+**R1's soft band (agreed 8 Oct).** A photo inside the 30 m geofence passes. Between 30 m and 60 m it is a *soft* fail, beyond 60 m a hard one. Consumer GPS is routinely tens of metres out, so "just outside" is a question for the engineer rather than proof — and §6 needs drain 8 to read 🟡, which a purely hard R1 would make 🔴. See DECISIONS.md.
+
+**Missing evidence is its own outcome.** A trip with no slip, no readable GPS trace, or an ingestion error goes to **review** under its own flag (`SLIP_MISSING`, `TRACE_MISSING`, `PHOTOS_MISSING`, `EVIDENCE_ERROR`). Absence of evidence is not evidence of fraud, and "the truck never reached the dump site" must not be confused with "we could not read the file".
 
 **How verdicts roll up**
 - Trip: any hard fail means **HOLD**; otherwise any soft fail means **REVIEW**; otherwise **VERIFIED**

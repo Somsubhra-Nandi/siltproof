@@ -189,3 +189,125 @@ matter on first contact: Textract QUERIES block relationships, the Bedrock
 Converse `toolUse` block, and `geo-routes` leg geometry. The Location parser is
 written defensively (it searches for the geometry rather than assuming a path)
 because that shape is the least certain of the three.
+
+---
+
+# Third batch (Day 2: rules, API, decision screen)
+
+Written on 8 October with the AWS account still blocked and a support case
+open. Nothing in this batch called AWS either.
+
+## Photo rules taint the whole drain, trip rules taint one trip
+
+R1-R4 and R10 judge a drain's own evidence, so a failure applies to every trip
+billed against that drain. A reused after-photo does not discredit one lorry
+load, it discredits the claim the photo was submitted to support. R5-R9 and the
+GPS-gap flag judge a single trip.
+
+This is what `ground_truth.json` already assumed — drain 3's twelve trips all
+carry `R4`, drain 14's eighteen all carry `R3` — so the alternative would have
+contradicted the dataset.
+
+## R4 is scoped by photo role
+
+Every before/after photo comes back from the vision model as
+`load_type: unclear`, because there is no load in a picture of a channel.
+Applying the load check to all photos would have put every drain in review. So:
+
+* **load** photos: `debris` is a hard fail, `unclear` is soft, `silt` passes.
+* **after** photos: `cleared: false` is a **soft** fail. The plan only makes
+  debris hard, and one frame's judgement about whether a channel looks clear is
+  weaker evidence than a tipper visibly full of broken brick.
+* **before** photos: not checked for clearance — a before photo is *supposed*
+  to show silt.
+
+## R3 needs an order, and time is the only honest one
+
+Two identical photos on one bill prove a reuse, but not which copy is the
+original. The rule takes the **earliest** appearance of an image as genuine and
+flags every later one.
+
+That exposed a generator bug: the reused drain 14 photos were stamped four days
+*before* the drain 9 photo they copy, so the rule would have cleared drain 14
+and flagged drain 9. The generator now stamps the copies a day after their
+source. If the real shoot produces a reuse, its timestamps have to run the same
+way round.
+
+## Missing evidence is review, never hold, never silence
+
+A trip with no slip, no readable trace, or an ingestion error gets its own soft
+finding (`SLIP_MISSING`, `TRACE_MISSING`, `PHOTOS_MISSING`, `EVIDENCE_ERROR`)
+and goes to the engineer. Two reasons: absence of evidence is not evidence of
+fraud, and a hard fail here would mean an S3 permissions problem silently
+reading as "the contractor stole the money".
+
+The same thinking fixed a real bug. R5 asks whether the trace enters the dump
+site; a trace that could not be *downloaded* produced no points, which looked
+exactly like a truck that never arrived. Now no readable trace means no R5
+verdict at all, just a soft flag saying the route could not be checked.
+
+## What a decision does to the money
+
+* **APPROVE** releases everything the rules withheld on that drain — review and
+  held alike. An engineer who has been to the site can overrule the evidence,
+  which is the whole point of showing them the evidence.
+* **HOLD** moves the pending review tonnage across to held.
+* No decision leaves the evidence to speak for itself.
+
+This gives the plan's headline exactly: the bill verifies at 805 t with 65 t in
+review and 370 t held, and approving the two amber drains on camera takes
+verified to **870 t** with the hold still at **₹6.66 lakh**.
+
+## Verification reads traces from S3, not from DynamoDB
+
+R5, R6 and R8 need the actual GPS points, and only a summary of each trace is
+in DynamoDB. The API fetches the trace objects from S3 in parallel (16 threads)
+during verification: 117 small JSON files, well inside the HTTP API's 30 s
+ceiling, and measured at well under a second against moto.
+
+The alternative — having ingestion precompute dump-site entry and arrival —
+would be faster still but bakes the dump site into the extraction, so moving
+the dump site would mean re-ingesting every trace. Not worth it for a ward.
+
+## One filtered scan for the photos
+
+Evidence items live one per S3 key (`EVID#<key>`), so there is no partition to
+query for "every photo on this bill". The API uses a filtered `scan` on
+`sk = PHOTO`. The table holds a few hundred items for one bill, so this is the
+honest MVP answer; a sparse GSI on `billId` is the production one. Slips,
+traces and vehicles are fetched by known key with `BatchGetItem` instead.
+
+## Verdicts are persisted, not recomputed
+
+`POST /verify` writes each drain's verified/review/held tonnage onto the drain
+item, so `POST /decision` can move money with one update and a re-summarise
+rather than re-running every rule. `GET /bill` reads stored state and reports
+`PENDING` with nothing verified until a verification has run.
+
+## The frontend has an offline snapshot
+
+`scripts/make_demo_fixtures.py` drives the whole pipeline through moto and
+saves what the API returned into `frontend/public/data/demo/` (≈620 KB, 19
+files, committed). With `VITE_API_BASE_URL` empty the app runs off that.
+
+It exists because the account is blocked and there was otherwise no way to look
+at the screen at all; it doubles as a fallback if the stack is unreachable while
+recording. Decisions are applied client-side in that mode with the same
+arithmetic as the backend, so the approve-and-release moment still works.
+Regenerate it any time; it is generated, not authored.
+
+## Fleet sizing
+
+Ten trucks could not cover 18 drains working in parallel without double-booking,
+so the fleet is generated (22 by default) and `gen_trips.py` hires another
+rather than put one truck on two simultaneous trips. `seed.py` writes capacity
+records for the trucks that actually ran, so R7 always has a capacity to
+compare against.
+
+## Still not proven against live AWS
+
+Everything in this batch was tested against moto and `MOCK_AWS=1`. What meets
+reality first: the Textract and Bedrock response shapes (unchanged from Day 1),
+the presigned-PUT flow in `POST /upload-url`, DynamoDB's behaviour on items
+carrying the full `ruleDetail` findings list, and the Amazon Location map style,
+which still needs the API key.
