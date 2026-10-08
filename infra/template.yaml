@@ -5,7 +5,7 @@ Description: SiltProof - desilting bill verification (hackathon MVP)
 Parameters:
   BedrockModelId:
     Type: String
-    Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
+    Default: apac.amazon.nova-pro-v1:0
     Description: >-
       Bedrock model for the text evidence summary. Use an inference profile id
       (in.* / apac.* / global.*) if the region requires one. Verify with
@@ -13,11 +13,11 @@ Parameters:
 
   BedrockVisionModelId:
     Type: String
-    Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
+    Default: apac.amazon.nova-pro-v1:0
     Description: >-
-      Bedrock model for the before/after photo check. Roughly 40 calls per seed,
-      so this defaults to the cheapest entitled model rather than the one used
-      for summaries.
+      Bedrock model for the before/after photo check, roughly 40 calls per seed.
+      Must accept a forced toolChoice. Nova Pro is first-party, so it needs no
+      Marketplace subscription (DECISIONS.md).
 
   IngestReservedConcurrency:
     Type: Number

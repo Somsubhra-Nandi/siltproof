@@ -41,13 +41,13 @@ def region():
 
 def text_model_id():
     """Model for the Day 2 evidence summary."""
-    return os.environ.get("BEDROCK_MODEL_ID", "in.anthropic.claude-haiku-4-5-20251001-v1:0")
+    return os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-pro-v1:0")
 
 
 def vision_model_id():
-    """Model for the before/after photo check (cheapest entitled model)."""
+    """Model for the before/after photo check (must accept a forced toolChoice)."""
     return os.environ.get(
-        "BEDROCK_VISION_MODEL_ID", "in.anthropic.claude-haiku-4-5-20251001-v1:0"
+        "BEDROCK_VISION_MODEL_ID", "apac.amazon.nova-pro-v1:0"
     )
 
 

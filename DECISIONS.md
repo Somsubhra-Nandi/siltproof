@@ -51,7 +51,27 @@ without a code edit.
 
 Both now default to Haiku 4.5. `check_region.py` passed it in ap-south-1 on
 2026-10-08, while `in.anthropic.claude-sonnet-5` came back "not available for
-this account" and the old Opus default was never verified.
+this account" and the old Opus default was never verified. Superseded the same
+evening: see "Nova Pro is the default model".
+
+## Nova Pro is the default model
+
+Both parameters, `config.py` and `samconfig.toml.example` now default to
+`apac.amazon.nova-pro-v1:0`. Haiku 4.5 answered one call and then returned
+`403 AccessDeniedException: INVALID_PAYMENT_INSTRUMENT` on every call after.
+Anthropic models on Bedrock are sold through an AWS Marketplace subscription,
+and this account, which runs on credits, cannot complete one. The 403 was
+not a quota: Haiku's applied cross-region limit is 10 requests/min (default
+10,000), which would only show up as throttling.
+
+Nova is first-party, so it needs no Marketplace subscription, runs on credits,
+and keeps the pipeline AWS-native. Nova Pro and Nova Lite both accept the
+forced `toolChoice`, and our parser read their `toolUse` output with no
+changes (`tests/fixtures/live/bedrock_converse_photo_nova_*.json`). Pro
+was chosen over Lite for both calls. Its quota is 25 requests/min and
+cannot be raised, which is enough for ~40 photos with ingest concurrency
+at 3 and the retry backoff. Going back to Claude is a parameter change,
+once the account has a valid payment method.
 
 ## Ingest concurrency is not reserved by default
 
@@ -74,7 +94,7 @@ Claude 4.5 refuses `temperature` and `topP` together.
 `converse` with a `toolConfig` whose single tool pins the output schema
 (`cleared`, `load_type`, `confidence`, `notes`) and `toolChoice` forcing that
 tool. This is schema-guaranteed output instead of parsing prose. Forced tool
-choice is fine on Haiku 4.5. The IAM action for Converse is still
+choice is fine on Haiku 4.5 and on Nova Pro and Lite. The IAM action for Converse is still
 `bedrock:InvokeModel`, which the template already grants.
 
 ## One backend package, both Lambdas
