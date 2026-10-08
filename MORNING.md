@@ -1,3 +1,17 @@
+# Handover
+
+> **Day 2 update (8 Oct).** Rules R1-R10, the DynamoDB-backed API and the
+> decision screen are built and tested offline. **249 backend tests and 17
+> frontend tests pass.** The AWS account is still blocked, so nothing has been
+> deployed and nothing has called AWS. The screen can be clicked through now
+> using the offline snapshot: `python scripts/make_demo_fixtures.py`, then
+> `cd frontend && npm run dev`.
+>
+> What changed since Day 1 is listed under "Day 2" below; the deployment
+> sequence in section 3 is unchanged and still the thing to run first.
+
+---
+
 # Morning handover — Day 1 night session
 
 Everything below was built and tested with **no AWS calls at all**. The account
@@ -24,15 +38,19 @@ was still pending activation, so nothing was deployed, uploaded or invoked.
 
 ### Still stubbed, as planned
 
-- **The API Lambda returns hard-coded JSON.** All six routes exist and respond,
-  but nothing reads DynamoDB yet. That is Day 2 morning.
-- **Rules R1–R10 are not written.** `data/out/ground_truth.json` is the oracle
-  they must reproduce — expected verdict and rule ids for all 117 trips.
-- **No verdict colours, drill-down panel, Run Verification button, or decision
-  buttons.** Day 2.
-- **No live upload** (`POST /upload-url` returns nulls). Day 3.
-- **No Bedrock evidence summary** wired to the API. The provider call
-  (`bedrock.summarise`) exists and is tested; the route is not.
+*(All of these were Day 1's gaps. Everything except the live upload is now
+done — see the Day 2 section at the bottom.)*
+
+- ~~The API Lambda returns hard-coded JSON.~~ **Done on Day 2.**
+- ~~Rules R1–R10 are not written.~~ **Done on Day 2**, and checked against
+  `ground_truth.json` trip by trip.
+- ~~No verdict colours, drill-down, Run Verification or decision buttons.~~
+  **Done on Day 2.**
+- **No live upload.** `POST /upload-url` now returns a real presigned PUT, but
+  nothing has exercised it against real S3 and there is no upload button in the
+  UI yet. Day 3.
+- ~~No Bedrock evidence summary wired to the API.~~ **Done on Day 2**, cached
+  on the drain item.
 
 ### Two things Day 2 must honour
 
@@ -310,3 +328,100 @@ on-demand, S3 holds about 14 MB.
   oracle.
 - `CLAUDE.md` — conventions for the next session.
 - Nine commits tonight, smallest first, each one self-contained.
+
+
+---
+
+# Day 2 (8 October) — rules, API, decision screen
+
+Still no AWS. The support case is open; everything below was built and tested
+against moto and `MOCK_AWS=1`.
+
+## What is built
+
+| Piece | State |
+|---|---|
+| `backend/common/rules.py` | **Done.** R1–R10 plus the GPS-gap flag and four missing-evidence flags, as pure functions. |
+| `POST /verify/{billId}` | **Done.** Runs the rules, persists trip and drain verdicts and the money summary. |
+| `GET /bill/{billId}` | **Done.** Reads stored state; reports PENDING with nothing verified until a run happens. |
+| `GET /drain/{drainId}` | **Done.** Trips, findings, both routes, slip fields with confidence, photos with the Bedrock verdict. |
+| `POST /decision` | **Done.** Validates, records approve/hold with a note, re-summarises the bill. |
+| `POST /drain/{id}/summary` | **Done.** One Bedrock call, cached on the drain item. |
+| `POST /upload-url` | **Written, unexercised.** Real presigned PUT under `<prefix>/live/`, so `reset.py` can find it. No UI button yet. |
+| Decision screen | **Done.** Coloured map, summary bar, Run Verification, drill-down, approve/hold. |
+| Offline snapshot | **Done.** `scripts/make_demo_fixtures.py` → `frontend/public/data/demo`. |
+
+## Test results
+
+```
+backend   249 passed in 82s        .venv/bin/python -m pytest
+  test_rules_unit.py        49     each rule on its own, plus the awkward cases
+  test_textract_parser.py   40     field parsers and whole slips
+  test_api.py               35     routing, validation, decisions, caching, gaps
+  test_bedrock_parser.py    24     forced tool output and every malformed shape
+  test_ingest_handler.py    20     moto S3 + DynamoDB, idempotency, failures
+  test_rules_oracle.py      20     all 117 trips against ground_truth.json
+  test_generators.py        19     geometry, Overpass parsing, planted cases
+  test_e2e_offline.py       15     the Day 1 exit check
+  test_location_and_safety.py 14   route parsing and the dry-run rails
+  test_photo_evidence.py    13     EXIF, missing EXIF, pHash separation
+
+frontend   17 passed           cd frontend && npm test
+sam validate --lint            valid
+sam build --use-container      builds; both functions 212 KB
+npm run build / npm run lint   clean
+```
+
+The oracle test was checked for bite: widening R8's tolerance to 90 minutes and
+removing R1's soft band both make it fail loudly, naming the trips.
+
+## Bugs found and fixed (none left open)
+
+1. **One truck in two places at once, fifteen times.** Vehicles were assigned at
+   random per drain, so the same truck was booked for overlapping trips 8 km
+   apart. R6 exists to catch exactly that, so 30 extra trips would have been
+   held and the totals would have been meaningless. Vehicles are now scheduled
+   in time order against each truck's own timeline.
+2. **The reused photos were dated before the originals.** R3 treats the earliest
+   appearance of an image as genuine, so drain 9 would have been flagged and
+   drain 14 cleared — the hero case backwards.
+3. **`round(inf)` raised OverflowError.** Overlapping trips give an infinite
+   implied speed; this was a 500 on any bill with a double-booked truck.
+4. **An unreadable trace read as proof of fraud.** A trace that failed to
+   download produced no points, which looked identical to a truck that never
+   reached the dump site, turning an S3 problem into a hard R5 hold.
+
+## Two decisions worth knowing
+
+- **R1's soft band is now in the plan** (§5): inside 30 m passes, 30–60 m is
+  soft, beyond 60 m is hard. Without it drain 8 reads red and the demo loses its
+  "not every flag is fraud" beat.
+- **Approving a drain releases everything the rules withheld on it**; holding
+  moves its review tonnage to held. That is what makes the plan's headline come
+  out exactly: 805 t verified with 65 t in review, and approving the two amber
+  drains on camera gives **870 t verified, ₹6.66 lakh held**.
+
+## What is left for live AWS
+
+Nothing in the list below is a code change — it is all first contact.
+
+1. **Account activation.** Still the blocker.
+2. **Deploy** (section 3 above). Then `curl $API_URL/health`, which now reports
+   both model ids and whether mock mode is on.
+3. **Seed**, then `POST /verify` for real. The things that meet reality for the
+   first time: Textract's QUERIES block relationships, the Bedrock Converse
+   `toolUse` block, `geo-routes` leg geometry, and DynamoDB accepting trip items
+   that carry the full findings list.
+4. **Amazon Location API key** — the map has still never rendered against a real
+   style.
+5. **Live upload** — wire a button to `POST /upload-url`, which has never been
+   run against real S3.
+6. **Re-measure the pHash threshold** once the real photos exist; 12 was
+   measured on the generated set.
+
+## Commands added since Day 1
+
+```bash
+python scripts/make_demo_fixtures.py   # offline API snapshot for the frontend
+cd frontend && npm test                # component tests
+```
