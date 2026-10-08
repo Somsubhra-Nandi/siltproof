@@ -5,7 +5,7 @@ Makes one minimal live call each to Bedrock, Textract and Amazon Location and
 prints PASS/FAIL per service. Day 1 morning task (plan section 7).
 
     python scripts/check_region.py ap-south-1
-    python scripts/check_region.py ap-south-1 --model-id in.anthropic.claude-sonnet-5
+    python scripts/check_region.py ap-south-1 --model-id in.anthropic.claude-haiku-4-5-20251001-v1:0
 
 Costs a fraction of a cent: one tiny Bedrock completion, one Textract page and
 one route calculation. It creates no AWS resources.
@@ -20,7 +20,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image, ImageDraw
 
-DEFAULT_MODEL_ID = "in.anthropic.claude-opus-5"
+DEFAULT_MODEL_ID = "in.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 # Two points about 6 km apart in Mumbai, for the route calculation.
 ROUTE_ORIGIN = [72.8777, 19.0760]       # [lon, lat]
@@ -98,15 +98,23 @@ def check_location(region):
     return f"routes={len(routes)} distance_m={distance} duration_s={duration}"
 
 
+def error_code(exc):
+    """The AWS error code for a ClientError, else the exception's class name."""
+    if isinstance(exc, ClientError):
+        return exc.response.get("Error", {}).get("Code", "")
+    return type(exc).__name__
+
+
 def run(label, fn):
+    """Returns None on PASS, or the error code on FAIL."""
     try:
         detail = fn()
     except (ClientError, BotoCoreError, RuntimeError, KeyError, ValueError) as exc:
         print(f"FAIL  {label:<10} {type(exc).__name__}: {exc}")
-        return False
+        return error_code(exc) or type(exc).__name__
 
     print(f"PASS  {label:<10} {detail}")
-    return True
+    return None
 
 
 def main():
@@ -121,22 +129,27 @@ def main():
 
     print(f"Checking region {args.region}\n")
 
-    results = [
-        run("bedrock", lambda: check_bedrock(args.region, args.model_id)),
-        run("textract", lambda: check_textract(args.region)),
-        run("location", lambda: check_location(args.region)),
+    failures = [
+        code
+        for code in (
+            run("bedrock", lambda: check_bedrock(args.region, args.model_id)),
+            run("textract", lambda: check_textract(args.region)),
+            run("location", lambda: check_location(args.region)),
+        )
+        if code is not None
     ]
 
-    if all(results):
+    if not failures:
         print(f"\n{args.region} works for SiltProof.")
         return 0
 
     fallback = "ap-south-1" if args.region == "us-east-1" else "us-east-1"
     print(f"\n{args.region} is not usable as-is. Fix the FAILs or try {fallback}.")
-    print(
-        "SubscriptionRequiredException on every service means the AWS account "
-        "itself is not activated yet, not that the region is wrong."
-    )
+    if "SubscriptionRequiredException" in failures:
+        print(
+            "SubscriptionRequiredException means the AWS account itself is not "
+            "activated yet, not that the region is wrong."
+        )
     return 1
 
 
