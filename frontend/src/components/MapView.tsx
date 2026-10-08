@@ -1,82 +1,47 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapLibreMap, NavigationControl, ScaleControl } from 'maplibre-gl'
-import type {
-  ErrorEvent,
-  GeoJSONSource,
-  LngLatBoundsLike,
-  MapGeoJSONFeature,
-} from 'maplibre-gl'
+import type { ErrorEvent, GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
+import {
+  basemapAttribution,
+  boundsOf,
+  COLOURS,
+  fallbackStyle,
+  initialMode,
+  loadBasemap,
+  locationConfigured,
+  startingStyleUrl,
+} from '../basemap'
+import type { BasemapMode, FeatureCollection } from '../basemap'
 import type { Drain, DrainRow } from '../types'
 
-const region = import.meta.env.VITE_AWS_REGION
-const apiKey = import.meta.env.VITE_LOCATION_API_KEY
 const center: [number, number] = [
-  Number(import.meta.env.VITE_MAP_CENTER_LON),
-  Number(import.meta.env.VITE_MAP_CENTER_LAT),
+  Number(import.meta.env.VITE_MAP_CENTER_LON) || 72.8777,
+  Number(import.meta.env.VITE_MAP_CENTER_LAT) || 19.076,
 ]
-const zoom = Number(import.meta.env.VITE_MAP_ZOOM ?? 13)
-
-// Amazon Location Maps v2 serves styles straight from an API key, so there is
-// no map resource to create.
-const styleUrl = `https://maps.geo.${region}.amazonaws.com/v2/styles/Standard/descriptor?key=${apiKey}&color-scheme=Light`
+const zoom = Number(import.meta.env.VITE_MAP_ZOOM) || 13
 
 const DRAINS_URL = '/data/drains.geojson'
 const DUMPSITE_URL = '/data/dumpsite.geojson'
 
-const COLOURS = {
-  RED: '#d1453b',
-  AMBER: '#d99a08',
-  GREEN: '#2f9e55',
-  PENDING: '#8c99a6',
-}
+// If Amazon Location has not answered by now, stop waiting and draw something.
+const STYLE_TIMEOUT_MS = 6000
+
+// Drains colour in one after another when a verification finishes.
+const COLOUR_IN_STEP_MS = 45
 
 const DUMPSITE_FILL = '#6b8fa8'
 const CLAIMED_ROUTE = '#2f6fed'
 const ACTUAL_ROUTE = '#d1453b'
-
-const configError =
-  !region || !apiKey
-    ? 'Set VITE_AWS_REGION and VITE_LOCATION_API_KEY in frontend/.env'
-    : null
 
 interface Props {
   drains: DrainRow[]
   selectedDrainId: string | null
   detail: Drain | null
   selectedTripId: string | null
+  animate: boolean
   onSelect: (drainId: string) => void
-}
-
-type FeatureCollection = {
-  features: Array<{ properties: Record<string, unknown>; geometry: { coordinates: number[][][] } }>
-}
-
-function boundsOf(collections: FeatureCollection[]): LngLatBoundsLike | null {
-  let west = Infinity
-  let south = Infinity
-  let east = -Infinity
-  let north = -Infinity
-
-  for (const collection of collections) {
-    for (const feature of collection.features) {
-      for (const ring of feature.geometry.coordinates) {
-        for (const [lon, lat] of ring) {
-          west = Math.min(west, lon)
-          south = Math.min(south, lat)
-          east = Math.max(east, lon)
-          north = Math.max(north, lat)
-        }
-      }
-    }
-  }
-
-  if (!Number.isFinite(west)) return null
-  return [
-    [west, south],
-    [east, north],
-  ]
 }
 
 function lineFeature(coordinates: [number, number][]) {
@@ -89,38 +54,123 @@ function lineFeature(coordinates: [number, number][]) {
 
 const EMPTY = { type: 'FeatureCollection' as const, features: [] }
 
-function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: Props) {
+function MapView({
+  drains,
+  selectedDrainId,
+  detail,
+  selectedTripId,
+  animate,
+  onSelect,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
-  const [ready, setReady] = useState(false)
-  const [mapError, setMapError] = useState<string | null>(null)
-  const error = configError ?? mapError
+  const geometryRef = useRef<{ drains: unknown; dumpsite: unknown } | null>(null)
+  const basemapRef = useRef<unknown>(null)
+  const swappedRef = useRef(false)
+  const selectRef = useRef(onSelect)
 
-  // ---- create the map once
+  // Kept in a ref so the map's click handler always calls the current
+  // callback without the map having to be rebuilt.
   useEffect(() => {
-    if (!containerRef.current || configError) return
+    selectRef.current = onSelect
+  }, [onSelect])
+
+  const [mode, setMode] = useState<BasemapMode>(() => initialMode())
+  const [layersReady, setLayersReady] = useState(0)
+  const [attribution, setAttribution] = useState<string | null>(null)
+  const [mapError, setMapError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    let cancelled = false
+    const startMode = initialMode()
+
+    const startingStyle = startingStyleUrl()
 
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: styleUrl,
+      style: startingStyle ?? fallbackStyle(),
       center,
       zoom,
+      attributionControl: false,
     })
     mapRef.current = map
 
     map.addControl(new NavigationControl(), 'bottom-right')
     map.addControl(new ScaleControl(), 'bottom-left')
-    map.on('error', (event: ErrorEvent) =>
-      setMapError(event.error?.message ?? 'Map failed to load'),
-    )
 
-    const addLayers = async () => {
-      const [drainGeo, dumpsite] = await Promise.all([
-        fetch(DRAINS_URL).then((response) => response.json()),
-        fetch(DUMPSITE_URL).then((response) => response.json()),
-      ])
+    /**
+     * Drop to the offline style. Called when Amazon Location is not
+     * configured, errors, or simply never answers. Data layers are re-added
+     * by the styledata handler below, so the drains survive the swap.
+     */
+    const swapToFallback = (why: string) => {
+      if (cancelled || swappedRef.current) return
+      swappedRef.current = true
+      setMode('fallback')
+      setMapError(null)
+      console.info(`[siltproof] offline basemap: ${why}`)
+      map.setStyle(fallbackStyle(basemapRef.current))
+    }
 
-      map.addSource('drains', { type: 'geojson', data: drainGeo, promoteId: 'drainId' })
+    map.on('error', (event: ErrorEvent) => {
+      const text = event.error?.message ?? 'map error'
+      if (!swappedRef.current && startMode === 'location') {
+        swapToFallback(`Amazon Location style failed (${text})`)
+        return
+      }
+      // In fallback mode there is nothing left to fall back to, so a problem
+      // here is worth showing - but it must never blank the screen.
+      setMapError(text)
+    })
+
+    // Fetch the backdrop and the ward geometry in parallel with the style.
+    const loading = Promise.all([
+      loadBasemap(),
+      fetch(DRAINS_URL).then((response) => response.json()),
+      fetch(DUMPSITE_URL).then((response) => response.json()),
+    ])
+      .then(([basemap, drainGeo, dumpsite]) => {
+        if (cancelled) return
+        basemapRef.current = basemap
+        geometryRef.current = { drains: drainGeo, dumpsite }
+        setAttribution(basemapAttribution(basemap))
+
+        // The fallback style was created before the backdrop arrived, so give
+        // it the real data now.
+        if (swappedRef.current || startMode === 'fallback') {
+          const source = map.getSource('basemap') as GeoJSONSource | undefined
+          if (source && basemap) source.setData(basemap as never)
+        }
+
+        addDataLayers()
+      })
+      .catch((cause: unknown) =>
+        setMapError(
+          'Could not load the drain geometry. Run data/osm_drains.py and copy ' +
+            `drains.geojson into frontend/public/data. (${String(cause)})`,
+        ),
+      )
+
+    /**
+     * Add the drains, dump site and route layers.
+     *
+     * Deliberately independent of which basemap won: it runs once the style
+     * is ready in either mode, and again after a style swap, because
+     * setStyle throws every source and layer away.
+     */
+    const addDataLayers = () => {
+      if (cancelled || !map.isStyleLoaded() || !geometryRef.current) return
+      if (map.getSource('drains')) return
+
+      const { drains: drainGeo, dumpsite } = geometryRef.current
+
+      map.addSource('drains', {
+        type: 'geojson',
+        data: drainGeo as never,
+        promoteId: 'drainId',
+      })
       map.addLayer({
         id: 'drains-fill',
         type: 'fill',
@@ -135,8 +185,10 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
             COLOURS.PENDING,
           ],
           'fill-opacity': [
-            'case', ['boolean', ['feature-state', 'selected'], false], 0.85, 0.55,
+            'case', ['boolean', ['feature-state', 'selected'], false], 0.9, 0.6,
           ],
+          'fill-opacity-transition': { duration: 350, delay: 0 },
+          'fill-color-transition': { duration: 350, delay: 0 },
         },
       })
       map.addLayer({
@@ -145,29 +197,16 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
         source: 'drains',
         paint: {
           'line-color': '#15202b',
-          'line-width': [
-            'case', ['boolean', ['feature-state', 'selected'], false], 3, 1,
-          ],
-        },
-      })
-      map.addLayer({
-        id: 'drains-label',
-        type: 'symbol',
-        source: 'drains',
-        layout: { 'text-field': ['get', 'drainId'], 'text-size': 13 },
-        paint: {
-          'text-color': '#13202c',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.4,
+          'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3, 1],
         },
       })
 
-      map.addSource('dumpsite', { type: 'geojson', data: dumpsite })
+      map.addSource('dumpsite', { type: 'geojson', data: dumpsite as never })
       map.addLayer({
         id: 'dumpsite-fill',
         type: 'fill',
         source: 'dumpsite',
-        paint: { 'fill-color': DUMPSITE_FILL, 'fill-opacity': 0.3 },
+        paint: { 'fill-color': DUMPSITE_FILL, 'fill-opacity': 0.35 },
       })
       map.addLayer({
         id: 'dumpsite-outline',
@@ -176,7 +215,6 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
         paint: { 'line-color': DUMPSITE_FILL, 'line-width': 2, 'line-dasharray': [2, 1] },
       })
 
-      // The two routes of the drill-down, empty until a drain is picked.
       map.addSource('claimed-route', { type: 'geojson', data: EMPTY })
       map.addLayer({
         id: 'claimed-route-line',
@@ -186,7 +224,6 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
           'line-color': CLAIMED_ROUTE,
           'line-width': 3,
           'line-dasharray': [2, 1.5],
-          'line-opacity': 0.9,
         },
       })
 
@@ -195,61 +232,83 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
         id: 'actual-route-line',
         type: 'line',
         source: 'actual-route',
-        paint: { 'line-color': ACTUAL_ROUTE, 'line-width': 4, 'line-opacity': 0.95 },
+        paint: { 'line-color': ACTUAL_ROUTE, 'line-width': 4 },
       })
 
-      const bounds = boundsOf([drainGeo, dumpsite])
+      const bounds = boundsOf([
+        drainGeo as FeatureCollection,
+        dumpsite as FeatureCollection,
+      ])
       if (bounds) map.fitBounds(bounds, { padding: 64, duration: 0 })
 
-      map.on('click', 'drains-fill', (event) => {
-        const feature = event.features?.[0] as MapGeoJSONFeature | undefined
-        const drainId = feature?.properties?.drainId
-        if (drainId) onSelect(String(drainId))
-      })
-      map.on('mouseenter', 'drains-fill', () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-      map.on('mouseleave', 'drains-fill', () => {
-        map.getCanvas().style.cursor = ''
-      })
-
-      setReady(true)
+      // Tell the rest of the component the layers exist again.
+      setLayersReady((count) => count + 1)
     }
 
-    map.on('load', () => {
-      addLayers().catch((cause: unknown) =>
-        setMapError(
-          'Could not load the drain geometry. Run data/osm_drains.py and copy ' +
-            `drains.geojson into frontend/public/data. (${String(cause)})`,
-        ),
-      )
+    map.on('load', addDataLayers)
+    // Fires again after setStyle, when the new style has been parsed.
+    map.on('styledata', addDataLayers)
+
+    // Registered once. Inside addDataLayers these would be added again on
+    // every style swap, and each click would open the drain twice.
+    map.on('click', 'drains-fill', (event) => {
+      const feature = event.features?.[0] as MapGeoJSONFeature | undefined
+      const drainId = feature?.properties?.drainId
+      if (drainId) selectRef.current(String(drainId))
+    })
+    map.on('mouseenter', 'drains-fill', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'drains-fill', () => {
+      map.getCanvas().style.cursor = ''
     })
 
+    const timeout = window.setTimeout(() => {
+      if (!cancelled && !map.isStyleLoaded()) {
+        swapToFallback('Amazon Location style did not load in time')
+      }
+    }, STYLE_TIMEOUT_MS)
+
     return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+      void loading
       mapRef.current = null
       map.remove()
     }
-    // onSelect is stable for the life of the app.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ---- colour the polygons by verdict
+  // ---- colour the drains by verdict
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !ready) return
+    if (!map || !layersReady || !map.getSource('drains')) return
 
-    for (const drain of drains) {
+    const paint = (drain: DrainRow) =>
       map.setFeatureState(
         { source: 'drains', id: drain.drainId },
-        { verdict: drain.verdict ?? 'PENDING', selected: drain.drainId === selectedDrainId },
+        {
+          verdict: drain.verdict ?? 'PENDING',
+          selected: drain.drainId === selectedDrainId,
+        },
       )
-    }
-  }, [drains, selectedDrainId, ready])
 
-  // ---- draw the claimed and actual routes for the selected trip
+    if (!animate) {
+      drains.forEach(paint)
+      return
+    }
+
+    // Colour them in one by one, so a verification reads as something that
+    // happened rather than a jump cut.
+    const timers = drains.map((drain, index) =>
+      window.setTimeout(() => paint(drain), index * COLOUR_IN_STEP_MS),
+    )
+    return () => timers.forEach(window.clearTimeout)
+  }, [drains, selectedDrainId, layersReady, animate])
+
+  // ---- the two routes of the drill-down
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !ready) return
+    if (!map || !layersReady) return
 
     const claimed = map.getSource('claimed-route') as GeoJSONSource | undefined
     const actual = map.getSource('actual-route') as GeoJSONSource | undefined
@@ -287,11 +346,11 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
         { padding: 90, duration: 600 },
       )
     }
-  }, [detail, selectedTripId, ready])
+  }, [detail, selectedTripId, layersReady])
 
   return (
     <div className="map-wrap">
-      <div ref={containerRef} className="map" />
+      <div ref={containerRef} className="map" data-testid="map" />
 
       <div className="map-legend">
         <span className="swatch" style={{ background: COLOURS.GREEN }} /> verified
@@ -302,7 +361,21 @@ function MapView({ drains, selectedDrainId, detail, selectedTripId, onSelect }: 
         <span className="line-key line-actual" /> actual GPS
       </div>
 
-      {error && <div className="map-error">{error}</div>}
+      {mode === 'fallback' && (
+        <div className="map-mode" title={
+          locationConfigured
+            ? 'Amazon Location did not load, so the bundled offline style is being used.'
+            : 'No Amazon Location API key configured, so the bundled offline style is being used.'
+        }>
+          Offline map (dev)
+        </div>
+      )}
+
+      {attribution && mode === 'fallback' && (
+        <div className="map-attribution">{attribution}</div>
+      )}
+
+      {mapError && <div className="map-note">{mapError}</div>}
     </div>
   )
 }

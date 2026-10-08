@@ -441,3 +441,43 @@
   .stats { gap: 1rem; }
   .stat dd { font-size: 1.05rem; }
 }
+
+/* ------------------------------------------------------- map mode badges */
+.map-mode {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.3rem;
+  background: rgba(21, 32, 43, 0.88);
+  color: #e7c56a;
+  border: 1px solid #6b5a28;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  pointer-events: auto;
+  cursor: help;
+}
+
+.map-attribution {
+  position: absolute;
+  bottom: 0.3rem;
+  right: 0.5rem;
+  font-size: 0.62rem;
+  color: #5a646e;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.2rem;
+}
+
+/* A problem worth saying, but never one that covers the map. */
+.map-note {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  max-width: 22rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.35rem;
+  background: rgba(70, 56, 15, 0.92);
+  color: #ffe9b8;
+  font-size: 0.72rem;
+}
