@@ -311,3 +311,78 @@ reality first: the Textract and Bedrock response shapes (unchanged from Day 1),
 the presigned-PUT flow in `POST /upload-url`, DynamoDB's behaviour on items
 carrying the full `ruleDetail` findings list, and the Amazon Location map style,
 which still needs the API key.
+
+---
+
+# Fourth batch (offline map)
+
+The dashboard was unusable without AWS: the map panel was blank with a toast
+asking for Amazon Location configuration that cannot exist until the account
+is activated. Fixing that did not change the live architecture — Amazon
+Location is untouched and is still what ships.
+
+## The map was blank for a second, worse reason
+
+Before any of the fallback work, the map rendered **nothing in any mode**.
+The bundle asked for `maplibre-gl-worker.mjs`; the Vite build never emitted
+one; MapLibre reported "Worker failed to load". An Amazon Location key would
+not have helped.
+
+`src/maplibre-worker.ts` imports the worker with Vite's `?url` and hands it to
+`setWorkerUrl`, so it is emitted as a hashed asset on our own origin. Found by
+screenshotting the running app — it was the first thing the screenshot showed,
+and no unit test would have caught it.
+
+## Two modes, one data layer
+
+`initialMode()` picks Amazon Location when both `VITE_AWS_REGION` and
+`VITE_LOCATION_API_KEY` are set, and the bundled style otherwise. The map also
+swaps on a style error, or if the style has not loaded after six seconds.
+
+The important part is that **the drains do not belong to either style**. They
+are added once the style is ready in whichever mode, and added again on
+`styledata`, because `setStyle` discards every source and layer. Screenshot 4
+is that path: the app starts in location mode against a URL that 404s, swaps,
+and comes back with all 18 drains coloured.
+
+Interaction handlers are registered once, outside that function. Inside it,
+every swap would leave another copy and a click would open the drain twice.
+
+## The offline style contains no URL at all
+
+No `glyphs`, no `sprite`, no tiles, no symbol layer — and the backdrop GeoJSON
+is **inlined into the style object** rather than referenced by URL. The app
+fetches the file itself (same origin, shipped with the bundle) and passes the
+parsed object in. `styleIsSelfContained()` asserts no `http(s)` URL appears
+anywhere in the style, and a test holds that.
+
+## The basemap is real OSM, fetched at generation time
+
+`data/osm_basemap.py` queries Overpass for the ward's roads and water and
+writes one simplified file. Two tiers: all streets around the drains, main
+roads and water across the wider box out to the dump site — otherwise the
+corridor the hero case drives along is empty. 2,364 roads and 51 water
+features, 416 KB, 46 KB gzipped, committed.
+
+Overpass answers 504 about as often as it answers, so the script tries several
+mirrors and, failing all of them, writes a synthetic street grid flagged as
+such in the file. **If that grid ever ends up in the video, say so** — it is
+not the real ward. A missing file is not an error either: the style draws
+plain paper.
+
+## The demo starts unverified
+
+The offline snapshot is already verified, so `getBill` serves it through a
+pending projection — grey drains, claim only — until Run Verification is
+pressed, which replays it verified with the figures counting up. Live, the API
+already did this. `?state=verified` and `?drain=14` skip ahead while working
+on the screen; `?style=<url>` overrides the basemap, which is how the
+failure path is exercised without a key.
+
+## Screenshots instead of a WebGL test
+
+jsdom has no WebGL, so component tests stub the map. What the map actually
+draws is checked by `npm run screenshot`, which drives the already-installed
+Chrome through `puppeteer-core` (nothing downloaded) with SwiftShader for
+software WebGL, and saves four views under `frontend/screenshots/`. They are
+committed at 1x: four retina PNGs came to 3 MB.

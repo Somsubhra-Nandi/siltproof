@@ -93,8 +93,25 @@ cd frontend && npm install && npm run dev
 With `VITE_API_BASE_URL` unset the app reads the generated snapshot in
 `public/data/demo`: the map colours itself from real rule output, the
 drill-down shows the real evidence, and approving the two amber drains moves
-verified from 805 t to 870 t with ₹6.66 lakh still held. The map tiles
-themselves still need an Amazon Location API key.
+verified from 805 t to 870 t with ₹6.66 lakh still held.
+
+**The map works with no AWS at all.** Without an Amazon Location key it draws a
+bundled style built from `public/data/basemap.geojson` — the ward's real roads
+and water from OpenStreetMap, fetched once by `data/osm_basemap.py` — and shows
+a small "Offline map (dev)" badge. No tile server, no network request. With
+`VITE_AWS_REGION` and `VITE_LOCATION_API_KEY` set it uses Amazon Location
+exactly as it always did, and falls back automatically if that style fails.
+
+Useful query parameters while working on the screen:
+
+| | |
+|---|---|
+| `?state=verified` | skip the pre-verification view |
+| `?drain=14` | open a drain straight away |
+| `?style=<url>` | override the basemap style (point it at a missing file to test the fallback) |
+
+See `frontend/screenshots/` for what it looks like, or regenerate them with
+`npm run preview` and `npm run screenshot`.
 
 ## Commands
 
@@ -158,6 +175,7 @@ python data/osm_drains.py --synthetic --center <lat,lon>
 python data/gen_trips.py          # 117 trips, traces, ground_truth.json
 python data/gen_slips.py          # a weighbridge slip per trip
 python data/gen_photos.py         # stand-in photos with real EXIF
+python data/osm_basemap.py        # roads and water for the offline map
 
 cp data/out/drains.geojson data/out/dumpsite.geojson frontend/public/data/
 ```
@@ -180,7 +198,8 @@ python data/reset.py --live --bucket <EvidenceBucketName>  # between takes
 
 ```bash
 python -m pytest                 # 249 backend tests, about 80 s, entirely offline
-cd frontend && npm test          # 17 component tests
+cd frontend && npm test          # 46 component and unit tests
+cd frontend && npm run screenshot  # four views of the offline dashboard
 ```
 
 `tests/test_rules_oracle.py` is the acceptance test for rules R1-R10: it
