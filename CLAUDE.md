@@ -76,7 +76,7 @@ import `from common import ...`.
   and `--live` prints the call plan and a billable-call estimate first. Keep it
   that way for anything new.
 - Run the tests before committing: `.venv/bin/python -m pytest` (249 tests,
-  about 80 s) and `cd frontend && npm test` (17). No AWS account needed.
+  about 80 s) and `cd frontend && npm test` (76). No AWS account needed.
   `sam build` needs `--use-container`, because the local python is 3.13 and
   the runtime is 3.12.
 - Rules live in `backend/common/rules.py` as pure functions over dicts. Keep

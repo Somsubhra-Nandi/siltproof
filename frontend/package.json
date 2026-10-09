@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "screenshot": "node scripts/screenshot.mjs"
+    "screenshot": "node scripts/capture.mjs stills",
+    "capture": "node scripts/capture.mjs",
+    "check:location": "node scripts/check-location-mock.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.52.0",

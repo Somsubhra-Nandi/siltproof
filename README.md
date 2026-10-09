@@ -110,8 +110,9 @@ Useful query parameters while working on the screen:
 | `?drain=14` | open a drain straight away |
 | `?style=<url>` | override the basemap style (point it at a missing file to test the fallback) |
 
-See `frontend/screenshots/` for what it looks like, or regenerate them with
-`npm run preview` and `npm run screenshot`.
+See `frontend/screenshots/app/` and `frontend/videos/` for what it looks like,
+or regenerate them with `npm run build`, `npx vite preview --port 4173` and
+`npm run capture`.
 
 ## Commands
 
@@ -199,7 +200,7 @@ python data/reset.py --live --bucket <EvidenceBucketName>  # between takes
 ```bash
 python -m pytest                 # 249 backend tests, about 80 s, entirely offline
 cd frontend && npm test          # 46 component and unit tests
-cd frontend && npm run screenshot  # four views of the offline dashboard
+cd frontend && npm run capture     # screenshots and two videos of the offline demo
 ```
 
 `tests/test_rules_oracle.py` is the acceptance test for rules R1-R10: it

@@ -4,7 +4,7 @@ This plan is for the existing app in `frontend/src`: React 19, Vite,
 maplibre-gl 6, and vitest with jsdom. Run screenshots with
 `npm run screenshot` (puppeteer-core and SwiftShader).
 
-**Not started. Needs your approval first.**
+**Implemented on branch `feat/hybrid-frontend` (October 2026).** Deviations are listed in the SDD ledger rulings and the final handover.
 
 ## Ground rules
 
