@@ -276,7 +276,7 @@ def test_complete_before_upload_is_a_409(aws):
     assert status == 409 and payload["code"] == "NOT_UPLOADED"
 
 
-def test_wrong_signature_is_rejected_deleted_and_released(aws):
+def test_wrong_signature_is_rejected_and_deleted_but_keeps_its_slot_while_the_link_lives(aws):
     trial_id, token = create_trial()
     fake = b"MZ\x90\x00 definitely not a pdf" * 10
     status, payload, evidence_id = upload(aws, trial_id, token, "slip", fake, "application/pdf")
@@ -284,8 +284,9 @@ def test_wrong_signature_is_rejected_deleted_and_released(aws):
     assert payload["evidence"]["state"] == "REJECTED"
     key = repo.get_evidence(trial_id, evidence_id)["s3Key"]
     assert "Contents" not in aws["s3"].list_objects_v2(Bucket=aws["bucket"], Prefix=key)
+    # The presigned POST could still write to the key, so the slot is not given back.
     trial = repo.get_trial(trial_id)
-    assert trial["fileCount"] == 0 and trial["bytesReserved"] == 0
+    assert trial["fileCount"] == 1 and trial["bytesReserved"] == len(fake)
 
 
 def test_size_mismatch_is_rejected(aws):
@@ -657,7 +658,8 @@ def test_analysis_waits_for_processing(aws):
     trial_id, token = create_trial()
     _, _, evidence_id = upload(aws, trial_id, token, "photo", jpeg(25), "image/jpeg",
                                complete=False)
-    repo.update_evidence(trial_id, evidence_id, {"state": "PROCESSING"})
+    repo.update_evidence(trial_id, evidence_id,
+                         {"state": "PROCESSING", "leaseUntil": repo.now_epoch() + 60})
     status, payload = analyze(trial_id, token)
     assert status == 409 and payload["code"] == "EVIDENCE_PROCESSING"
     assert payload["pending"] == [evidence_id]
@@ -772,14 +774,28 @@ def test_field_case_with_photo_derived_geometry_is_inconclusive(aws):
 
 
 # ----------------------------------------------------------- delete/cleanup
-def test_delete_evidence_releases_its_slot(aws):
+def test_delete_evidence_releases_its_slot_once_the_upload_link_is_dead(aws, monkeypatch):
     trial_id, token = create_trial()
     _, _, evidence_id = upload(aws, trial_id, token, "photo", jpeg(33), "image/jpeg")
-    status, _ = call("DELETE /trials/{trialId}/evidence/{evidenceId}", token=token,
-                     trialId=trial_id, evidenceId=evidence_id)
-    assert status == 200
+    later = repo.now_epoch() + limits.UPLOAD_URL_TTL_S + limits.UPLOAD_WINDOW_SLACK_S + 5
+    monkeypatch.setattr(repo, "now_epoch", lambda: later)
+    status, payload = call("DELETE /trials/{trialId}/evidence/{evidenceId}", token=token,
+                           trialId=trial_id, evidenceId=evidence_id)
+    assert status == 200 and payload["slotReleased"] is True
     trial = repo.get_trial(trial_id)
     assert trial["fileCount"] == 0 and trial["groupFiles"]["photo"] == 0
+    assert get(trial_id, token)["evidence"] == []
+
+
+def test_delete_while_the_upload_link_lives_keeps_the_slot(aws):
+    """Otherwise delete-and-reupload through the still-valid POST policy
+    stores files that no counter sees."""
+    trial_id, token = create_trial()
+    _, _, evidence_id = upload(aws, trial_id, token, "photo", jpeg(33), "image/jpeg")
+    status, payload = call("DELETE /trials/{trialId}/evidence/{evidenceId}", token=token,
+                           trialId=trial_id, evidenceId=evidence_id)
+    assert status == 200 and payload["slotReleased"] is False
+    assert repo.get_trial(trial_id)["fileCount"] == 1
     assert get(trial_id, token)["evidence"] == []
 
 
@@ -901,7 +917,111 @@ def test_deployed_dispatch_invokes_the_processor_asynchronously(aws, monkeypatch
 def test_live_mode_without_a_processor_fails_closed(aws, monkeypatch):
     monkeypatch.setenv("MOCK_AWS", "0")
     monkeypatch.delenv("TRIAL_PROCESSOR_FUNCTION", raising=False)
-    trial_id, token = create_trial()
+    monkeypatch.setenv("TRIAL_INVITE_CODE", "judges-river-2026")
+    trial_id, token = create_trial(inviteCode="judges-river-2026")
     status, payload, evidence_id = upload(aws, trial_id, token, "photo", jpeg(44), "image/jpeg")
     assert status == 503 and payload["code"] == "PROCESSOR_UNAVAILABLE"
     assert repo.get_evidence(trial_id, evidence_id)["state"] == "UPLOADED"
+
+
+# ------------------------------------------------------- review hardening
+def test_live_mode_without_an_invite_code_keeps_trials_closed(aws, monkeypatch):
+    monkeypatch.delenv("TRIAL_INVITE_CODE", raising=False)
+    monkeypatch.setenv("MOCK_AWS", "0")
+    status, payload = call("POST /trials", body={"label": "x"})
+    assert status == 503 and payload["code"] == "TRIALS_DISABLED"
+    assert repo.daily_count("TRIALS") == 0
+
+
+def test_live_mode_with_an_invite_code_opens_trials(aws, monkeypatch):
+    monkeypatch.setenv("TRIAL_INVITE_CODE", "judges-river-2026")
+    monkeypatch.setenv("MOCK_AWS", "0")
+    assert call("POST /trials", body={})[0] == 403
+    assert call("POST /trials", body={"inviteCode": "judges-river-2026"})[0] == 201
+
+
+def test_a_file_replaced_after_complete_is_refused_before_any_model_call(aws, monkeypatch):
+    from common import bedrock
+
+    called = {"n": 0}
+    real = bedrock.check_photo
+
+    def counting(*args, **kwargs):
+        called["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(bedrock, "check_photo", counting)
+    trial_id, token = create_trial()
+    original = jpeg(40)
+    _, _, evidence_id = upload(aws, trial_id, token, "photo", original, "image/jpeg",
+                               complete=False)
+    item = repo.get_evidence(trial_id, evidence_id)
+    # Validated and queued, then overwritten through the still-valid policy.
+    repo.update_evidence(trial_id, evidence_id,
+                         {"state": "QUEUED", "sizeBytes": len(original)})
+    aws["s3"].put_object(Bucket=aws["bucket"], Key=item["s3Key"],
+                         Body=b"MZ" + b"\x00" * (len(original) - 2), ContentType="image/jpeg")
+    assert process.run(trial_id, evidence_id) == "failed"
+    stored = repo.get_evidence(trial_id, evidence_id)
+    assert stored["state"] == "FAILED" and stored["error"]["code"] == "CHANGED_AFTER_UPLOAD"
+    assert called["n"] == 0
+    assert repo.get_trial(trial_id).get("bedrockCalls", 0) == 0
+
+
+def test_a_photo_over_the_pixel_cap_is_refused_before_decoding(aws, monkeypatch):
+    monkeypatch.setattr(limits, "MAX_PHOTO_PIXELS", 320 * 240 - 1)
+    trial_id, token = create_trial()
+    _, _, evidence_id = upload(aws, trial_id, token, "photo", jpeg(41), "image/jpeg")
+    item = evidence_of(trial_id, token, evidence_id)
+    assert item["state"] == "FAILED" and item["error"]["code"] == "IMAGE_TOO_LARGE"
+    assert item["retryable"] is False
+    assert repo.get_trial(trial_id).get("bedrockCalls", 0) == 0
+
+
+def test_phone_originals_go_to_bedrock_as_a_copy():
+    """Converse takes at most 3.75 MB per image; 3-8 MB phone originals need a copy."""
+    assert limits.MAX_BYTES_FOR_BEDROCK <= 3_750_000
+
+
+def _stall(trial_id, evidence_id, state):
+    if state == "PROCESSING":
+        repo.update_evidence(trial_id, evidence_id,
+                             {"state": "PROCESSING", "leaseUntil": repo.now_epoch() - 1})
+    else:
+        repo.update_evidence(trial_id, evidence_id,
+                             {"state": "QUEUED", "updatedAt": "2026-01-01T00:00:00+00:00"})
+
+
+@pytest.mark.parametrize("state", ["PROCESSING", "QUEUED"])
+def test_a_stalled_file_does_not_block_analysis_and_can_be_retried_or_removed(aws, state):
+    trial_id, token = create_trial()
+    _, _, stuck = upload(aws, trial_id, token, "photo", jpeg(42), "image/jpeg", complete=False)
+    repo.update_evidence(trial_id, stuck, {"sizeBytes": len(jpeg(42))})
+    _stall(trial_id, stuck, state)
+
+    status, result = analyze(trial_id, token)
+    assert status == 200
+    assert [item["evidenceId"] for item in result["evidenceExcluded"]] == [stuck]
+    assert "did not finish" in result["evidenceExcluded"][0]["reason"]
+
+    assert evidence_of(trial_id, token, stuck)["retryable"] is True
+    status, payload = call(RETRY, token=token, trialId=trial_id, evidenceId=stuck)
+    assert status == 202, payload
+    assert evidence_of(trial_id, token, stuck)["state"] == "READY"
+
+    _, _, other = upload(aws, trial_id, token, "photo", jpeg(43), "image/jpeg", complete=False)
+    _stall(trial_id, other, state)
+    status, _ = call("DELETE /trials/{trialId}/evidence/{evidenceId}", token=token,
+                     trialId=trial_id, evidenceId=other)
+    assert status == 200
+
+
+def test_a_live_lease_still_blocks_removal(aws):
+    trial_id, token = create_trial()
+    _, _, evidence_id = upload(aws, trial_id, token, "photo", jpeg(44), "image/jpeg",
+                               complete=False)
+    repo.update_evidence(trial_id, evidence_id,
+                         {"state": "PROCESSING", "leaseUntil": repo.now_epoch() + 60})
+    status, payload = call("DELETE /trials/{trialId}/evidence/{evidenceId}", token=token,
+                           trialId=trial_id, evidenceId=evidence_id)
+    assert status == 409 and payload["code"] == "BAD_STATE"

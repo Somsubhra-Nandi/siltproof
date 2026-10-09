@@ -20,11 +20,22 @@ MAX_FILES_PER_TRIAL = 24
 MAX_BYTES_PER_TRIAL = 120 * MB
 MAX_RETRIES = 2
 
-# Bedrock takes up to 25 MB inline, but the B1 ingest caps at 8 MB, so a
-# larger photo, or one over Nova's 8000 px limit, goes as a processing copy.
-MAX_BYTES_FOR_BEDROCK = 8 * MB
+# The Converse API takes at most 3.75 MB and 8000 px per side for each image
+# (API reference, Message). Phone originals are 3-8 MB (KOLKATA-FIELD-EVIDENCE.md),
+# so anything over a safety margin below that goes as a processing copy.
+MAX_BYTES_FOR_BEDROCK = 3_500_000
 MAX_PIXELS_SIDE_FOR_BEDROCK = 8000
 PROCESSING_COPY_SIDE = 1568
+
+# Decoding is width x height x 3 bytes; 64 MP stays well inside the ingest
+# Lambda's 1 GB. A 50 MP phone is 51 MP, the Kolkata phone 9.6 MP.
+MAX_PHOTO_PIXELS = 64_000_000
+
+# A QUEUED item that has not been claimed in this long lost its invocation.
+QUEUE_STALL_S = 600
+
+# Slack on the presigned POST lifetime, for clock skew between S3 and Lambda.
+UPLOAD_WINDOW_SLACK_S = 60
 
 # Textract synchronous AnalyzeDocument: 10 MB, one page.
 MAX_BYTES_FOR_TEXTRACT = 10 * MB

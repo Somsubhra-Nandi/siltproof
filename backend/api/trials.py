@@ -170,12 +170,37 @@ def privacy():
     }
 
 
-NOT_RETRYABLE = {"UNREADABLE_IMAGE", "PDF_TOO_MANY_PAGES", "FILE_TOO_LARGE"}
+NOT_RETRYABLE = {"UNREADABLE_IMAGE", "PDF_TOO_MANY_PAGES", "FILE_TOO_LARGE",
+                 "IMAGE_TOO_LARGE", "CHANGED_AFTER_UPLOAD"}
+
+
+def upload_window_closed(item):
+    """The presigned POST for this item can no longer be used.
+
+    Until then the browser can still write to the key, so a file slot given
+    back earlier would let deleted or rejected files be replaced by uploads
+    that no counter sees.
+    """
+    try:
+        created = datetime.datetime.fromisoformat(item["createdAt"]).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return False
+    return created + limits.UPLOAD_URL_TTL_S + limits.UPLOAD_WINDOW_SLACK_S < repo.now_epoch()
+
+
+def release_if_closed(trial_id, item):
+    """Give the slot back only when the upload link is dead. Returns whether it was."""
+    if not upload_window_closed(item):
+        return False
+    repo.release_file(trial_id, item["group"], item["declaredSizeBytes"])
+    return True
 
 
 def retryable(item):
     if (item.get("attempts") or 0) >= limits.MAX_RETRIES + 1:
         return False
+    if item.get("group") in ("photo", "slip") and process.stalled(item):
+        return True
     code = (item.get("error") or {}).get("code")
     if item.get("state") == "FAILED":
         return code not in NOT_RETRYABLE
@@ -188,9 +213,15 @@ def retryable(item):
 # --------------------------------------------------------------- handlers
 def create_trial(event, params, body):
     expected = limits.invite_code()
+    if not expected and not config.mock_aws():
+        # Fail closed: a deployment without an invite code never opens trials
+        # (and their Bedrock and Textract allowances) to the whole internet.
+        return error(503, "TRIALS_DISABLED",
+                     "Trials are not open on this deployment: no invite code is configured.")
     if expected:
         given = body.get("inviteCode")
-        if not isinstance(given, str) or not hmac.compare_digest(given.strip(), expected):
+        if not isinstance(given, str) or not hmac.compare_digest(
+                given.strip().encode("utf-8"), expected.encode("utf-8")):
             return error(403, "INVITE_REQUIRED", "A valid invite code is needed to start a trial.")
 
     kind = body.get("kind") or "judge"
@@ -350,7 +381,7 @@ def _reject(trial_id, item, code, message):
          "updatedAt": repo.now_iso()},
         expect_states=("UPLOADING", "UPLOADED"),
     )
-    repo.release_file(trial_id, item["group"], item["declaredSizeBytes"])
+    release_if_closed(trial_id, item)
     log("trial_evidence_rejected", trialId=trial_id, evidenceId=item["evidenceId"], code=code)
     return error(422, code, message, evidence=evidence_view(trial_id, updated, False))
 
@@ -405,11 +436,16 @@ def complete(event, params, body):
         )
         return response(200, {"evidence": evidence_view(trial_id, updated)})
 
-    repo.update_evidence(
-        trial_id, item["evidenceId"],
-        {"state": "UPLOADED", "sizeBytes": size, "updatedAt": repo.now_iso()},
-        expect_states=("UPLOADING", "UPLOADED"),
-    )
+    try:
+        repo.update_evidence(
+            trial_id, item["evidenceId"],
+            {"state": "UPLOADED", "sizeBytes": size, "updatedAt": repo.now_iso()},
+            expect_states=("UPLOADING", "UPLOADED"),
+        )
+    except repo.StateConflict:
+        # A concurrent /complete already queued it.
+        return response(200, {"evidence": evidence_view(
+            trial_id, repo.get_evidence(trial_id, item["evidenceId"]))})
     return _queue(trial_id, item["evidenceId"], from_states=("UPLOADED",), count_attempt=True)
 
 
@@ -466,17 +502,19 @@ def delete_evidence(event, params, body):
     trial = authorise(event, params.get("trialId"))
     trial_id = trial["trialId"]
     item = evidence_or_404(trial_id, params.get("evidenceId"))
-    if item["state"] in ("QUEUED", "PROCESSING"):
+    if item["state"] in ("QUEUED", "PROCESSING") and not process.stalled(item):
         return error(409, "BAD_STATE", "Wait for processing to finish before removing this file.")
     bucket = bucket_or_refuse()
     keys = [item["s3Key"], process.processing_key(trial_id, item["evidenceId"])]
     for key in keys:
         s3().delete_object(Bucket=bucket, Key=key)
     repo.delete_evidence_item(trial_id, item["evidenceId"])
-    if item["state"] != "REJECTED":
-        repo.release_file(trial_id, item["group"], item["declaredSizeBytes"])
-    log("trial_evidence_deleted", trialId=trial_id, evidenceId=item["evidenceId"])
-    return response(200, {"deleted": item["evidenceId"]})
+    # A REJECTED item already gave its slot back, if its link had expired; if
+    # not, the slot stays taken, like any other file whose link is still live.
+    released = item["state"] != "REJECTED" and release_if_closed(trial_id, item)
+    log("trial_evidence_deleted", trialId=trial_id, evidenceId=item["evidenceId"],
+        released=released)
+    return response(200, {"deleted": item["evidenceId"], "slotReleased": released})
 
 
 PENDING = ("UPLOADED", "QUEUED", "PROCESSING")
@@ -487,7 +525,8 @@ def analyze(event, params, body):
     trial_id = trial["trialId"]
     evidence = repo.list_evidence(trial_id)
 
-    pending = [item["evidenceId"] for item in evidence if item["state"] in PENDING]
+    pending = [item["evidenceId"] for item in evidence
+               if item["state"] in PENDING and not process.stalled(item)]
     if pending:
         return error(409, "EVIDENCE_PROCESSING",
                      "Some files are still being processed. Try again in a few seconds.",
@@ -504,7 +543,9 @@ def analyze(event, params, body):
     for item in evidence:
         if item["state"] != "READY":
             reason = (item.get("error") or {}).get("message") or (
-                "Upload was never completed." if item["state"] == "UPLOADING" else item["state"])
+                "Upload was never completed." if item["state"] == "UPLOADING"
+                else "Processing did not finish; retry or remove this file."
+                if process.stalled(item) else item["state"])
             excluded.append({"evidenceId": item["evidenceId"], "filename": item.get("filename"),
                              "state": item["state"], "reason": reason})
             continue

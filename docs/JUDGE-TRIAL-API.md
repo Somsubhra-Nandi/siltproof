@@ -50,10 +50,13 @@ What this is and is not:
 - The token lives in the browser tab's memory and `sessionStorage` (so a
   reload keeps the trial). Closing the tab forgets it. Lose the token and the
   trial is unreachable; it expires on its own (section 15).
-- Trial creation can be gated by an **invite code** (`TRIAL_INVITE_CODE`,
-  stack parameter `TrialInviteCode`, NoEcho). When it is set, `POST /trials`
-  without the matching `inviteCode` is refused with 403. The code is typed by
-  the judge; it must never be baked into the frontend bundle.
+- Trial creation is gated by an **invite code** (`TRIAL_INVITE_CODE`,
+  stack parameter `TrialInviteCode`, NoEcho, empty or 12-64 URL-safe
+  characters). `POST /trials` without the matching `inviteCode` is refused
+  with 403. A live deployment with no code configured fails closed: every
+  `POST /trials` gets 503 `TRIALS_DISABLED`. Only mock mode (`MOCK_AWS=1`,
+  the dev server and tests) runs without one. The code is typed by the judge;
+  it must never be baked into the frontend bundle.
 - No trial route can read or write Bill B1 or any `BILL#`, `EVID#`,
   `DUMPSITE#` or `VEHICLE#` item, and no trial S3 key falls outside
   `trials/{trialId}/`.
@@ -341,15 +344,25 @@ latitude and longitude swapped. GPX and CSV are **not** supported.
 | `trace` | `application/json`, `application/geo+json` | 2 MB | 4 |
 
 Per trial: at most **24 files** and **120 MB** in total (declared sizes are
-reserved when the upload URL is issued and released if the file is rejected or
-deleted).
+reserved when the upload URL is issued). A rejected or deleted file gives its
+slot back only once its upload link has expired (300 s plus 60 s slack): until
+then the presigned POST can still write to the key, and an early release would
+let deleted files be replaced by uploads no counter sees. `DELETE …/evidence/…`
+reports `"slotReleased": true|false`.
 
 Signatures checked at `…/complete`: JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A
 1A 0A`, PDF `%PDF-`, JSON first non-space byte `{` or `[` (and the whole file
 must parse). A PDF slip with more than one page fails processing with
 `PDF_TOO_MANY_PAGES` before Textract is called.
 
-Photos larger than 8 MB, or with a side over 8,000 px, are sent to Bedrock as a
+Processing re-reads the object and fails with `CHANGED_AFTER_UPLOAD` if its
+size or signature no longer matches what `…/complete` accepted (the POST policy
+is still live for a few minutes). Photos over 64 megapixels fail with
+`IMAGE_TOO_LARGE` before they are decoded. Neither is retryable, and neither
+reaches a model.
+
+Photos larger than 3.5 MB (the Converse API takes 3.75 MB per image), or with
+a side over 8,000 px, are sent to Bedrock as a
 **processing copy** (longest side 1,568 px, JPEG q85, EXIF orientation applied).
 The copy records the original's key, both SHA-256s and both pixel sizes. EXIF,
 GPS, timestamp and pHash always come from the original bytes, before any
@@ -377,7 +390,11 @@ state. `READY` means "processed", not "passed".
 evidence IDs) while any file is `UPLOADING`-but-completed, `UPLOADED`,
 `QUEUED` or `PROCESSING`; the UI polls and tries again. Items still
 `UPLOADING` that were never completed are listed as excluded, not waited on.
-`FAILED` and `REJECTED` items are listed under `evidenceExcluded`.
+`FAILED` and `REJECTED` items are listed under `evidenceExcluded`. So are
+**stalled** items, which are not waited on either: `PROCESSING` past its lease
+(the processor crashed or timed out) or `QUEUED` for more than 10 minutes (the
+invocation was lost). A stalled photo or slip is `retryable`, and can be
+deleted.
 
 Check statuses:
 
@@ -437,7 +454,7 @@ absent, and the summary says how many checks could not be evaluated.
 | 413 | `TRIAL_FILE_LIMIT`, `TRIAL_BYTES_LIMIT` | per-trial file or byte budget |
 | 422 | `SIZE_MISMATCH`, `SIGNATURE_MISMATCH`, `INVALID_TRACE` | the uploaded object failed validation (also recorded on the item) |
 | 429 | `TRIAL_QUOTA_EXHAUSTED`, `ANALYSIS_LIMIT` | daily trial creation, per-trial analyses |
-| 503 | `PROCESSOR_UNAVAILABLE`, `STORAGE_UNAVAILABLE` | not configured |
+| 503 | `TRIALS_DISABLED`, `PROCESSOR_UNAVAILABLE`, `STORAGE_UNAVAILABLE` | not configured |
 
 Processing errors are stored on the item, not returned as HTTP errors:
 `QUOTA_EXHAUSTED` (daily or per-trial model allowance; fail closed, no call

@@ -15,6 +15,7 @@ The original object is never rewritten. Billable calls are reserved before
 they are made and skipped when the stored result already matches the bytes.
 """
 
+import datetime
 import hashlib
 import io
 import json
@@ -108,6 +109,7 @@ def run(trial_id, evidence_id):
     try:
         data = read_object(item["s3Key"])
         digest = sha256(data)
+        check_unchanged(item, data)
         if item["group"] == "photo":
             result, notes = process_photo(trial_id, item, data, digest)
         elif item["group"] == "slip":
@@ -133,6 +135,35 @@ def run(trial_id, evidence_id):
     )
     log("trial_evidence_ready", trialId=trial_id, evidenceId=evidence_id, group=item["group"])
     return "processed"
+
+
+def check_unchanged(item, data):
+    """The presigned POST stays valid for its whole lifetime, so the object can
+    be replaced after /complete validated it. Read it again on the same terms
+    before any billable call."""
+    # /complete only accepts a file of exactly the declared size.
+    if len(data) != item.get("declaredSizeBytes") or not validate.signature_ok(
+            item.get("contentType"), data[:64]):
+        raise ProcessingFailed(
+            "CHANGED_AFTER_UPLOAD",
+            "The stored file no longer matches the one that was checked at upload.",
+        )
+
+
+def stalled(item, now=None):
+    """True when a QUEUED or PROCESSING item will never finish on its own: the
+    processor crashed past its lease, or the async invocation was lost."""
+    now = now if now is not None else repo.now_epoch()
+    if item.get("state") == "PROCESSING":
+        return int(item.get("leaseUntil") or 0) < now
+    if item.get("state") == "QUEUED":
+        queued = item.get("updatedAt") or item.get("createdAt")
+        try:
+            at = datetime.datetime.fromisoformat(queued).timestamp()
+        except (TypeError, ValueError):
+            return True
+        return at + limits.QUEUE_STALL_S < now
+    return False
 
 
 def _fail(trial_id, evidence_id, code, message, result=None):
@@ -230,6 +261,13 @@ def process_photo(trial_id, item, data, digest):
     exif = photo.read_exif(data)
     if any(problem.startswith("unreadable_image") for problem in exif["problems"]):
         raise ProcessingFailed("UNREADABLE_IMAGE", "The file could not be read as an image.")
+    # The header gives the size without decoding; refuse before pHash or a
+    # processing copy decodes a pixel bomb.
+    if (exif.get("width") or 0) * (exif.get("height") or 0) > limits.MAX_PHOTO_PIXELS:
+        raise ProcessingFailed(
+            "IMAGE_TOO_LARGE",
+            f"The image is over {limits.MAX_PHOTO_PIXELS // 1_000_000} megapixels.",
+        )
 
     extras = exif_extras(data)
     phash = photo.perceptual_hash(data)
