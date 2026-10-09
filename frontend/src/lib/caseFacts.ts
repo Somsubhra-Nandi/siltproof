@@ -42,7 +42,9 @@ export function reasonFor(drain: Drain): string {
 }
 
 /** The trip the case file opens on: the first held one, else the first in review. */
-export function focusTrip(drain: Drain): Trip | null {
+export function focusTrip(drain: Drain, tripId: string | null = null): Trip | null {
+  const chosen = tripId ? drain.trips.find((trip) => trip.tripId === tripId) : undefined
+  if (chosen) return chosen
   return (
     drain.trips.find((trip) => trip.verdict === 'HOLD') ??
     drain.trips.find((trip) => trip.verdict === 'REVIEW') ??
@@ -158,8 +160,8 @@ export function conflictingField(trip: Trip | null): string | null {
   return null
 }
 
-export function caseFacts(drain: Drain): CaseFacts {
-  const trip = focusTrip(drain)
+export function caseFacts(drain: Drain, tripId: string | null = null): CaseFacts {
+  const trip = focusTrip(drain, tripId)
   const tripFindings = trip?.findings ?? []
   const findings = allFindings(drain)
   const dump = drain.dumpsite.center

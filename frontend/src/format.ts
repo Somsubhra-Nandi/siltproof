@@ -54,3 +54,43 @@ export function useCountUp(target: number, animate: boolean, duration = COUNT_UP
 
   return animate ? value : target
 }
+
+const indian = new Intl.NumberFormat('en-IN')
+
+/** "₹3,45,600": Indian digit grouping, whole rupees. */
+export function rupees(value: number) {
+  return `₹${indian.format(Math.round(value))}`
+}
+
+/** "6.66", the lakh figure without its unit. */
+export function lakh(value: number, digits = 2) {
+  return (value / 100000).toFixed(digits)
+}
+
+/** "1,240", grouped the Indian way. */
+export function grouped(value: number, digits = 0) {
+  return new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "21 Sep to 4 Oct 2026" from the bill's work window. */
+export function windowText([from, to]: [string, string]) {
+  const day = (iso: string, year: boolean) => {
+    const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+    return `${d} ${MONTHS[m - 1]}${year ? ` ${y}` : ''}`
+  }
+  return `${day(from, false)} to ${day(to, true)}`
+}
+
+/** "1 Oct, 15:11", in India time whatever the viewer's zone. */
+export function dayTime(iso: string | null | undefined) {
+  if (!iso) return 'no timestamp'
+  // The data is written in IST; read it as written.
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(iso)
+  if (!match) return iso
+  return `${Number(match[3])} ${MONTHS[Number(match[2]) - 1]}, ${match[4]}`
+}
