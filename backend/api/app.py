@@ -23,6 +23,7 @@ import uuid
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from common import bedrock, billdata, config, rules, store  # noqa: E402
+from api import trials as trial_routes  # noqa: E402  judge trials, docs/JUDGE-TRIAL-API.md
 from common.jsonlog import log  # noqa: E402
 
 # Presigned PUT links for the live upload are short-lived on purpose.
@@ -694,6 +695,9 @@ ROUTES = {
 
 def lambda_handler(event, context):
     route_key = event.get("routeKey", "")
+    if route_key in trial_routes.ROUTES:
+        return trial_routes.handle(event)
+
     route = ROUTES.get(route_key)
 
     if route is None:
