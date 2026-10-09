@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
+import { offline } from '../api'
 
 export interface Move {
   label: string
@@ -134,7 +135,7 @@ function ConfirmSheet({
           {busy ? (
             <>
               <span className="spinner" aria-hidden="true" />
-              Saving decision
+              {offline ? 'Applying decision' : 'Saving decision'}
             </>
           ) : (
             confirmLabel

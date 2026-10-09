@@ -34,6 +34,7 @@ interface Props {
   /** Tonnes the evidence flagged on this drain: what an approval releases. */
   flaggedTonnes: number
   decidedAt: string | null
+  decidedLocally?: boolean
   saving: Kind | null
   saveError: string | null
   explaining: boolean
@@ -97,7 +98,8 @@ function DecisionBar(props: Props) {
                   : `You held ${rupees(amount)} on drain ${drain.drainId}.`}
               </b>
               <br />
-              {recorded(props.decidedAt)} by the ward engineer.
+              {recorded(props.decidedAt)} by the ward engineer
+              {props.decidedLocally ? ', in this browser only. Not saved to AWS.' : '.'}
             </p>
             <p className="note">Note: {row.note || drain.note || 'none'}</p>
           </div>

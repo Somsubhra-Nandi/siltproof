@@ -171,4 +171,6 @@ export interface DecisionResult {
   note: string | null
   summary: Summary
   drains: DrainRow[]
+  /** Applied in this browser only (snapshot, or a read-only bill); never saved to AWS. */
+  local?: boolean
 }

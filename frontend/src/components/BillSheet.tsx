@@ -451,8 +451,11 @@ function BillSheet(props: Props) {
           <br />
           {bill.contractor}, {bill.drains.length} drains, {trips} trips
           {offline && (
-            <span className="offline-tag" title="No API configured: the app is reading the snapshot in public/data/demo">
-              Offline snapshot
+            <span
+              className="offline-tag"
+              title="The prepared, simulated investigation (public/data/demo). Decisions are applied in this browser only and are not saved to AWS."
+            >
+              Simulated snapshot · decisions stay in this browser
             </span>
           )}
         </p>

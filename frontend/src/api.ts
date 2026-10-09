@@ -3,14 +3,34 @@ import type { Bill, DecisionResult, Drain } from './types'
 
 const base = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/$/, '')
 const billId = (import.meta.env.VITE_BILL_ID ?? 'B1').trim()
+const requestedSource = (import.meta.env.VITE_BILL_SOURCE ?? '').trim().toLowerCase()
 
 /**
- * With no API URL configured the app runs off the snapshot in
- * public/data/demo, written by scripts/make_demo_fixtures.py. That keeps the
- * screen clickable with no AWS account, and leaves a fallback if the stack is
- * unreachable while recording.
+ * Where the 18-drain investigation comes from (VITE_BILL_SOURCE):
+ *
+ * - `snapshot`: the committed simulation in public/data/demo, written by
+ *   scripts/make_demo_fixtures.py. Decisions are applied in this browser only.
+ * - `api`: the live bill at VITE_API_BASE_URL.
+ * - unset: `api` when VITE_API_BASE_URL is set, otherwise `snapshot`.
+ *
+ * The judge trial (trial.html) ignores this and always uses VITE_API_BASE_URL,
+ * so the public site can show the prepared investigation from the snapshot
+ * while trials run against the real API.
  */
-export const offline = base === ''
+export const billSource: 'snapshot' | 'api' =
+  base === '' || requestedSource === 'snapshot' ? 'snapshot' : 'api'
+export const offline = billSource === 'snapshot'
+
+class ApiError extends Error {
+  status: number
+  code?: string
+
+  constructor(message: string, status: number, code?: string) {
+    super(message)
+    this.status = status
+    this.code = code
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${base}${path}`, {
@@ -22,10 +42,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const payload = text ? JSON.parse(text) : {}
 
   if (!response.ok) {
-    throw new Error(payload.error ?? `${response.status} ${response.statusText}`)
+    throw new ApiError(payload.error ?? `${response.status} ${response.statusText}`, response.status, payload.code)
   }
   return payload as T
 }
+
+const readOnly = (cause: unknown) => cause instanceof ApiError && cause.code === 'READ_ONLY'
 
 async function snapshot<T>(name: string): Promise<T> {
   const response = await fetch(`/data/demo/${name}.json`)
@@ -38,21 +60,26 @@ async function snapshot<T>(name: string): Promise<T> {
   return (await response.json()) as T
 }
 
-// ---------------------------------------------------------------- offline
-// Decisions in offline mode are applied with lib/ledger's applyDecision, the
-// same arithmetic as rules.apply_decision on the backend, so the
-// approve-and-release moment still works without a deployed API.
-const offlineEvidence = new Map<string, { verified: number; review: number; held: number }>()
-let offlineBill: Bill | null = null
+// ------------------------------------------------- browser-only decisions
+// Decisions on the snapshot, or on a live bill the server keeps read-only
+// (403 READ_ONLY), are applied here with lib/ledger's applyDecision, the same
+// arithmetic as rules.apply_decision on the backend. They are never sent to
+// AWS, and every result says so (`local: true`).
+const evidence = new Map<string, { verified: number; review: number; held: number }>()
+let sheet: Bill | null = null
+let localDecisions = offline
+
+/** True when decisions are applied in this browser rather than saved. */
+export const decisionsAreLocal = () => localDecisions
 
 /**
- * Offline, the snapshot is already verified, but the demo has to start where
- * the engineer starts: a bill nobody has checked yet. So the snapshot is
- * served through a pending projection until Run Verification is pressed.
+ * The demo starts where the engineer starts: a bill nobody has checked yet.
+ * Whatever the source, the verified bill is served through a pending
+ * projection until Run Verification is pressed in this session.
  *
  * ?state=verified skips that, for when you are working on the verified view.
  */
-let offlineVerified =
+let verifiedThisSession =
   typeof window !== 'undefined' &&
   new URLSearchParams(window.location.search).get('state') === 'verified'
 
@@ -113,21 +140,29 @@ function pendingDrain(drain: Drain): Drain {
 }
 
 // ------------------------------------------------------------------- api
-export async function getBill(): Promise<Bill> {
-  if (offline) {
-    if (!offlineBill) {
-      offlineBill = await snapshot<Bill>('bill')
-      for (const row of offlineBill.drains) {
-        offlineEvidence.set(row.drainId, {
-          verified: row.verifiedTonnes,
-          review: row.reviewTonnes,
-          held: row.heldTonnes,
-        })
-      }
-    }
-    return offlineVerified ? offlineBill : pendingView(offlineBill)
+function remember(bill: Bill) {
+  if (evidence.size > 0) return
+  for (const row of bill.drains) {
+    evidence.set(row.drainId, {
+      verified: row.verifiedTonnes,
+      review: row.reviewTonnes,
+      held: row.heldTonnes,
+    })
   }
-  return request<Bill>(`/bill/${billId}`)
+}
+
+/** The verified bill from its source, with this browser's decisions on it. */
+async function loadBill(): Promise<Bill> {
+  if (sheet && (offline || localDecisions)) return sheet
+  const bill = offline ? await snapshot<Bill>('bill') : await request<Bill>(`/bill/${billId}`)
+  remember(bill)
+  sheet = bill
+  return bill
+}
+
+export async function getBill(): Promise<Bill> {
+  const bill = await loadBill()
+  return verifiedThisSession ? bill : pendingView(bill)
 }
 
 export async function runVerification(): Promise<Bill> {
@@ -135,32 +170,39 @@ export async function runVerification(): Promise<Bill> {
     // The real call takes a second or two; keep the pause so the button's
     // state is visible rather than flashing past.
     await new Promise((resolve) => setTimeout(resolve, 900))
-    offlineVerified = true
-    return getBill()
+  } else {
+    try {
+      await request(`/verify/${billId}`, { method: 'POST', body: '{}' })
+      sheet = null
+    } catch (cause) {
+      // A read-only bill was verified when it was seeded; show that result.
+      if (!readOnly(cause)) throw cause
+      localDecisions = true
+    }
   }
-  await request(`/verify/${billId}`, { method: 'POST', body: '{}' })
+  verifiedThisSession = true
   return getBill()
 }
 
 export async function getDrain(drainId: string): Promise<Drain> {
-  if (offline) {
-    const drain = await snapshot<Drain>(`drain-${drainId}`)
-    if (!offlineVerified) return pendingDrain(drain)
+  const drain = offline
+    ? await snapshot<Drain>(`drain-${drainId}`)
+    : await request<Drain>(`/drain/${drainId}?billId=${billId}`)
+  if (!verifiedThisSession) return pendingDrain(drain)
+  if (!localDecisions) return drain
 
-    const bill = await getBill()
-    const row = bill.drains.find((entry) => entry.drainId === drainId)
-    return row
-      ? {
-          ...drain,
-          decision: row.decision,
-          note: row.note,
-          verifiedTonnes: row.verifiedTonnes,
-          reviewTonnes: row.reviewTonnes,
-          heldTonnes: row.heldTonnes,
-        }
-      : drain
-  }
-  return request<Drain>(`/drain/${drainId}?billId=${billId}`)
+  const bill = await loadBill()
+  const row = bill.drains.find((entry) => entry.drainId === drainId)
+  return row
+    ? {
+        ...drain,
+        decision: row.decision,
+        note: row.note,
+        verifiedTonnes: row.verifiedTonnes,
+        reviewTonnes: row.reviewTonnes,
+        heldTonnes: row.heldTonnes,
+      }
+    : drain
 }
 
 export async function decide(
@@ -168,36 +210,41 @@ export async function decide(
   decision: 'APPROVE' | 'HOLD',
   note: string,
 ): Promise<DecisionResult> {
-  if (offline) {
-    const bill = await getBill()
-    const drains = bill.drains.map((row) => {
-      if (row.drainId !== drainId) return row
-      const evidence = offlineEvidence.get(drainId) ?? {
-        verified: row.verifiedTonnes,
-        review: row.reviewTonnes,
-        held: row.heldTonnes,
-      }
-      const moved = applyDecision(decision, evidence)
-      return {
-        ...row,
-        decision,
-        note: note.trim() || null,
-        verifiedTonnes: round(moved.verified),
-        reviewTonnes: round(moved.review),
-        heldTonnes: round(moved.held),
-      }
-    })
-
-    const summary = summarise(drains, bill.summary.ratePerTonne, bill.summary.claimedTonnes)
-    offlineBill = { ...bill, drains, summary }
-
-    return { drainId, decision, note: note.trim() || null, summary, drains }
+  if (!localDecisions) {
+    try {
+      return await request<DecisionResult>('/decision', {
+        method: 'POST',
+        body: JSON.stringify({ billId, drainId, decision, note }),
+      })
+    } catch (cause) {
+      if (!readOnly(cause)) throw cause
+      localDecisions = true
+    }
   }
 
-  return request<DecisionResult>('/decision', {
-    method: 'POST',
-    body: JSON.stringify({ billId, drainId, decision, note }),
+  const bill = await loadBill()
+  const drains = bill.drains.map((row) => {
+    if (row.drainId !== drainId) return row
+    const split = evidence.get(drainId) ?? {
+      verified: row.verifiedTonnes,
+      review: row.reviewTonnes,
+      held: row.heldTonnes,
+    }
+    const moved = applyDecision(decision, split)
+    return {
+      ...row,
+      decision,
+      note: note.trim() || null,
+      verifiedTonnes: round(moved.verified),
+      reviewTonnes: round(moved.review),
+      heldTonnes: round(moved.held),
+    }
   })
+
+  const summary = summarise(drains, bill.summary.ratePerTonne, bill.summary.claimedTonnes)
+  sheet = { ...bill, drains, summary }
+
+  return { drainId, decision, note: note.trim() || null, summary, drains, local: true }
 }
 
 export async function getEvidenceSummary(
@@ -221,9 +268,10 @@ export async function getEvidenceSummary(
 }
 
 
-/** Tests only: forget the cached snapshot and the verified flag. */
+/** Tests only: forget the cached bill, local decisions and the verified flag. */
 export function __resetOfflineState(verified = false) {
-  offlineBill = null
-  offlineEvidence.clear()
-  offlineVerified = verified
+  sheet = null
+  evidence.clear()
+  localDecisions = offline
+  verifiedThisSession = verified
 }

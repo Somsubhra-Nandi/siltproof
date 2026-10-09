@@ -72,6 +72,9 @@ function App() {
   const [saving, setSaving] = useState<SaveState | null>(null)
   const [saveError, setSaveError] = useState<{ drainId: string; message: string } | null>(null)
   const [decidedAt, setDecidedAt] = useState<Record<string, string>>({})
+  // Drains whose decision was applied in this browser only (snapshot, or a
+  // read-only bill): never described as saved.
+  const [decidedLocally, setDecidedLocally] = useState<Record<string, boolean>>({})
   const [explaining, setExplaining] = useState(false)
   const [evidenceSummary, setEvidenceSummary] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState('')
@@ -429,11 +432,15 @@ function App() {
             : current,
         )
         setDecidedAt((current) => ({ ...current, [drainId]: now }))
+        setDecidedLocally((current) => ({ ...current, [drainId]: Boolean(result.local) }))
         const row = result.drains.find((entry) => entry.drainId === drainId)
+        const lead = result.local
+          ? 'Decision recorded in this browser only, not saved to AWS.'
+          : 'Decision saved.'
         setAnnouncement(
           kind === 'APPROVE'
-            ? `Decision saved. Drain ${drainId} approved; ${grouped(row?.verifiedTonnes ?? 0)} t payable.`
-            : `Decision saved. Drain ${drainId} held; ${rupees((row?.heldTonnes ?? 0) * rate)} stays with the ward.`,
+            ? `${lead} Drain ${drainId} approved; ${grouped(row?.verifiedTonnes ?? 0)} t payable.`
+            : `${lead} Drain ${drainId} held; ${rupees((row?.heldTonnes ?? 0) * rate)} stays with the ward.`,
         )
         return true
       } catch (cause) {
@@ -511,6 +518,7 @@ function App() {
           evidenceExpired={expired}
           flaggedTonnes={openId ? (flaggedTonnes[openId] ?? 0) : 0}
           decidedAt={(openId && (decidedAt[openId] ?? drain?.decidedAt)) || null}
+          decidedLocally={Boolean(openId && decidedLocally[openId])}
           saving={saving && saving.drainId === openId ? saving.kind : null}
           saveError={saveError && saveError.drainId === openId ? saveError.message : null}
           explaining={explaining}

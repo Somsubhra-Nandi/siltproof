@@ -29,6 +29,7 @@ interface Props {
   evidenceExpired: boolean
   flaggedTonnes: number
   decidedAt: string | null
+  decidedLocally: boolean
   saving: Kind | null
   saveError: string | null
   explaining: boolean
@@ -249,6 +250,7 @@ function CaseFile({ slotRef, ...props }: Props) {
             verified={props.verified}
             flaggedTonnes={props.flaggedTonnes}
             decidedAt={props.decidedAt}
+            decidedLocally={props.decidedLocally}
             saving={props.saving}
             saveError={props.saveError}
             explaining={props.explaining}
