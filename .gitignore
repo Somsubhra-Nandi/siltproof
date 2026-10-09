@@ -34,3 +34,4 @@ data/simulated/traces/
 
 # generator output (regenerate with data/gen_*.py)
 data/out/
+frontend/screenshots/location-live/

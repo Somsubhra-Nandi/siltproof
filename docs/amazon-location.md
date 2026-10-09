@@ -43,23 +43,41 @@ work, or as Amplify environment variables.
 
 `?style=<url>` in the page URL still overrides the style, as a development aid.
 
-## Creating the API key (manual, needs your approval)
+## Creating the API key (needs approval)
 
-1. In the Amazon Location console, open **API keys** and choose **Create API key**,
-   in the same region as `VITE_AWS_REGION`.
-2. Under resources and actions, grant only **Maps**. The descriptor, tiles,
-   glyphs and sprites are separate actions: `geo-maps:GetStyleDescriptor`,
-   `geo-maps:GetTile`, `geo-maps:GetGlyphs` and `geo-maps:GetSprites`. Do not
-   grant Places, Routes or anything else to this key. Check the action names
-   the console offers on the day; labels need glyphs and sprites.
-3. **Restrict referrers** so the key only works from the app's own origins:
-   - `https://main.<amplify-app-id>.amplifyapp.com/*` (the Amplify branch URL)
-   - your custom domain, if any
-   - `http://localhost:5173/*` and `http://localhost:4173/*` for local dev and
-     preview (remove these after the demo if you prefer)
-4. Set an expiry date after the hackathon.
-5. Put the key in `frontend/.env` as `VITE_LOCATION_API_KEY` (git-ignored).
-   Never commit it.
+Checked on 9 Oct 2026 against the AWS docs ("Use API keys to authenticate",
+"GetStyleDescriptor"): the style URL in `src/basemap.ts`,
+`https://maps.geo.<region>.amazonaws.com/v2/styles/Monochrome/descriptor?key=<key>&color-scheme=Light`,
+is the documented form, and a Maps key is scoped to
+`arn:aws:geo-maps:<region>::provider/default`. Every `geo-maps` action is a
+read (descriptor, tiles, glyphs, sprites, static maps), so `geo-maps:*` grants
+maps and nothing else: no places, routes or resource changes.
+
+Create it after the Amplify app exists, so its URL can be a referrer:
+
+```bash
+aws location create-key --profile siltproof --region ap-south-1   --key-name siltproof-maps-browser   --description "SiltProof browser basemap, maps only, referrer-restricted"   --expire-time 2026-11-30T00:00:00Z   --restrictions '{"AllowActions":["geo-maps:*"],"AllowResources":["arn:aws:geo-maps:ap-south-1::provider/default"],"AllowReferers":["https://main.<amplify-app-id>.amplifyapp.com/*","http://localhost:4173/*","http://localhost:5173/*"]}'
+```
+
+The key (`v1.public....`) goes only into the Amplify environment variable
+`VITE_LOCATION_API_KEY` and a git-ignored `frontend/.env`; it is a browser key,
+visible in the bundle by design, and limited by the referrers and expiry. Drop
+the localhost referrers after the hackathon.
+
+Then check real tiles, not the fallback (billable, a few dozen requests):
+
+```bash
+cd frontend
+VITE_LOCATION_API_KEY=<key> VITE_AWS_REGION=ap-south-1 VITE_BILL_SOURCE=snapshot npm run build
+npx vite preview --port 4173 --strictPort
+CHROME_PATH=<chrome> node scripts/check-location-live.mjs --live
+```
+
+It requires 200s for the descriptor, tiles and glyphs, no "Offline basemap"
+note, the provider attribution, and road, water and label layers in the
+descriptor, and writes screenshots to `screenshots/location-live/`. The tint
+only recolours background and water, so roads and labels keep Amazon's
+Monochrome Light styling; look at the screenshots to confirm they read.
 
 ## Amplify Hosting
 
