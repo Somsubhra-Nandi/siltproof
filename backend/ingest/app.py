@@ -397,6 +397,13 @@ def record_failure(bucket, key, exc):
 
 
 def lambda_handler(event, context):
+    # Judge trial evidence arrives as a direct async invoke from the API, never
+    # as an S3 event: trials/ is outside every S3 notification prefix.
+    if isinstance(event, dict) and "trialProcess" in event:
+        from trial import process as trial_process
+
+        return trial_process.handle_event(event)
+
     counts = {"processed": 0, "skipped": 0, "ignored": 0, "failed": 0}
     records = event.get("Records", []) or []
 
