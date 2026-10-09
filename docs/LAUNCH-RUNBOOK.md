@@ -23,8 +23,10 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   trials closed (503), `/verify` and `/decision` 403 READ_ONLY.
 - **Public site:** https://main.d1o7ayjtge649w.amplifyapp.com (Amplify app
   `d1o7ayjtge649w`, branch `main`, manual deploys). Job 1: offline basemap.
-  **Job 2 (current): Amazon Location Monochrome Light**, snapshot
-  investigation, trial page on the live API (closed).
+  Job 2: Amazon Location Monochrome Light. **Job 3 (current, `d6b254b`):**
+  job 2 plus the trial-map fixes (jump to the first evidence, keep the
+  Amazon map through tile errors). Backend change set `provenance-fix`
+  (code only, all parameters kept) executed 20:06 UTC 9 Oct.
 - Location key `siltproof-maps-browser`: `geo-maps:*` on
   `arn:aws:geo-maps:ap-south-1::provider/default`, referrers the Amplify URL
   and `http://localhost:4173/*`, expires 2026-11-30. Tiles refuse other
