@@ -71,9 +71,10 @@ def bill_id():
 
 
 def operator_routes_enabled():
-    """POST /upload-url and summary refresh: unauthenticated, and each one can
-    start a Bedrock or Textract call with no quota. Off in a live deployment
-    unless B1_OPERATOR_ROUTES=enabled; always on in mock mode."""
+    """The unauthenticated routes that spend or write the shared bill:
+    POST /upload-url and summary refresh (each can start a Bedrock or Textract
+    call with no quota), POST /verify and POST /decision. Off in a live
+    deployment unless B1_OPERATOR_ROUTES=enabled; always on in mock mode."""
     return mock_aws() or os.environ.get("B1_OPERATOR_ROUTES", "") == "enabled"
 
 

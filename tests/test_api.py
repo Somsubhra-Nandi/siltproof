@@ -498,6 +498,33 @@ def test_summary_refresh_is_off_in_a_live_deployment_but_the_cache_still_serves(
     assert status == 200 and cached["cached"] is True
 
 
+def test_verify_and_decision_are_read_only_in_a_live_deployment(api, small_bill, monkeypatch):
+    from common import store
+
+    before = store.query_pk(store.bill_pk(BILL))
+    monkeypatch.setenv("MOCK_AWS", "0")
+    monkeypatch.delenv("B1_OPERATOR_ROUTES", raising=False)
+
+    status, body = call(api, "POST /verify/{billId}", path={"billId": BILL})
+    assert status == 403 and body["code"] == "READ_ONLY"
+    status, body = call(api, "POST /decision",
+                        body={"billId": BILL, "drainId": "1", "decision": "HOLD"})
+    assert status == 403 and body["code"] == "READ_ONLY"
+    assert store.query_pk(store.bill_pk(BILL)) == before      # nothing written
+
+    # Reads stay open: the public page and the trial still work.
+    assert call(api, "GET /bill/{billId}", path={"billId": BILL})[0] == 200
+
+
+def test_an_operator_can_switch_verify_and_decision_back_on(api, small_bill, monkeypatch):
+    monkeypatch.setenv("MOCK_AWS", "0")
+    monkeypatch.setenv("B1_OPERATOR_ROUTES", "enabled")
+    assert call(api, "POST /verify/{billId}", path={"billId": BILL})[0] == 200
+    status, body = call(api, "POST /decision",
+                        body={"billId": BILL, "drainId": "1", "decision": "HOLD"})
+    assert status == 200 and body["decision"] == "HOLD"
+
+
 def test_an_unknown_upload_prefix_is_refused(api, small_bill):
     status, _ = call(api, "POST /upload-url", body={"prefix": "../etc"})
     assert status == 400

@@ -68,7 +68,21 @@ def error(status_code, message, **extra):
 
 
 # ------------------------------------------------------------------ verify
+def read_only():
+    """403 for the routes that write the shared bill, unless an operator has
+    switched B1OperatorRoutes on. The public page applies decisions in the
+    browser instead (VITE_BILL_SOURCE); operators verify with IAM credentials
+    (scripts/b1_operator.py), never with a secret in the frontend."""
+    if config.operator_routes_enabled():
+        return None
+    return error(403, "This bill is read-only on this deployment; decisions are not saved.",
+                 code="READ_ONLY")
+
+
 def verify_bill(bill_id, _body, _query):
+    refused = read_only()
+    if refused:
+        return refused
     bill_id = bill_id or config.bill_id()
     started = datetime.datetime.now(datetime.timezone.utc)
 
@@ -536,6 +550,9 @@ def drain_summary(drain_id, body, query):
 
 # ---------------------------------------------------------------- decision
 def post_decision(_path_param, body, _query):
+    refused = read_only()
+    if refused:
+        return refused
     body = body or {}
     bill_id = body.get("billId") or config.bill_id()
     drain_id = body.get("drainId")

@@ -54,8 +54,9 @@ Parameters:
     AllowedValues: [disabled, enabled]
     Description: >-
       POST /upload-url and POST /drain/{id}/summary with refresh have no auth
-      and each starts a Bedrock or Textract call with no quota. Enable only
-      while an operator needs them.
+      and each starts a Bedrock or Textract call with no quota; POST /verify
+      and POST /decision write the shared bill. Disabled, all four answer 403
+      (READ_ONLY for the last two). Enable only while an operator needs them.
 
   TrialDailyTrials:
     Type: Number
