@@ -53,7 +53,9 @@ def walk_evidence(root, prefixes=("photos/", "slips/", "traces/")):
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
-        key = str(path.relative_to(root))
+        # S3 keys always use '/': on Windows str() would give 'photos\B1\...',
+        # which matches no ingest prefix or key pattern.
+        key = path.relative_to(root).as_posix()
         if not key.startswith(prefixes):
             continue
         items.append({"key": key, "path": path, "size": path.stat().st_size})
