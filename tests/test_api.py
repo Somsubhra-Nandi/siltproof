@@ -472,6 +472,32 @@ def test_an_upload_url_is_presigned_under_live(api, small_bill):
     assert body["expiresInSeconds"] == 900
 
 
+def test_live_uploads_are_off_in_a_live_deployment_unless_enabled(api, small_bill, monkeypatch):
+    monkeypatch.setenv("MOCK_AWS", "0")
+    monkeypatch.delenv("B1_OPERATOR_ROUTES", raising=False)
+    status, body = call(api, "POST /upload-url", body={"prefix": "photos"})
+    assert status == 403 and "uploadUrl" not in body
+
+    monkeypatch.setenv("B1_OPERATOR_ROUTES", "enabled")
+    status, body = call(api, "POST /upload-url", body={"prefix": "photos"})
+    assert status == 200 and body["key"].startswith("photos/live/")
+
+
+def test_summary_refresh_is_off_in_a_live_deployment_but_the_cache_still_serves(
+        api, small_bill, monkeypatch):
+    call(api, "POST /verify/{billId}", path={"billId": BILL})
+    call(api, "POST /drain/{drainId}/summary", path={"drainId": "2"}, body={})
+    monkeypatch.setenv("MOCK_AWS", "0")
+    monkeypatch.delenv("B1_OPERATOR_ROUTES", raising=False)
+
+    status, _ = call(api, "POST /drain/{drainId}/summary", path={"drainId": "2"},
+                     body={"refresh": True})
+    assert status == 403
+    status, cached = call(api, "POST /drain/{drainId}/summary", path={"drainId": "2"},
+                          body={})
+    assert status == 200 and cached["cached"] is True
+
+
 def test_an_unknown_upload_prefix_is_refused(api, small_bill):
     status, _ = call(api, "POST /upload-url", body={"prefix": "../etc"})
     assert status == 400

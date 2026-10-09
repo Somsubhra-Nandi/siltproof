@@ -453,6 +453,10 @@ def drain_summary(drain_id, body, query):
     if drain is None:
         return error(404, f"No drain {drain_id} on bill {bill_id}", drainId=drain_id)
 
+    if refresh and drain.get("summary") and not config.operator_routes_enabled():
+        return error(403, "Refreshing a summary is switched off on this deployment.",
+                     drainId=drain_id)
+
     if drain.get("summary") and not refresh:
         return response(
             200,
@@ -625,6 +629,8 @@ def post_upload_url(_path_param, body, _query):
     filename = (body.get("filename") or "").strip()
     bucket = config.evidence_bucket()
 
+    if not config.operator_routes_enabled():
+        return error(403, "Live uploads are switched off on this deployment.")
     if prefix not in UPLOAD_PREFIXES:
         return error(400, f"prefix must be one of {', '.join(UPLOAD_PREFIXES)}",
                      received=body.get("prefix"))
