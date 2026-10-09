@@ -435,10 +435,12 @@
 .ev-label.down { top: 10px; }
 .ev-label.l { left: 2px; }
 .ev-label.r { right: 2px; }
-.brackets { margin-left: 168px; margin-right: 150px; position: relative; height: 62px; margin-top: 4px; }
+.brackets { margin-left: 168px; margin-right: 150px; position: relative; height: 84px; margin-top: 4px; }
 .bracket { position: absolute; height: 10px; border: 1.5px solid; border-top: 0; font-size: 15px; }
 .bracket > span { position: absolute; left: 0; top: 12px; white-space: nowrap; font-weight: 600; }
 .bracket.flip > span { left: auto; right: 0; }
+/* The R8 sentence is the longest; wrap it under its bracket rather than past the card. */
+.bracket.r8 > span { white-space: normal; width: max(100%, 300px); }
 .bracket.r8 { color: var(--held); top: 32px; }
 .bracket.lead { color: var(--ink-2); top: 0; border-style: dashed; border-top: 0; }
 
@@ -610,6 +612,12 @@
   .grid18 { grid-template-columns: 1fr; padding: 0 16px; }
   .casefile { padding: 12px 16px; }
   .timeline { overflow-x: auto; }
+}
+@media (max-width: 760px) {
+  /* Tag and trip picker share the first row; the exhibit title gets a full row. */
+  .ex-head { grid-template-columns: auto minmax(0, 1fr); }
+  .ex-head h2 { grid-column: 1 / -1; grid-row: 2; }
+  .ex-head .rules { justify-self: end; flex-wrap: wrap; }
 }
 
 /* MapLibre's attribution, shown for the Amazon Location basemap. */

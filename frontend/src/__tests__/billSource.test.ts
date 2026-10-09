@@ -1,13 +1,12 @@
 // VITE_BILL_SOURCE: the investigation from the committed snapshot or the live
 // bill, with browser-only decisions whenever nothing may be saved, and the
 // judge trial always on VITE_API_BASE_URL.
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const DEMO = resolve(__dirname, '../../public/data/demo')
+const DEMO = import.meta.glob<{ default: unknown }>('../../public/data/demo/*.json', { eager: true })
 const API = 'https://api.example.test'
-const snapshotFile = (name: string) => JSON.parse(readFileSync(resolve(DEMO, `${name}.json`), 'utf8'))
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const snapshotFile = (name: string): any => DEMO[`../../public/data/demo/${name}.json`].default
 
 type Call = { url: string; method: string }
 
