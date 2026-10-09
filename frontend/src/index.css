@@ -1,21 +1,49 @@
+/*
+ * SiltProof design tokens: the survey sheet (design/DESIGN.md).
+ *
+ * Two prototype tokens fail 4.5:1 for small text, so text uses the darker
+ * production values: --review-text for amber words, --ink-3 for tertiary
+ * text. The lighter amber stays for fills and dashed stamp borders
+ * (--review), and the lighter grey for borders and unchecked rings
+ * (--ink-3-line).
+ */
 :root {
-  --bar-bg: #15202b;
-  --bar-fg: #f4f7fa;
-  --bar-border: #2c3a48;
-  --muted: #93a4b5;
+  --ground: #e3ded2;
+  --sheet: #f2efe7;
+  --sheet-2: #e9e5da;
+  --paper: #fbfaf6;
+  --rule: #cfc9bb;
+  --water: #aec0c3;
 
-  --panel-bg: #ffffff;
-  --panel-fg: #16212b;
-  --panel-border: #dde3ea;
-  --muted-ink: #6b7682;
+  --ink: #1c2a38;
+  --ink-2: #4e5a64;
+  --ink-3: #646c71;       /* text: 4.7:1 on sheet */
+  --ink-3-line: #7d868b;  /* borders, unchecked rings */
 
-  --verified: #4ade80;
-  --hold: #f87171;
-  --review: #fbbf24;
+  --prussian: #1f4d78;
+  --prussian-hover: #245a8b;
+  --prussian-press: #163a5b;
 
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
+  --verified: #39684f;
+  --review: #a6731e;      /* fills and dashed borders only */
+  --review-text: #8a5f14; /* text: 5.4:1 on paper */
+  --review-wash: #f3ead7;
+  --held: #8e2424;
+  --held-hover: #9e2d2b;
+  --held-press: #651616;
+  --held-wash: #f1dfda;
+
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+
+  --sheet-w: 500px;
+
+  font: 400 16px/1.45 var(--sans);
+  color: var(--ink);
   color-scheme: light;
+  -webkit-font-smoothing: antialiased;
 }
 
 * { box-sizing: border-box; }
@@ -24,5 +52,177 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background: #0f1720;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+button, textarea, input { font: inherit; color: inherit; }
+
+:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+
+.num { font-variant-numeric: tabular-nums lining-nums; }
+
+/* Tabular figures: times, tonnes, rupees in tables, stamps, ticks. */
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  word-spacing: -0.32em;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.sim-badge {
+  font: 600 13px/1 var(--sans);
+  color: var(--ink);
+  padding: 6px 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+  background: repeating-linear-gradient(-45deg, #e6dfc9 0 6px, #efe9d6 6px 12px);
+  border: 1px solid #cdbf95;
+}
+
+/* ------------------------------------------------------------- buttons */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 150ms, box-shadow 150ms, transform 80ms, border-color 150ms;
+}
+.btn-primary {
+  background: var(--prussian);
+  color: #f6f3ec;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 var(--prussian-press),
+    0 8px 18px -8px rgba(31, 77, 120, 0.7);
+}
+.btn-primary:hover { background: var(--prussian-hover); }
+.btn-primary:active { transform: translateY(2px); box-shadow: 0 0 0 var(--prussian-press), 0 2px 6px -4px rgba(31, 77, 120, 0.6); }
+.btn-held {
+  background: var(--held);
+  color: #fbf3f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 var(--held-press),
+    0 8px 18px -8px rgba(142, 36, 36, 0.7);
+}
+.btn-held:hover { background: var(--held-hover); }
+.btn-held:active { transform: translateY(2px); box-shadow: none; }
+.btn-quiet { background: var(--paper); border-color: var(--ink-3-line); color: var(--ink); }
+.btn-quiet:hover { background: var(--sheet-2); border-color: var(--ink); }
+.btn-quiet:active { transform: translateY(1px); background: #e0dbce; }
+.btn[disabled] {
+  background: var(--sheet-2);
+  color: var(--ink-3);
+  border-color: var(--rule);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn.is-busy, .btn.is-busy[disabled] { cursor: progress; }
+.btn-primary.is-busy, .btn-primary.is-busy[disabled] { background: var(--prussian-press); color: #f6f3ec; border-color: transparent; }
+.btn-held.is-busy, .btn-held.is-busy[disabled] { background: var(--held-press); color: #fbf3f0; border-color: transparent; }
+.btn .bar-progress {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  transform-origin: left;
+}
+.spinner {
+  width: 16px; height: 16px; flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  animation: spin 700ms linear infinite;
+}
+.btn-quiet .spinner { border-color: var(--rule); border-top-color: var(--ink); }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+.link {
+  border: 0; background: none; padding: 4px 0;
+  color: var(--prussian); font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* -------------------------------------------------------------- stamps */
+.stamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 10px 4px;
+  border: 2px solid currentColor;
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px currentColor;
+  border-radius: 3px;
+  transform: rotate(-3deg);
+  line-height: 1;
+  white-space: nowrap;
+  background: rgba(251, 250, 246, 0.7);
+}
+.stamp b { font: 700 13px/1 var(--sans); letter-spacing: 0.14em; }
+.stamp span { font: 600 16px/1.1 var(--mono); word-spacing: -0.32em; }
+.stamp.held { color: var(--held); }
+.stamp.review { color: var(--review-text); border-color: var(--review); border-style: dashed; box-shadow: none; transform: rotate(-2deg); }
+.stamp.approved { color: var(--prussian); transform: rotate(-1.5deg); border-width: 1.5px; box-shadow: none; }
+.stamp.big { padding: 8px 14px 7px; }
+.stamp.big b { font-size: 16px; }
+.stamp.big span { font-size: 22px; }
+.stamp.slam { animation: slam 320ms cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+@keyframes slam { from { transform: rotate(-3deg) scale(1.7); opacity: 0; } }
+
+.rid {
+  font: 600 13px/1 var(--mono);
+  color: var(--held);
+  border: 1px solid var(--held);
+  padding: 4px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.rid.soft { color: var(--review-text); border-color: var(--review); border-style: dashed; }
+.rid.pass { color: var(--verified); border-color: var(--verified); }
+
+.skeleton {
+  height: 14px;
+  background: linear-gradient(90deg, var(--sheet-2) 0, #f6f3ec 40%, var(--sheet-2) 80%);
+  background-size: 200% 100%;
+  animation: sk 1.4s linear infinite;
+  border-radius: 2px;
+}
+@keyframes sk { to { background-position: -200% 0; } }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes flash { from { background: #e7ddc4; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+  .spinner { animation: none; }
+}
+
+/* Kept for the pre-redesign components until they are replaced. */
+:root {
+  --bar-bg: var(--ink);
+  --bar-fg: var(--sheet);
+  --bar-border: var(--ink-2);
+  --muted: #b9b3a5;
+  --panel-bg: var(--paper);
+  --panel-fg: var(--ink);
+  --panel-border: var(--rule);
+  --muted-ink: var(--ink-3);
+  --hold: var(--held);
 }

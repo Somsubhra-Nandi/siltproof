@@ -58,11 +58,13 @@ export const BASEMAP_URL = '/data/basemap.geojson'
 
 const EMPTY_COLLECTION = { type: 'FeatureCollection' as const, features: [] }
 
-const PAPER = '#eef1f4'
-const WATER = '#c3d7e6'
-const ROAD_MINOR = '#ffffff'
-const ROAD_MAJOR = '#fde9c8'
-const ROAD_CASING = '#dfe4ea'
+// The survey-sheet palette (design/DESIGN.md): limestone ground, grey-green
+// water, roads a shade lighter than the ground so the data reads on top.
+const PAPER = '#e3ded2'
+const WATER = '#aec0c3'
+const ROAD_MINOR = '#f4f1ea'
+const ROAD_MAJOR = '#fbf8f1'
+const ROAD_CASING = '#dad4c6'
 
 /**
  * Build the offline style around whatever backdrop we have.
@@ -171,10 +173,10 @@ export function basemapAttribution(basemap: unknown): string | null {
 // ----------------------------------------------------------------- drains
 /** Verdict colours, shared by the map layers and the tests. */
 export const COLOURS: Record<string, string> = {
-  RED: '#d1453b',
-  AMBER: '#d99a08',
-  GREEN: '#2f9e55',
-  PENDING: '#9aa7b4',
+  RED: '#8e2424',
+  AMBER: '#a6731e',
+  GREEN: '#39684f',
+  PENDING: '#7d868b',
 }
 
 /** Paint colour for a drain, with anything unverified left grey. */
