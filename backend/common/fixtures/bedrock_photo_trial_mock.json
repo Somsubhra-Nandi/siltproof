@@ -1,0 +1,33 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "tooluse_trial_mock",
+            "name": "record_photo_check",
+            "input": {
+              "cleared": false,
+              "load_type": "unclear",
+              "confidence": 0.0,
+              "notes": "OFFLINE MOCK - no model looked at this photo. This canned answer only exercises the parser."
+            }
+          }
+        }
+      ]
+    }
+  },
+  "stopReason": "tool_use",
+  "usage": {
+    "inputTokens": 1540,
+    "outputTokens": 96,
+    "totalTokens": 1636
+  },
+  "metrics": {
+    "latencyMs": 1830
+  },
+  "ResponseMetadata": {
+    "HTTPStatusCode": 200
+  }
+}

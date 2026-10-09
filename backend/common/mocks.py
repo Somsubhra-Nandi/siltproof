@@ -84,6 +84,11 @@ def textract_analyze_document(key):
     the garbled fixture: the right values, but low confidence and a missing
     time-out, which is what Textract actually does with a crumpled slip.
     """
+    if key.startswith("trials/"):
+        # Judge trials get a fixture whose every value says MOCK, so an offline
+        # run can never be mistaken for a real Textract reading.
+        return copy.deepcopy(load_fixture("textract_slip_trial_mock"))
+
     values = _entry("slips", key)
 
     garbled = "garbled" in key or bool(values.get("augmented"))
@@ -106,6 +111,10 @@ LOAD_TYPE_FIXTURES = {
 
 def bedrock_photo_check(key):
     """A mocked Converse response for the photo at this S3 key."""
+    if key.startswith("trials/"):
+        # Never a favourable canned verdict for a judge's own photo.
+        return copy.deepcopy(load_fixture("bedrock_photo_trial_mock"))
+
     values = _entry("photos", key)
     load_type = values.get("loadType")
 

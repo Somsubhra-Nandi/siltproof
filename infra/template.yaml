@@ -33,6 +33,32 @@ Parameters:
     Default: B1
     Description: The single bill this deployment serves (plan section 1).
 
+  # ---------------------------------------------------- judge trials
+  # docs/JUDGE-TRIAL-API.md section 16. Hard caps, enforced with DynamoDB
+  # conditional counters before each billable call.
+  TrialInviteCode:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: >-
+      When set, POST /trials needs this code (typed by the judge, never baked
+      into the frontend). Empty leaves creation open, limited by TrialDailyTrials.
+
+  TrialDailyTrials:
+    Type: Number
+    Default: 60
+    Description: Trials that can be created per UTC day, across everyone.
+
+  TrialDailyBedrockCalls:
+    Type: Number
+    Default: 200
+    Description: Bedrock photo calls per UTC day across all trials. Fails closed.
+
+  TrialDailyTextractCalls:
+    Type: Number
+    Default: 100
+    Description: Textract slip calls per UTC day across all trials. Fails closed.
+
 Conditions:
   ReserveIngestConcurrency: !Not [!Equals [!Ref IngestReservedConcurrency, 0]]
 
@@ -48,6 +74,9 @@ Globals:
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         BEDROCK_VISION_MODEL_ID: !Ref BedrockVisionModelId
         BILL_ID: !Ref BillId
+        TRIAL_DAILY_TRIALS: !Ref TrialDailyTrials
+        TRIAL_DAILY_BEDROCK_CALLS: !Ref TrialDailyBedrockCalls
+        TRIAL_DAILY_TEXTRACT_CALLS: !Ref TrialDailyTextractCalls
 
 Resources:
   # ---------------------------------------------------------------- storage
@@ -64,11 +93,22 @@ Resources:
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
       CorsConfiguration:
-        # Needed so the browser can PUT to a presigned URL (live upload demo).
+        # Needed so the browser can PUT to a presigned URL (live upload demo),
+        # and POST a judge-trial file to its presigned POST policy.
         CorsRules:
           - AllowedOrigins: ["*"]
-            AllowedMethods: [GET, PUT, HEAD]
+            AllowedMethods: [GET, PUT, HEAD, POST]
             AllowedHeaders: ["*"]
+      LifecycleConfiguration:
+        Rules:
+          # Judge-trial evidence: about 48 h. S3 rounds to the next midnight
+          # UTC and expires asynchronously, so objects go 48-72+ h after upload.
+          - Id: ExpireJudgeTrials
+            Status: Enabled
+            Prefix: trials/
+            ExpirationInDays: 2
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
 
   SiltProofTable:
     Type: AWS::DynamoDB::Table
@@ -85,6 +125,11 @@ Resources:
           KeyType: HASH
         - AttributeName: sk
           KeyType: RANGE
+      # Only judge-trial and quota items carry `ttl`; Bill B1 items have none
+      # and are never expired.
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   # ------------------------------------------------------------------- api
   HttpApi:
@@ -92,9 +137,31 @@ Resources:
     Properties:
       CorsConfiguration:
         # Open for local dev; this is a demo app with no auth (plan section 1).
+        # Judge trials send a bearer token and use PUT and DELETE.
         AllowOrigins: ["*"]
-        AllowHeaders: [Content-Type]
-        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [Content-Type, Authorization]
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+      # Per-route throttling for the public trial routes; B1 routes keep the
+      # account defaults.
+      RouteSettings:
+        "POST /trials":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 1
+        "POST /trials/{trialId}/upload-url":
+          ThrottlingBurstLimit: 20
+          ThrottlingRateLimit: 10
+        "POST /trials/{trialId}/evidence/{evidenceId}/complete":
+          ThrottlingBurstLimit: 20
+          ThrottlingRateLimit: 10
+        "POST /trials/{trialId}/evidence/{evidenceId}/retry":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
+        "POST /trials/{trialId}/analyze":
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
+        "GET /trials/{trialId}":
+          ThrottlingBurstLimit: 20
+          ThrottlingRateLimit: 10
 
   # ------------------------------------------------------------- functions
   # pillow + imagehash + numpy + scipy is ~200 MB, and only ingest reads
@@ -186,7 +253,15 @@ Resources:
       # HTTP API caps integration timeout at 30s; verification is fast rules only.
       Timeout: 29
       MemorySize: 512
+      Environment:
+        Variables:
+          # Judge trials: photos and slips are processed by the ingest
+          # function, invoked asynchronously (it has Pillow and the AI policies).
+          TRIAL_PROCESSOR_FUNCTION: !Ref IngestFunction
+          TRIAL_INVITE_CODE: !Ref TrialInviteCode
       Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref IngestFunction
         - S3CrudPolicy:
             BucketName: !Sub ${AWS::StackName}-evidence-${AWS::AccountId}
         - DynamoDBCrudPolicy:
@@ -241,6 +316,67 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /upload-url
             Method: POST
+        # ---- judge trials (docs/JUDGE-TRIAL-API.md)
+        TrialCreate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials
+            Method: POST
+        TrialGet:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}
+            Method: GET
+        TrialDelete:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}
+            Method: DELETE
+        TrialDetails:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/details
+            Method: PUT
+        TrialUploadUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/upload-url
+            Method: POST
+        TrialComplete:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/evidence/{evidenceId}/complete
+            Method: POST
+        TrialRetry:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/evidence/{evidenceId}/retry
+            Method: POST
+        TrialEvidenceDelete:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/evidence/{evidenceId}
+            Method: DELETE
+        TrialAnalyze:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/analyze
+            Method: POST
+        TrialResults:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /trials/{trialId}/results
+            Method: GET
 
 Outputs:
   ApiUrl:

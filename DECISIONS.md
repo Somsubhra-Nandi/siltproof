@@ -485,6 +485,45 @@ canned sentence.
   reuses), 1.2 MB, sets other drains' links to null, and refuses to write a
   file containing `X-Amz-`.
 
+## Judge trials: a separate, token-scoped evidence case (9 Oct 2026)
+
+Branch `feat/judge-self-service`. Contract in `docs/JUDGE-TRIAL-API.md`,
+handoff in `docs/JUDGE-TRIAL-HANDOFF.md`. Bill B1 is not touched.
+
+- **A capability token, not a login.** CLAUDE.md rules out auth for the
+  engineer's screen; a public upload feature with paid AI behind it cannot be
+  open, so each trial gets a 256-bit bearer token (only its SHA-256 is stored)
+  and an optional invite code for creation. Wrong token and unknown trial
+  answer the same 404.
+- **Presigned POST instead of PUT.** A POST policy carries
+  `content-length-range` and an exact `Content-Type`, so S3 itself refuses an
+  oversized or retyped file; a PUT URL cannot bound size. `…/complete` then
+  re-checks size, type and file signature before anything is processed.
+- **Processing by async invoke, not an S3 trigger.** Trial objects live under
+  `trials/`, outside every ingest notification prefix, so an upload alone
+  never costs a model call. The API invokes the existing ingest function
+  (`{"trialProcess": …}`), which has Pillow and the AI policies. No new
+  Lambda, no new AWS service. The API Lambda gains `lambda:InvokeFunction` on
+  it.
+- **Hard caps in DynamoDB.** Daily Bedrock, Textract and trial-creation
+  counters, plus per-trial counters, are single conditional `UpdateItem`s
+  reserved before the call and never refunded. moto does not serialise
+  concurrent writes like DynamoDB, so the tests check the request shape and
+  the stale-reader case rather than racing threads against moto.
+- **Rules reused, not edited.** `backend/trial/analysis.py` checks each rule's
+  prerequisites, then calls `common.rules` helpers. Missing evidence is
+  NOT_EVALUATED; a supplied (non-surveyed) drain location can only make R1
+  CONSISTENT, never PASS; geometry drawn from the same photos makes R1
+  INCONCLUSIVE. R1 uses the trial's tolerance in place of the 30 m buffer and
+  keeps B1's 30 m soft margin beyond it.
+- **Mock readings are not outcomes.** Trial keys get fixtures whose values say
+  MOCK, and any check computed from them is reported NOT_EVALUATED with the
+  would-be result kept apart (`mockOutcome`).
+- **Large photos.** Originals up to 15 MB are accepted. Over 8 MB (the B1
+  ingest cap) or 8,000 px, Bedrock gets a 1,568 px processing copy stored at
+  `trials/{id}/processing/`, recording both SHA-256s and pixel sizes. EXIF and
+  pHash always come from the original.
+
 ## Pending live steps (not run; each needs approval)
 
 1. Redeploy the api and ingest code:
