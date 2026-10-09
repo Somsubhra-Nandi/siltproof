@@ -281,7 +281,8 @@ function MapView({
         const ids = Object.keys(centroids)
         const lons = ids.map((id) => centroids[id][0])
         const lats = ids.map((id) => centroids[id][1])
-        map.fitBounds(
+        // A deep link into a case file frames itself; only the overview fits the ward.
+        if (modeRef.current === 'overview') map.fitBounds(
           [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
           { padding: { top: 90, bottom: 90, left: 90, right: 420 }, duration: 0 },
         )
@@ -570,10 +571,10 @@ function MapView({
     const width = map.getContainer().clientWidth
     const camera = map.cameraForBounds(boundsOfPoints(points) as LngLatBoundsLike, {
       padding: {
-        top: 70,
+        top: 80,
         bottom: 40,
         left: Math.min(330, Math.round(width * 0.3)),
-        right: 70,
+        right: 110,
       },
       bearing: 0,
     })
@@ -581,6 +582,7 @@ function MapView({
   }, [])
 
   // Enter and leave the case file.
+  const wasCase = useRef(false)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !layersReady) return
@@ -590,7 +592,10 @@ function MapView({
     } else if (mode === 'overview') {
       clearCase()
       const geo = geoRef.current
-      if (geo && (map.getPitch() > 0 || Math.abs(map.getBearing()) > 0.5 || map.getZoom() > 14.5)) {
+      // The frame has just been resized back to the overview plate; make the
+      // map measure it before fitting, or the fit uses Exhibit A's size.
+      map.resize()
+      if (geo && (map.getPitch() > 0 || Math.abs(map.getBearing()) > 0.5 || wasCase.current)) {
         const ids = Object.keys(geo.centroids)
         const lons = ids.map((id) => geo.centroids[id][0])
         const lats = ids.map((id) => geo.centroids[id][1])
@@ -600,6 +605,7 @@ function MapView({
         )
       }
     }
+    wasCase.current = mode !== 'overview'
   }, [mode, caseDrain, facts, layersReady, showCase, clearCase, reducedMotion])
 
   // In the case file, keep the haul framed whenever the frame changes size.
@@ -608,9 +614,13 @@ function MapView({
     const container = containerRef.current
     if (!map || !container || mode !== 'case' || !caseDrain || !facts) return
     let timer = 0
+    let tries = 0
     const fit = (duration: number) => {
+      // Measure the frame first: MapLibre's own resize may not have run yet.
+      map.resize()
       const camera = caseCamera(caseDrain, facts)
       if (camera) map.easeTo({ ...camera, pitch: 0, bearing: 0, duration: reducedMotion ? 0 : duration })
+      else if (tries++ < 10) timer = window.setTimeout(() => fit(duration), 150)
     }
     const observer = new ResizeObserver(() => {
       window.clearTimeout(timer)
@@ -622,7 +632,7 @@ function MapView({
       observer.disconnect()
       window.clearTimeout(timer)
     }
-  }, [mode, caseDrain, facts, caseCamera, reducedMotion])
+  }, [mode, caseDrain, facts, caseCamera, reducedMotion, geoReady, layersReady])
 
   // ------------------------------------------------------------- handle
   useImperativeHandle(

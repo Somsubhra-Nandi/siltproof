@@ -85,7 +85,7 @@ function DecisionBar(props: Props) {
     const approved = row.decision === 'APPROVE'
     const amount = approved ? flagged * rate : held * rate
     return (
-      <section className="decide" aria-label="Your decision">
+      <section className="decide is-done" aria-label="Your decision">
         {summary}
         <div className="done">
           <Stamp kind={approved ? 'approved' : 'held'} big slam amount={rupees(amount)} />

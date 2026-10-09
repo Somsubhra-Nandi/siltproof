@@ -38,7 +38,6 @@ function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
   const url = trip?.slipImageUrl ?? null
   const hit = facts.conflictingField
   const findings: Finding[] = (trip?.findings ?? []).filter((f) => SLIP_RULES.includes(f.rule))
-  const scale = SCAN_W / SLIP_SIZE.width
   const row = hit ? SLIP_ROWS[hit] : null
   const loupe = hit ? LOUPE[hit] : null
 
@@ -66,19 +65,21 @@ function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
         <div className="slipgrid">
           {url && !imageExpired ? (
             <figure className="scan">
-              <img
-                src={url}
-                width={SCAN_W}
-                alt={`Weighbridge slip for trip ${trip.tripId}, ticket ${slip.ticketNo ?? 'unread'}, time in ${slip.timeIn ?? 'unread'}`}
-                onError={onImageError}
-              />
-              {row && (
-                <span
-                  className="hl"
-                  style={{ top: 6 + row[0] * scale, height: row[1] * scale }}
-                  aria-hidden="true"
+              <span className="scan-inner">
+                <img
+                  src={url}
+                  width={SCAN_W}
+                  alt={`Weighbridge slip for trip ${trip.tripId}, ticket ${slip.ticketNo ?? 'unread'}, time in ${slip.timeIn ?? 'unread'}`}
+                  onError={onImageError}
                 />
-              )}
+                {row && (
+                  <span
+                    className="hl"
+                    style={{ top: `${(row[0] / SLIP_SIZE.height) * 100}%`, height: `${(row[1] / SLIP_SIZE.height) * 100}%` }}
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
               <span className="tag-sim">Sample slip</span>
             </figure>
           ) : (

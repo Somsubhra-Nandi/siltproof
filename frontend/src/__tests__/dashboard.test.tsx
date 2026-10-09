@@ -392,7 +392,7 @@ describe('the case file', () => {
   it('shows the labelled photo slot when there is no image link', async () => {
     render(<App />)
     await screen.findByText('Trip 001 never reached the dump site')
-    expect(screen.getAllByText(/Not yet supplied/).length).toBe(2)
+    expect(screen.getAllByText(/No image link was returned/).length).toBe(2)
     expect(screen.getByText('No slip image here')).toBeInTheDocument()
   })
 

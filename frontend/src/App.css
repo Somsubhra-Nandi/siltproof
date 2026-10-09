@@ -449,7 +449,8 @@
 .slipgrid { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 20px; min-height: 0; flex: 1; }
 .scan { position: relative; align-self: start; margin: 0; background: #fff; padding: 6px; border: 1px solid var(--ink-3-line); box-shadow: 3px 4px 0 rgba(28, 42, 56, 0.1); transform: rotate(-0.6deg); }
 .scan img { display: block; width: 222px; height: auto; filter: contrast(1.02) sepia(0.06); }
-.scan .hl { position: absolute; left: 12px; width: 212px; border: 2px solid var(--held); background: rgba(142, 36, 36, 0.1); }
+.scan-inner { position: relative; display: block; }
+.scan .hl { position: absolute; left: 1%; right: 3%; border: 2px solid var(--held); background: rgba(142, 36, 36, 0.1); }
 .scan .tag-sim { left: 12px; bottom: 12px; }
 .slip-slot { height: 280px; }
 .slip-read { min-width: 0; }
@@ -539,7 +540,9 @@
 .decide-actions { display: grid; gap: 6px; justify-items: end; }
 .decide .btns { display: grid; grid-template-columns: auto auto; gap: 10px; }
 .need-verify { margin: 0; color: var(--ink-2); font-size: 14px; }
-.done { grid-column: 2 / 4; display: flex; align-items: center; gap: 18px; min-width: 0; }
+.decide.is-done { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+.done { display: flex; align-items: center; gap: 22px; min-width: 0; padding-left: 8px; }
+.done .stamp { flex: none; }
 .done > div { min-width: 0; flex: 1; }
 .done p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.4; }
 .done p b { color: var(--ink); }
@@ -548,7 +551,7 @@
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 28px;
+  top: 18px;
   transform: translateX(-50%);
   background: var(--ink);
   color: var(--sheet);
@@ -567,7 +570,6 @@
   .case-body { grid-template-columns: minmax(0, 1fr) 640px; }
   .slipgrid { grid-template-columns: 180px minmax(0, 1fr); }
   .scan img { width: 166px; }
-  .scan .hl { width: 156px; }
   .fields { grid-template-columns: 1fr; }
   .photogrid { grid-template-columns: 280px minmax(0, 1fr); }
   .compare, .slotpair { height: 200px; }
@@ -591,7 +593,7 @@
   .exA-slot { min-height: 420px; flex: none; }
   .right-col { grid-template-rows: auto auto; }
   .decide { position: sticky; bottom: 0; z-index: 3; grid-template-columns: 1fr; }
-  .done { grid-column: 1; }
+  .decide.is-done { grid-template-columns: 1fr; }
 }
 @media (max-width: 1099px) {
   .app.mode-overview { overflow: auto; }

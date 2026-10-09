@@ -4,6 +4,7 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 import type { CaseFacts } from '../lib/caseFacts'
 import { allFindings, photoTitle } from '../lib/caseFacts'
 import { PHASH_DUPLICATE_MAX } from '../lib/timeline'
+import { offline } from '../api'
 import { dayTime } from '../format'
 import type { Drain, Finding, Photo } from '../types'
 
@@ -33,7 +34,9 @@ function Bits({ hash, label }: { hash: string; label: string }) {
   )
 }
 
-function Slot({ who, expired }: { who: string; expired: boolean }) {
+type SlotReason = 'expired' | 'reserved' | 'missing'
+
+function Slot({ who, reason }: { who: string; reason: SlotReason }) {
   return (
     <div className="photoslot">
       <svg width="40" height="32" viewBox="0 0 40 32" aria-hidden="true">
@@ -43,16 +46,20 @@ function Slot({ who, expired }: { who: string; expired: boolean }) {
       </svg>
       <b>{who}</b>
       <span>
-        {expired
+        {reason === 'expired'
           ? 'Photo link expired. Reopen the drain to fetch a new one.'
-          : 'Real GPS-tagged photo goes here. Not yet supplied.'}
+          : reason === 'reserved'
+            ? 'Real GPS-tagged photo goes here. Not yet supplied.'
+            : offline
+              ? 'Not in the offline snapshot. The record and checks are shown.'
+              : 'No image link was returned for this photo.'}
       </span>
     </div>
   )
 }
 
 /** The model's reading of a photo: never styled like a rule finding. */
-function AiObservation({ photo }: { photo: Photo }) {
+function AiObservation({ photo, reuse = false }: { photo: Photo; reuse?: boolean }) {
   const ai = photo.bedrock
   if (!ai?.notes) return null
   const mocked = ai.mocked || !ai.modelId
@@ -67,7 +74,9 @@ function AiObservation({ photo }: { photo: Photo }) {
         {mocked
           ? 'Offline: a canned sample, no model was called.'
           : `Read by ${ai.modelId} when the photo was uploaded.`}{' '}
-        It describes what a photo shows; it cannot tell that a photo was filed twice. The rules can.
+        {reuse
+          ? 'It describes what a photo shows; it cannot tell that a photo was filed twice. R3 can.'
+          : 'It describes what a photo shows; the rules decide.'}
       </small>
     </div>
   )
@@ -146,6 +155,7 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
   const findings = allFindings(drain).filter((f) => PHOTO_RULES.includes(f.rule))
   const r3 = facts.r3
   const rules = [...new Set(findings.map((f) => f.rule))]
+  const slotReason: SlotReason = expired ? 'expired' : forceSlot ? 'reserved' : 'missing'
 
   let body
   if (r3) {
@@ -169,8 +179,8 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
             />
           ) : (
             <div className="slotpair">
-              <Slot who={leftLabel} expired={expired} />
-              <Slot who={rightLabel} expired={expired} />
+              <Slot who={leftLabel} reason={slotReason} />
+              <Slot who={rightLabel} reason={slotReason} />
             </div>
           )}
           <div className="cmp-cap">
@@ -196,7 +206,7 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
             </div>
           )}
           <FindingBox finding={r3} />
-          {copy && <AiObservation photo={copy} />}
+          {copy && <AiObservation photo={copy} reuse />}
         </div>
       </div>
     )
@@ -222,7 +232,7 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
                   <span className="tag-sim">Simulated photo</span>
                 </figure>
               ) : (
-                <Slot key={photo.s3Key} who={fileOf(photo.s3Key)} expired={expired} />
+                <Slot key={photo.s3Key} who={fileOf(photo.s3Key)} reason={slotReason} />
               ),
             )}
           </div>
