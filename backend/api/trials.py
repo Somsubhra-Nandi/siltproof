@@ -520,6 +520,16 @@ def delete_evidence(event, params, body):
 PENDING = ("UPLOADED", "QUEUED", "PROCESSING")
 
 
+def reference_note(details):
+    """What the provenance says about the locations: only what was supplied."""
+    supplied = [name for key, name in (("drainLocation", "Drain location"),
+                                       ("disposalSite", "Disposal site")) if details.get(key)]
+    if not supplied:
+        return "No drain location or disposal site was supplied, so checks against them did not run."
+    return (" and ".join(supplied) + (" were" if len(supplied) > 1 else " was")
+            + " supplied for this trial; not an official record.")
+
+
 def analyze(event, params, body):
     trial = authorise(event, params.get("trialId"))
     trial_id = trial["trialId"]
@@ -596,8 +606,7 @@ def analyze(event, params, body):
             "notes": [
                 "Rules ran in the API Lambda; /analyze calls no model.",
                 "Photo and slip readings were made once, when each file was processed.",
-                "Drain location and disposal site were supplied for this trial; neither is "
-                "an official record.",
+                reference_note(trial.get("details") or {}),
             ],
         },
     }

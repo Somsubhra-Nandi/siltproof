@@ -1025,3 +1025,13 @@ def test_a_live_lease_still_blocks_removal(aws):
     status, payload = call("DELETE /trials/{trialId}/evidence/{evidenceId}", token=token,
                            trialId=trial_id, evidenceId=evidence_id)
     assert status == 409 and payload["code"] == "BAD_STATE"
+
+
+def test_provenance_names_only_the_locations_that_were_supplied(aws):
+    trial_id, token = create_trial()
+    upload(aws, trial_id, token, "photo", jpeg(45), "image/jpeg")
+    _, result = analyze(trial_id, token)
+    assert "No drain location or disposal site was supplied" in result["provenance"]["notes"][-1]
+    details(trial_id, token, drainLocation={"point": list(KOLKATA)})
+    _, result = analyze(trial_id, token)
+    assert result["provenance"]["notes"][-1] == "Drain location was supplied for this trial; not an official record."

@@ -7,7 +7,7 @@ import { AttributionControl, MapLibreMap } from 'maplibre-gl'
 import type { GeoJSONSource, MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type * as GeoJSON from 'geojson'
-import { fallbackStyle, initialMode, loadBasemap, startingStyleUrl } from '../../basemap'
+import { fallBackOnError, fallbackStyle, initialMode, loadBasemap, startingStyleUrl } from '../../basemap'
 import { trialFeatures } from './mapData'
 import type { DisposalSite, DrainLocation, LonLat } from './types'
 
@@ -114,6 +114,12 @@ export default function TrialMap(props: Props) {
       if (dataRef.current && map.isStyleLoaded()) addLayers(map, dataRef.current)
     }
     map.on('style.load', draw)
+    // A slow or failed tile after the style loaded is not a failed style
+    // (fallBackOnError); only then would the offline basemap be wanted.
+    let styleLoaded = false
+    map.once('style.load', () => {
+      styleLoaded = true
+    })
     map.on('load', () => {
       readyRef.current = true
       draw()
@@ -124,13 +130,14 @@ export default function TrialMap(props: Props) {
     const observer = new ResizeObserver(() => map.resize())
     observer.observe(containerRef.current)
     map.on('error', (event) => {
-      if (!swapped && startUrl) {
+      const status = (event.error as { status?: number } | undefined)?.status
+      if (!swapped && startUrl && fallBackOnError(styleLoaded, status)) {
         swapped = true
         setOfflineBasemap(true)
         loadBasemap().then((basemap) => map.setStyle(fallbackStyle(basemap)))
         return
       }
-      setError(event.error?.message ?? 'map error')
+      if (swapped || !startUrl) setError(event.error?.message ?? 'map error')
     })
     if (!startUrl) {
       loadBasemap().then((basemap) => {
@@ -164,10 +171,13 @@ export default function TrialMap(props: Props) {
   }, [data])
 
   useEffect(() => {
+    // The first evidence can be a city away from the default centre; flying
+    // there requests (and then aborts) every tile on the way, so jump.
+    const first = boxRef.current === null
     boxRef.current = box
     const map = mapRef.current
     if (!map || !box || !readyRef.current) return
-    fitTo(map, box, 400)
+    fitTo(map, box, first ? 0 : 400)
     // Refit only when the extent of the data changes, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boxKey])
