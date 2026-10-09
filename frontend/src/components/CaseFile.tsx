@@ -205,7 +205,7 @@ function CaseFile({ slotRef, ...props }: Props) {
         </article>
 
         <div className="right-col">
-          <div className="fade" style={{ transitionDelay: '120ms' }}>
+          <div className="fade" style={{ animationDelay: '120ms' }}>
             {ready ? (
               <ExhibitSlip
                 trip={facts.trip}
@@ -219,7 +219,7 @@ function CaseFile({ slotRef, ...props }: Props) {
               </article>
             )}
           </div>
-          <div className="fade" style={{ transitionDelay: '240ms' }}>
+          <div className="fade" style={{ animationDelay: '240ms' }}>
             {ready ? (
               <ExhibitPhotos
                 drain={drain}
@@ -238,7 +238,7 @@ function CaseFile({ slotRef, ...props }: Props) {
         </div>
       </div>
 
-      <div className="fade" style={{ transitionDelay: '360ms' }}>
+      <div className="fade" style={{ animationDelay: '360ms' }}>
         {ready ? (
           <DecisionBar
             key={drain.drainId}

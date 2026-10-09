@@ -18,7 +18,6 @@
   z-index: 4;
   transition: transform 600ms var(--ease), opacity 400ms;
 }
-.app.mode-flying .sheet-wrap,
 .app.mode-case .sheet-wrap {
   transform: translateX(-104%);
   opacity: 0;
@@ -370,8 +369,8 @@
   gap: 14px;
 }
 .casefile > .err { margin: 0; }
-.casefile .fade { opacity: 0; transform: translateY(6px); transition: opacity 450ms var(--ease), transform 450ms var(--ease); }
-.casefile.settled .fade { opacity: 1; transform: none; }
+.casefile .fade { animation: fade-up 450ms var(--ease) both; }
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } }
 .case-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px; }
 .case-head h1 { font: 500 44px/1 var(--serif); letter-spacing: -0.02em; margin: 4px 0 6px; }
 .case-head .dims { color: var(--ink-2); font-size: 16px; }

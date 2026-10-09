@@ -661,12 +661,15 @@ function MapView({
 
         const points: LngLat[] = [...(drain.claimedRoute ?? []), ...route, f.dump]
         const framed = map.cameraForBounds(boundsOfPoints(points) as LngLatBoundsLike, {
-          padding: 110,
+          padding: { top: 80, bottom: 150, left: 90, right: 90 },
           bearing: brg,
         })
+        // Tilted, the near end grows and the far end shrinks, so look at a
+        // point a little nearer the drain than the middle of the haul.
+        const look: LngLat = [start[0] + (f.dump[0] - start[0]) * 0.45, start[1] + (f.dump[1] - start[1]) * 0.45]
         map.flyTo({
-          center: framed?.center ?? start,
-          zoom: (framed?.zoom ?? 14) - 0.2,
+          center: look,
+          zoom: (framed?.zoom ?? 14) + 0.1,
           pitch: 52,
           bearing: brg,
           duration: TILT_MS,
