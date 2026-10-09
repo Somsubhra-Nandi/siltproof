@@ -417,7 +417,13 @@ function BillSheet(props: Props) {
         <span className="wordmark">
           SiltProof <i>ward bill check</i>
         </span>
-        <span className="sim-badge">Simulated data</span>
+        <span className="masthead-end">
+          {/* The judge trial is its own page (trial.html): no shared state with this bill. */}
+          <a className="link" href={`${import.meta.env.BASE_URL}trial.html`}>
+            Try SiltProof Yourself
+          </a>
+          <span className="sim-badge">Simulated data</span>
+        </span>
       </header>
 
       {phase === 'pending' && (

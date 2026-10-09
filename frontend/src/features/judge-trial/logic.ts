@@ -14,8 +14,13 @@ import type {
 
 export const PENDING_STATES: EvidenceState[] = ['UPLOADED', 'QUEUED', 'PROCESSING']
 
+// The server marks a pending file retryable only once it has stalled (its
+// processor crashed or its invocation was lost); that file is not waited on.
+export const isStalled = (item: { state: EvidenceState; retryable?: boolean }) =>
+  PENDING_STATES.includes(item.state) && Boolean(item.retryable)
+
 export function hasPending(trial: Trial | null): boolean {
-  return Boolean(trial?.evidence.some((item) => PENDING_STATES.includes(item.state)))
+  return Boolean(trial?.evidence.some((item) => PENDING_STATES.includes(item.state) && !isStalled(item)))
 }
 
 export function formatBytes(bytes: number): string {
@@ -83,11 +88,12 @@ export type Readiness = 'missing' | 'pending' | 'ready' | 'problem'
 
 export function groupReadiness(trial: Trial, group: Group): Readiness {
   const items = trial.evidence.filter((item) => item.group === group)
-  if (items.some((item) => PENDING_STATES.includes(item.state) || item.state === 'UPLOADING')) {
+  const live = items.filter((item) => !isStalled(item))
+  if (live.some((item) => PENDING_STATES.includes(item.state) || item.state === 'UPLOADING')) {
     return 'pending'
   }
   if (items.some((item) => item.state === 'READY')) return 'ready'
-  if (items.some((item) => item.state === 'FAILED' || item.state === 'REJECTED')) return 'problem'
+  if (items.some((item) => item.state === 'FAILED' || item.state === 'REJECTED' || isStalled(item))) return 'problem'
   return 'missing'
 }
 

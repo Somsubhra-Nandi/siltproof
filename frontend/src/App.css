@@ -37,7 +37,9 @@
   gap: 12px;
   padding: 20px 32px 14px;
   border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
 }
+.masthead-end { display: inline-flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .wordmark { font: 600 26px/1 var(--serif); letter-spacing: -0.01em; white-space: nowrap; }
 .wordmark i { font-weight: 400; color: var(--ink-2); }
 .offline-tag { display: inline-block; margin-left: 8px; padding: 1px 6px; font-size: 12px; font-weight: 600; color: var(--ink-2); border: 1px solid var(--rule); border-radius: 3px; vertical-align: 1px; }

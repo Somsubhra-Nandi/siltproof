@@ -3,6 +3,14 @@
 Written 9 Oct 2026. Everything needed is on GitHub; nothing depends on the
 machine it was written on.
 
+> **Superseded in part by the integration review** (`feat/integrate-judge-trial`,
+> DECISIONS.md "Review hardening of the judge trial"): the invite code is now
+> required on a live deployment (empty means trials are closed), photos over
+> 3.5 MB go to Bedrock as a copy, file slots return only after the upload link
+> expires, stalled files no longer block analysis, the B1 `POST /upload-url`
+> and summary refresh are off unless `B1OperatorRoutes=enabled`, and the link
+> from the investigation is in place.
+
 ## Branch
 
 - **Branch:** `feat/judge-self-service`, from `feat/hybrid-frontend` at

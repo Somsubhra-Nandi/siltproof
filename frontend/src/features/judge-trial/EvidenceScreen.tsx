@@ -149,8 +149,11 @@ function ResultLine({ item }: { item: Evidence }) {
 }
 
 function EvidenceRow({ item, onRetry, onDelete }: { item: Evidence; onRetry: Props['onRetry']; onDelete: Props['onDelete'] }) {
-  const busy = item.state === 'QUEUED' || item.state === 'PROCESSING' || item.state === 'UPLOADED'
-  const problem = item.state === 'FAILED' || item.state === 'REJECTED' || Boolean(item.error)
+  // The server marks a QUEUED/PROCESSING file retryable only once it has stalled.
+  const pending = item.state === 'QUEUED' || item.state === 'PROCESSING' || item.state === 'UPLOADED'
+  const stalled = pending && Boolean(item.retryable)
+  const busy = pending && !stalled
+  const problem = item.state === 'FAILED' || item.state === 'REJECTED' || Boolean(item.error) || stalled
   return (
     <li className={`jt-item state-${item.state.toLowerCase()}`}>
       <div className="jt-item-head">
@@ -161,7 +164,7 @@ function EvidenceRow({ item, onRetry, onDelete }: { item: Evidence; onRetry: Pro
         <span className="jt-item-size">{formatBytes(item.sizeBytes ?? item.declaredSizeBytes)}</span>
         <span className={`jt-state${problem ? ' bad' : ''}`}>
           {busy && <span className="spinner" aria-hidden />}
-          {STATE_LABEL[item.state]}
+          {stalled ? 'Stalled' : STATE_LABEL[item.state]}
         </span>
       </div>
       <ResultLine item={item} />

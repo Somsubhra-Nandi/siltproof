@@ -519,10 +519,52 @@ handoff in `docs/JUDGE-TRIAL-HANDOFF.md`. Bill B1 is not touched.
 - **Mock readings are not outcomes.** Trial keys get fixtures whose values say
   MOCK, and any check computed from them is reported NOT_EVALUATED with the
   would-be result kept apart (`mockOutcome`).
-- **Large photos.** Originals up to 15 MB are accepted. Over 8 MB (the B1
-  ingest cap) or 8,000 px, Bedrock gets a 1,568 px processing copy stored at
+- **Large photos.** Originals up to 15 MB are accepted. Over 3.5 MB (the
+  Converse API takes 3.75 MB per image; superseded the 8 MB figure in review)
+  or 8,000 px, Bedrock gets a 1,568 px processing copy stored at
   `trials/{id}/processing/`, recording both SHA-256s and pixel sizes. EXIF and
   pHash always come from the original.
+
+## Review hardening of the judge trial (integration, 9 Oct 2026)
+
+Found reviewing PR #1 against `feat/hybrid-frontend`; all offline-tested.
+
+- **Phone photos went to Nova whole.** The processing-copy threshold was 8 MB,
+  but Converse refuses images over 3.75 MB, so most 3-8 MB phone originals
+  would have failed Bedrock after their quota unit was spent. Now 3.5 MB.
+- **Invite code fails closed.** A live deployment with an empty
+  `TrialInviteCode` refuses `POST /trials` (503 `TRIALS_DISABLED`) instead
+  of opening trials to anyone. Mock mode stays open for the dev server and
+  tests. The parameter only accepts 12-64 URL-safe characters.
+- **Slots return only after the upload link dies.** A presigned POST stays
+  usable for its 300 s lifetime, so releasing a slot on delete or reject let
+  a client delete, then re-upload to the same key, storing files no counter
+  saw. The slot now comes back once the link has expired.
+- **Bytes are re-checked before any model call.** For the same reason the
+  object can be replaced after `/complete`; processing fails with
+  `CHANGED_AFTER_UPLOAD` if size or signature no longer match.
+- **Pixel cap.** Photos over 64 MP fail with `IMAGE_TOO_LARGE` from the
+  header, before pHash or the copy decode them in a 1 GB Lambda.
+- **Stalled files no longer block a trial.** A crash or timeout past the
+  async retries left an item `PROCESSING` forever, so `/analyze` waited and
+  delete refused, permanently. `PROCESSING` past its lease, or `QUEUED` for
+  10 minutes, is now excluded from analysis, retryable and deletable.
+- **B1 operator routes are off in a live deployment.** `POST /upload-url`
+  and summary `refresh` predate the trial and have no auth; each starts a
+  Bedrock or Textract call with no quota. With trials publishing the API URL,
+  they now return 403 unless `B1OperatorRoutes=enabled` (mock mode: always
+  on). Nothing in the frontend or the seed scripts uses either.
+- **Every route is throttled.** `DefaultRouteSettings` (50 burst, 20/s) plus
+  1/s on the summary route. Stage-wide, so a bound on cost, not auth.
+- **Windows seeding.** `seed.py` built S3 keys with `str(Path)`, which on
+  Windows gives `photos\B1\...`: no ingest prefix or key pattern matches, so
+  a live seed from Windows would have ingested nothing (the offline oracle
+  failed 27 tests the same way). Keys are now `as_posix()`.
+
+Still accepted, by design: `POST /decision` and `POST /verify` have no auth
+(plan section 1, one hard-coded engineer), so anyone with the API URL can
+change B1's decisions; re-run the seed's reset to restore it. CORS is `*` on
+the API and the bucket.
 
 ## Pending live steps (not run; each needs approval)
 
@@ -536,4 +578,5 @@ handoff in `docs/JUDGE-TRIAL-HANDOFF.md`. Bill B1 is not touched.
 3. Re-run `POST /verify/B1` (rules only, no model calls) so stored R8 messages
    pick up the new wording.
 4. Cached live summaries still quote the old R8 text. `POST /drain/14/summary`
-   with `{"refresh": true}` regenerates one, and that **calls Bedrock**.
+   with `{"refresh": true}` regenerates one, and that **calls Bedrock**. It
+   needs `B1OperatorRoutes=enabled` once the trial stack is deployed.

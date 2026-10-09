@@ -256,6 +256,13 @@ describe('before verification', () => {
     expect(screen.getByText(/18 drains|3 drains on this bill, not checked/)).toBeInTheDocument()
   })
 
+  it('links to the standalone judge trial page from the masthead', async () => {
+    render(<App />)
+
+    const link = await screen.findByRole('link', { name: 'Try SiltProof Yourself' })
+    expect(link).toHaveAttribute('href', '/trial.html')
+  })
+
   it('goes from an unchecked bill to a verified one when the button is pressed', async () => {
     const { container } = render(<App />)
 

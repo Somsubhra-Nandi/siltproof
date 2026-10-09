@@ -108,6 +108,13 @@ describe('readiness and polling', () => {
     expect(hasPending(trial([evidence({ state: 'READY' }), evidence({ state: 'UPLOADING' })]))).toBe(false)
     expect(hasPending(null)).toBe(false)
   })
+
+  it('does not wait on a stalled file, which the server marks retryable', () => {
+    const stalled = evidence({ state: 'PROCESSING', retryable: true })
+    expect(hasPending(trial([stalled]))).toBe(false)
+    expect(groupReadiness(trial([stalled]), 'photo')).toBe('problem')
+    expect(groupReadiness(trial([stalled, evidence({})]), 'photo')).toBe('ready')
+  })
 })
 
 describe('results', () => {

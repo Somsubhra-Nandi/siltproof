@@ -75,7 +75,7 @@ export default function IntroScreen({ available, busy, error, onCreate }: Props)
             <input value={label} maxLength={80} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. Judge 3, ward drain" />
           </label>
           <label className="jt-field">
-            <span>Invite code (if the team gave you one)</span>
+            <span>Invite code (from the SiltProof team)</span>
             <input value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} autoComplete="off" />
           </label>
           <label className="jt-check">
