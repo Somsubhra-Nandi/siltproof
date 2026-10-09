@@ -93,6 +93,8 @@ export interface Slip {
 
 export interface Photo {
   s3Key: string
+  /** A five-minute presigned link live, a local path offline, null if none. */
+  imageUrl?: string | null
   role: string | null
   status: string
   lat: number | null
@@ -107,6 +109,8 @@ export interface Photo {
     confidence: number | null
     notes: string | null
     modelId: string | null
+    /** True when offline fixture text stands in for a model call. */
+    mocked?: boolean
     ok: boolean | null
   }
 }
@@ -123,6 +127,8 @@ export interface Trip {
   startTime: string | null
   arrivalTime: string | null
   slip: Slip | null
+  /** Sits on the trip, not the slip: null whenever there is no slip. */
+  slipImageUrl?: string | null
   actualRoute: [number, number][]
   actualRouteDistanceM: number
   tracePointCount: number
@@ -150,6 +156,10 @@ export interface Drain {
   findings: Finding[]
   failedRules: string[]
   summary: string | null
+  /** Null offline, where the summary is assembled from the findings. */
+  summaryModelId?: string | null
+  /** Seconds the evidence links stay valid; null offline (local paths). */
+  evidenceUrlExpiresInSeconds?: number | null
   photos: Photo[]
   trips: Trip[]
   rules: Record<string, string>

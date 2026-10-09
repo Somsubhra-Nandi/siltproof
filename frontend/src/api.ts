@@ -1,4 +1,5 @@
-import type { Bill, DecisionResult, Drain, DrainRow, Summary } from './types'
+import { applyDecision, round, summarise } from './lib/ledger'
+import type { Bill, DecisionResult, Drain } from './types'
 
 const base = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/$/, '')
 const billId = (import.meta.env.VITE_BILL_ID ?? 'B1').trim()
@@ -38,19 +39,9 @@ async function snapshot<T>(name: string): Promise<T> {
 }
 
 // ---------------------------------------------------------------- offline
-// Decisions in offline mode are applied here, with the same arithmetic as
-// rules.apply_decision on the backend, so the approve-and-release moment
-// still works without a deployed API.
-function applyDecision(
-  decision: 'APPROVE' | 'HOLD',
-  evidence: { verified: number; review: number; held: number },
-) {
-  if (decision === 'APPROVE') {
-    return { verified: evidence.verified + evidence.review + evidence.held, review: 0, held: 0 }
-  }
-  return { verified: evidence.verified, review: 0, held: evidence.review + evidence.held }
-}
-
+// Decisions in offline mode are applied with lib/ledger's applyDecision, the
+// same arithmetic as rules.apply_decision on the backend, so the
+// approve-and-release moment still works without a deployed API.
 const offlineEvidence = new Map<string, { verified: number; review: number; held: number }>()
 let offlineBill: Bill | null = null
 
@@ -118,34 +109,6 @@ function pendingDrain(drain: Drain): Drain {
       softFails: [],
       findings: [],
     })),
-  }
-}
-
-function round(value: number) {
-  return Math.round(value * 1000) / 1000
-}
-
-function summarise(drains: DrainRow[], rate: number, claimedTonnes: number): Summary {
-  const total = (pick: (row: DrainRow) => number) => round(drains.reduce((sum, row) => sum + pick(row), 0))
-  const verified = total((row) => row.verifiedTonnes)
-  const review = total((row) => row.reviewTonnes)
-  const held = total((row) => row.heldTonnes)
-
-  return {
-    ratePerTonne: rate,
-    claimedTonnes,
-    verifiedTonnes: verified,
-    reviewTonnes: review,
-    heldTonnes: held,
-    claimedRupees: Math.round(claimedTonnes * rate),
-    verifiedRupees: Math.round(verified * rate),
-    reviewRupees: Math.round(review * rate),
-    heldRupees: Math.round(held * rate),
-    drainCount: drains.length,
-    red: drains.filter((row) => row.verdict === 'RED').length,
-    amber: drains.filter((row) => row.verdict === 'AMBER').length,
-    green: drains.filter((row) => row.verdict === 'GREEN').length,
-    decided: drains.filter((row) => row.decision).length,
   }
 }
 
