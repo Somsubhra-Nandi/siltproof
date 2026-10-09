@@ -75,8 +75,11 @@ class Api:
 def redact(value):
     """Drop presigned links and the token before anything is saved."""
     if isinstance(value, dict):
+        # "fields" is dropped only beside a "url" (a presigned POST form), so
+        # Textract's own slip fields are kept.
         return {k: redact(v) for k, v in value.items()
-                if k not in ("previewUrl", "url", "fields", "accessToken")}
+                if k not in ("previewUrl", "url", "accessToken")
+                and not (k == "fields" and "url" in value)}
     if isinstance(value, list):
         return [redact(v) for v in value]
     return value
