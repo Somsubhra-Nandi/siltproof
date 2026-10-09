@@ -1,7 +1,7 @@
 # Judge trial API — contract
 
 Status: **v1, implemented on `feat/judge-self-service`**, offline-tested only
-(moto + `MOCK_AWS=1`). Nothing here has been deployed or called against live
+(moto + `MOCK_AWS=1`, and a headless-browser run against `scripts/trial_dev_server.py`). Nothing here has been deployed or called against live
 AWS.
 
 This is the contract between the trial backend and any frontend that uses it:
@@ -489,9 +489,11 @@ fails closed.
 | Analyses per trial | 30 | `TRIAL_MAX_ANALYSES` |
 | Retries per evidence item | 2 | — |
 
-Also required at deployment (not code): API Gateway stage throttling (the
-template sets 10 rps / burst 20 on the HTTP API default route), and AWS
-Budgets alerts. **Budgets alerts are notifications, not caps.** The account's
+Also at deployment: API Gateway per-route throttling, which the template sets
+on the trial routes only (`POST /trials` 1 rps / burst 5; upload-url,
+complete and `GET /trials/{id}` 10 rps / burst 20; retry and analyze 2 rps /
+burst 5), leaving the B1 routes on account defaults; and AWS Budgets alerts,
+which must be created by hand. **Budgets alerts are notifications, not caps.** The account's
 Lambda concurrency quota is not a quota on spend.
 
 Idempotency: processing claims an item with a conditional update
