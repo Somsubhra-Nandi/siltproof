@@ -20,7 +20,10 @@ import hashlib
 import io
 import json
 
-from common import awsclients, bedrock, config, photo, textract
+from common import awsclients, bedrock, config, textract
+# common.photo needs Pillow and imagehash, which only the ingest function has
+# (its layer). The API Lambda imports this module too, so photo is imported
+# inside the functions that run in ingest.
 from common.jsonlog import log
 
 from . import limits, repo, validate
@@ -199,6 +202,8 @@ def exif_extras(data):
     """What the B1 reader does not keep: orientation, offset, GPS accuracy."""
     from PIL import Image
 
+    from common import photo
+
     extras = {"orientation": None, "timestampHasOffset": False, "gpsAccuracyM": None}
     try:
         with Image.open(io.BytesIO(data)) as image:
@@ -258,6 +263,8 @@ def make_processing_copy(trial_id, evidence_id, data, original_key_, original_di
 
 
 def process_photo(trial_id, item, data, digest):
+    from common import photo
+
     exif = photo.read_exif(data)
     if any(problem.startswith("unreadable_image") for problem in exif["problems"]):
         raise ProcessingFailed("UNREADABLE_IMAGE", "The file could not be read as an image.")
