@@ -33,9 +33,9 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   rebuild without `VITE_LOCATION_API_KEY`; the app also falls back on its
   own if the key is refused.
 
-- **Trials open (10 Oct, 19:28 UTC 9 Oct):** parameter-only change set
+- **Trials open (19:28 UTC 9 Oct, 00:58 IST 10 Oct):** parameter-only change set
   `trial-invite-code` set `TrialInviteCode` (32 URL-safe characters,
-  192 bits). The code is in `%USERPROFILE%\.siltproof	rial-invite-code.txt`
+  192 bits). The code is in `%USERPROFILE%/.siltproof/trial-invite-code.txt`
   on the laptop that set it (readable by that Windows account only); it is
   not in git, the bundle, Amplify or any log. Without it `POST /trials` is
   403 INVITE_REQUIRED.
