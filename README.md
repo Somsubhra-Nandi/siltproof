@@ -229,9 +229,11 @@ These need a human in the AWS console or CLI:
    Pass the model (or inference profile) id to `check_region.py` and to the
    `BedrockModelId` stack parameter.
 3. **Amazon Location API key** — Location console → *API keys* → create a key
-   scoped to map tiles (`geo-maps:GetTile`, `geo-maps:GetStyleDescriptor`) in the
-   same region. Put it in `frontend/.env` as `VITE_LOCATION_API_KEY`. It is a
-   browser key, so never commit it.
+   scoped to Maps only (style descriptor, tiles, glyphs, sprites) in the same
+   region, with referrers restricted to the app's origins. Put it in
+   `frontend/.env` as `VITE_LOCATION_API_KEY`. It is a browser key, so never
+   commit it. Full steps, Amplify variables and checks:
+   [docs/amazon-location.md](docs/amazon-location.md).
 4. **AWS Budget alarm** — Billing console → *Budgets* → a small monthly budget
    with an email alert, before any seeding.
 5. **Amplify Hosting** — Amplify console → *Host web app* → connect this Git

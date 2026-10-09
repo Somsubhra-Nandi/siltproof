@@ -10,8 +10,10 @@ import {
   fallbackStyle,
   initialMode,
   loadBasemap,
+  isAmazonLocationUrl,
   locationStyleUrl,
   styleIsSelfContained,
+  surveyTint,
 } from '../basemap'
 
 const SAMPLE_BASEMAP = {
@@ -70,8 +72,48 @@ describe('choosing a basemap', () => {
     const url = locationStyleUrl('ap-south-1', 'secret-key')
 
     expect(url).toContain('maps.geo.ap-south-1.amazonaws.com')
-    expect(url).toContain('/v2/styles/Standard/descriptor')
+    // Monochrome Light is the default: the base the survey sheet is drawn on.
+    expect(url).toContain('/v2/styles/Monochrome/descriptor')
+    expect(url).toContain('color-scheme=Light')
     expect(url).toContain('key=secret-key')
+    expect(isAmazonLocationUrl(url)).toBe(true)
+  })
+
+  it('takes another style and colour scheme when configured', () => {
+    const url = locationStyleUrl('ap-south-1', 'k', 'Standard', 'Dark')
+    expect(url).toContain('/v2/styles/Standard/descriptor')
+    expect(url).toContain('color-scheme=Dark')
+  })
+
+  it('does not mistake a local style override for Amazon Location', () => {
+    expect(isAmazonLocationUrl('/some-other-style.json')).toBe(false)
+    expect(isAmazonLocationUrl(null)).toBe(false)
+  })
+})
+
+// ------------------------------------------------- tinting the real basemap
+describe('the survey tint for Amazon Location', () => {
+  // Shaped like a Maps v2 descriptor's layer list; the ids are illustrative.
+  const layers = [
+    { id: 'Background', type: 'background' },
+    { id: 'Water', type: 'fill', 'source-layer': 'water' },
+    { id: 'River lines', type: 'line', 'source-layer': 'waterway' },
+    { id: 'Road major', type: 'line', 'source-layer': 'transportation' },
+    { id: 'Place labels', type: 'symbol', 'source-layer': 'place' },
+  ]
+
+  it('recolours the land and the water to the survey palette', () => {
+    expect(surveyTint(layers)).toEqual([
+      ['Background', 'background-color', '#e3ded2'],
+      ['Water', 'fill-color', '#aec0c3'],
+      ['River lines', 'line-color', '#aec0c3'],
+    ])
+  })
+
+  it('leaves roads and labels to the provider', () => {
+    const touched = surveyTint(layers).map(([id]) => id)
+    expect(touched).not.toContain('Road major')
+    expect(touched).not.toContain('Place labels')
   })
 })
 

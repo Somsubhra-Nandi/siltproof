@@ -12,7 +12,18 @@ import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec'
 export type BasemapMode = 'location' | 'fallback'
 
 export const region = (import.meta.env.VITE_AWS_REGION ?? '').trim()
-export const apiKey = (import.meta.env.VITE_LOCATION_API_KEY ?? '').trim()
+const rawKey = (import.meta.env.VITE_LOCATION_API_KEY ?? '').trim()
+// The .env.example placeholder counts as no key, so a copied example file
+// never sends a request that is bound to be refused.
+export const apiKey = rawKey === 'replace-me' ? '' : rawKey
+
+/**
+ * Amazon Location Maps v2 style and colour scheme. Monochrome Light is the
+ * quiet base the survey sheet is designed on; Standard, Hybrid and Satellite
+ * are the others the service offers.
+ */
+export const mapStyle = (import.meta.env.VITE_LOCATION_MAP_STYLE ?? '').trim() || 'Monochrome'
+export const colourScheme = (import.meta.env.VITE_LOCATION_COLOR_SCHEME ?? '').trim() || 'Light'
 
 /** The Amazon Location style can only be used when both halves are present. */
 export const locationConfigured = Boolean(region && apiKey)
@@ -31,12 +42,40 @@ export function styleOverride(): string | null {
 export function locationStyleUrl(
   theRegion = region,
   theKey = apiKey,
-  colourScheme = 'Light',
+  theStyle = mapStyle,
+  theScheme = colourScheme,
 ): string {
   return (
-    `https://maps.geo.${theRegion}.amazonaws.com/v2/styles/Standard/descriptor` +
-    `?key=${theKey}&color-scheme=${colourScheme}`
+    `https://maps.geo.${theRegion}.amazonaws.com/v2/styles/${encodeURIComponent(theStyle)}/descriptor` +
+    `?key=${encodeURIComponent(theKey)}&color-scheme=${encodeURIComponent(theScheme)}`
   )
+}
+
+/** True for a style URL served by Amazon Location. */
+export function isAmazonLocationUrl(url: string | null) {
+  return Boolean(url && /^https:\/\/maps\.geo\.[a-z0-9-]+\.amazonaws\.com\//.test(url))
+}
+
+type StyleLayer = { id: string; type: string; 'source-layer'?: string }
+
+/**
+ * Paint changes that bring a loaded Amazon Location style onto the survey
+ * sheet palette: the land becomes limestone and the water grey-green, so
+ * the drains, traces and stamps read the same as on the offline map. Only
+ * background and water layers are touched; roads, labels and everything
+ * else keep the provider's styling. A pure function of the style's layers,
+ * so it is tested without a network.
+ */
+export function surveyTint(layers: StyleLayer[]): Array<[string, string, string]> {
+  const changes: Array<[string, string, string]> = []
+  for (const layer of layers) {
+    const name = `${layer.id} ${layer['source-layer'] ?? ''}`.toLowerCase()
+    const water = /water|ocean|sea|river|lake|canal/.test(name)
+    if (layer.type === 'background') changes.push([layer.id, 'background-color', PAPER])
+    else if (water && layer.type === 'fill') changes.push([layer.id, 'fill-color', WATER])
+    else if (water && layer.type === 'line') changes.push([layer.id, 'line-color', WATER])
+  }
+  return changes
 }
 
 /** The style to start with, or null when there is nothing but the fallback. */

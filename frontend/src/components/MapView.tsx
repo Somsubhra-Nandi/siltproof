@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { CSSProperties, Ref } from 'react'
-import { MapLibreMap, Marker } from 'maplibre-gl'
+import { AttributionControl, MapLibreMap, Marker } from 'maplibre-gl'
 import type { ErrorEvent, GeoJSONSource, LngLatBoundsLike } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type * as GeoJSON from 'geojson'
@@ -10,9 +10,11 @@ import {
   COLOURS,
   fallbackStyle,
   initialMode,
+  isAmazonLocationUrl,
   loadBasemap,
   locationConfigured,
   startingStyleUrl,
+  surveyTint,
 } from '../basemap'
 import type { BasemapMode } from '../basemap'
 import { bearingTo, metres, sliceLine } from '../lib/caseFacts'
@@ -220,15 +222,19 @@ function MapView({
     let cancelled = false
     const startMode = initialMode()
 
+    const startUrl = startingStyleUrl()
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: startingStyleUrl() ?? fallbackStyle(),
+      style: startUrl ?? fallbackStyle(),
       center,
       zoom,
       maxPitch: 70,
       attributionControl: false,
     })
     mapRef.current = map
+    // Amazon Location's descriptor carries its data attribution, which must
+    // be shown; the offline style has none, so this stays empty there.
+    map.addControl(new AttributionControl({ compact: true }), 'bottom-left')
 
     const swapToFallback = (why: string) => {
       if (cancelled || swappedRef.current) return
@@ -310,6 +316,17 @@ function MapView({
 
     const addLayers = () => {
       const { drains, dumpsite } = geoRef.current!
+
+      // On the real basemap, bring land and water onto the survey palette.
+      if (!swappedRef.current && isAmazonLocationUrl(startUrl)) {
+        for (const [id, property, value] of surveyTint(map.getStyle().layers as never)) {
+          try {
+            map.setPaintProperty(id, property as never, value as never)
+          } catch {
+            // A layer the tint misjudged keeps the provider's colour.
+          }
+        }
+      }
 
       if (!map.hasImage('hatch')) map.addImage('hatch', hatchImage())
       map.addSource('dumpsite', { type: 'geojson', data: dumpsite })

@@ -607,3 +607,7 @@
   .casefile { padding: 12px 16px; }
   .timeline { overflow-x: auto; }
 }
+
+/* MapLibre's attribution, shown for the Amazon Location basemap. */
+.map-root .maplibregl-ctrl-attrib { font: 12px/1.4 var(--sans); background: rgba(242, 239, 231, 0.9); }
+.map-root .maplibregl-ctrl-bottom-left { z-index: 4; }
