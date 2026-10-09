@@ -198,8 +198,8 @@ python data/reset.py --live --bucket <EvidenceBucketName>  # between takes
 ### 5. Tests
 
 ```bash
-python -m pytest                 # 249 backend tests, about 80 s, entirely offline
-cd frontend && npm test          # 46 component and unit tests
+python -m pytest                 # 319 backend tests, about 80 s, entirely offline
+cd frontend && npm test          # 76 component and unit tests
 cd frontend && npm run capture     # screenshots and two videos of the offline demo
 ```
 
