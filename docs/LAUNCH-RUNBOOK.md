@@ -33,6 +33,16 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   rebuild without `VITE_LOCATION_API_KEY`; the app also falls back on its
   own if the key is refused.
 
+- **Trials open (10 Oct, 19:28 UTC 9 Oct):** parameter-only change set
+  `trial-invite-code` set `TrialInviteCode` (32 URL-safe characters,
+  192 bits). The code is in `%USERPROFILE%\.siltproof	rial-invite-code.txt`
+  on the laptop that set it (readable by that Windows account only); it is
+  not in git, the bundle, Amplify or any log. Without it `POST /trials` is
+  403 INVITE_REQUIRED.
+- **Live smoke test passed** (`scripts/trial_live_smoke.py --inspect-aws`):
+  one synthetic 5.2 MB JPEG and one generated slip; 1 Nova Pro call on the
+  1568 px processing copy, 1 Textract call, all checks green, trial deleted.
+
 ## 1. Fix the API (code-only change set) - done
 
 ```bash
