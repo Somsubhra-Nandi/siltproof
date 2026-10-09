@@ -111,6 +111,8 @@ export interface Photo {
     modelId: string | null
     /** True when offline fixture text stands in for a model call. */
     mocked?: boolean
+    /** Planted by the dataset generator for a generated photo; no model read it. */
+    simulated?: boolean
     ok: boolean | null
   }
 }

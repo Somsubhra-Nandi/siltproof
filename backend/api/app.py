@@ -417,6 +417,7 @@ def _photo_row(item, bill_id=None, drain_id=None):
             "notes": verdict.get("notes"),
             "modelId": verdict.get("modelId"),
             "mocked": bool(verdict.get("mocked")),
+            "simulated": bool(verdict.get("simulated")),
             "ok": verdict.get("ok"),
         },
     }

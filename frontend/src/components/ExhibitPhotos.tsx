@@ -66,14 +66,16 @@ function AiObservation({ photo, reuse = false }: { photo: Photo; reuse?: boolean
   return (
     <div className="ai">
       <div className="k">
-        <span>AI observation, not a finding</span>
-        <span>Bedrock vision</span>
+        <span>{ai.simulated ? 'Simulated observation, not a finding' : 'AI observation, not a finding'}</span>
+        <span>{ai.simulated ? 'No model called' : 'Bedrock vision'}</span>
       </div>
       <p>“{ai.notes}”</p>
       <small>
-        {mocked
-          ? 'Offline: a canned sample, no model was called.'
-          : `Read by ${ai.modelId} when the photo was uploaded.`}{' '}
+        {ai.simulated
+          ? 'Simulated: planned by the dataset generator for this generated photo; no model was called.'
+          : mocked
+            ? 'Offline: a canned sample, no model was called.'
+            : `Read by ${ai.modelId} when the photo was uploaded.`}{' '}
         {reuse
           ? 'It describes what a photo shows; it cannot tell that a photo was filed twice. R3 can.'
           : 'It describes what a photo shows; the rules decide.'}

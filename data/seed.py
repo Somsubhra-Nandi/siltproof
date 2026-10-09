@@ -19,12 +19,22 @@ Real photos replace the generated ones without changing anything else:
                         --photo-map data/photo_map.csv --live
 
 See data/PHOTO_MAPPING.md for the mapping file.
+
+--simulated-vision keeps the generated photos' verdicts as the generator
+planted them: each photo carries its planned verdict as S3 metadata, and the
+ingest Lambda stores it as simulated (no model named, no Bedrock call). Slips
+still go through real Textract. Then check every reading before verifying:
+
+    python data/seed.py --simulated-vision --live
+    python data/check_seed.py --live            # read-only comparison
+    python data/check_seed.py --live --verify   # rules, only if all match
 """
 
 import argparse
 import collections
 import concurrent.futures
 import csv
+import json
 import mimetypes
 import pathlib
 import sys
@@ -230,6 +240,30 @@ def bill_items(drains, trips, dumpsite, fleet, ground_truth, ward="Ward",
     return items
 
 
+# -------------------------------------------------------- simulated vision
+SIMULATED_VISION_META = "sp-sim-vision"   # read by backend/ingest/app.py
+
+
+def attach_simulated_verdicts(photos, manifest):
+    """Give each generated photo its planted verdict as S3 metadata.
+
+    Returns the keys the manifest has no verdict for; those photos would go
+    to Bedrock, so the caller refuses to continue.
+    """
+    missing = []
+    for item in photos:
+        planned = (manifest.get("photos") or {}).get(item["key"])
+        if not planned:
+            missing.append(item["key"])
+            continue
+        item["metadata"] = {SIMULATED_VISION_META: json.dumps({
+            "cleared": planned["cleared"],
+            "loadType": planned["loadType"],
+            "confidence": planned.get("confidence", 1.0),
+        }, separators=(",", ":"))}
+    return missing
+
+
 # --------------------------------------------------------------------- live
 def upload_all(items, bucket, concurrency, pace_s, dry_run):
     from common import awsclients
@@ -239,11 +273,13 @@ def upload_all(items, bucket, concurrency, pace_s, dry_run):
 
     def upload(item):
         content_type = mimetypes.guess_type(item["key"])[0] or "application/octet-stream"
+        extra = {"Metadata": item["metadata"]} if item.get("metadata") else {}
         client.put_object(
             Bucket=bucket,
             Key=item["key"],
             Body=item["path"].read_bytes(),
             ContentType=content_type,
+            **extra,
         )
         done["count"] += 1
         done["bytes"] += item["size"]
@@ -284,6 +320,9 @@ def main(argv=None):
                         help="ward name shown on the screen, e.g. 'K-East Ward'")
     parser.add_argument("--contractor", default="Simulated Contractor Pvt Ltd")
     parser.add_argument("--skip-photos", action="store_true")
+    parser.add_argument("--simulated-vision", action="store_true",
+                        help="store the generated photos' planned verdicts as simulated; "
+                             "no Bedrock call. Slips still use Textract.")
     parser.add_argument("--concurrency", type=int, default=3,
                         help="parallel uploads; matches the ingest function's reserved concurrency")
     parser.add_argument("--pace", type=float, default=0.4, help="seconds to wait after each upload")
@@ -339,11 +378,25 @@ def main(argv=None):
     if args.max_slips:
         slips = slips[: args.max_slips]
 
+    if args.simulated_vision:
+        if args.photos_dir:
+            print("--simulated-vision is for the generated photos; real photos need a real model.")
+            return 2
+        manifest_path = ds.OUT / "mock_manifest.json"
+        if not manifest_path.exists():
+            print(f"Missing {ds.relative(manifest_path)}: run data/gen_photos.py and gen_slips.py.")
+            return 2
+        missing = attach_simulated_verdicts(photos, ds.load_json(manifest_path))
+        if missing:
+            print(f"No planned verdict for {len(missing)} photos, e.g. {missing[0]}; refusing, "
+                  "so that none of them is sent to Bedrock by accident.")
+            return 2
+
     uploads = photos + slips + traces
     items = bill_items(drains, trips, dumpsite, fleet, ground_truth,
                        ward=args.ward, contractor=args.contractor)
 
-    bedrock_calls = len(photos)
+    bedrock_calls = 0 if args.simulated_vision else len(photos)
     textract_calls = len(slips)
     estimate = (
         textract_calls * COST_PER_TEXTRACT_QUERIES_PAGE
@@ -353,7 +406,8 @@ def main(argv=None):
     ds.banner("SiltProof seed" + ("" if args.live else " (dry run)"))
     print(f"bucket          {bucket or '(unset)'}")
     print(f"table           {table}")
-    print(f"photos          {len(photos)}" + (" (real)" if args.photos_dir else " (generated)"))
+    print(f"photos          {len(photos)}" + (" (real)" if args.photos_dir else " (generated)")
+          + (", simulated vision" if args.simulated_vision else ""))
     print(f"slips           {len(slips)}")
     print(f"traces          {len(traces)}")
     print(f"uploads         {len(uploads)} objects, {sum(i['size'] for i in uploads) / 1e6:.1f} MB")
@@ -380,6 +434,7 @@ def main(argv=None):
                     "key": item["key"],
                     "bytes": item["size"],
                     "contentType": mimetypes.guess_type(item["key"])[0],
+                    **({"metadata": item["metadata"]} if item.get("metadata") else {}),
                 }
                 for item in uploads
             ],
@@ -417,6 +472,8 @@ def main(argv=None):
           f"--filter-expression 'begins_with(pk, :p)' "
           f"--expression-attribute-values '{{\":p\":{{\"S\":\"EVID#\"}}}}'")
     print(f"  expected: {len(photos) + len(slips) + len(traces)} evidence items")
+    print("Then compare every reading with the dataset before verifying:")
+    print("  python data/check_seed.py --live")
     return 0
 
 

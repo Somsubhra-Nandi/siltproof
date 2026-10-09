@@ -74,6 +74,44 @@ def fetch_object(bucket, key):
         "etag": (response.get("ETag") or "").strip('"'),
         "contentType": response.get("ContentType"),
         "lastModified": response.get("LastModified"),
+        "metadata": response.get("Metadata") or {},
+    }
+
+
+# S3 user metadata written by `data/seed.py --simulated-vision`: the verdict the
+# dataset generator planted in a generated photo. Only an IAM principal can
+# write photos/ (the public upload route is off), and it is honoured only for
+# the deployment's own bill.
+SIMULATED_VISION_META = "sp-sim-vision"
+LOAD_TYPES = ("silt", "debris", "unclear")
+
+
+def simulated_verdict(obj, meta):
+    """The planted verdict for a generated B1 photo, or None to call Bedrock."""
+    raw = (obj.get("metadata") or {}).get(SIMULATED_VISION_META)
+    if raw is None or meta.get("billId") != config.bill_id():
+        return None
+    try:
+        planned = json.loads(raw)
+        cleared = planned["cleared"]
+        load_type = planned["loadType"]
+        confidence = float(planned.get("confidence", 1.0))
+        if not isinstance(cleared, bool) or load_type not in LOAD_TYPES or not 0 <= confidence <= 1:
+            raise ValueError("out of range")
+    except (TypeError, ValueError, KeyError) as exc:
+        # Meant to be simulated, so never fall through to a paid call.
+        return {"cleared": None, "load_type": "unclear", "confidence": 0.0, "ok": False,
+                "notes": f"Unreadable simulated verdict ({type(exc).__name__}).",
+                "problems": ["simulated_verdict_invalid"], "simulated": True}
+    return {
+        "cleared": cleared,
+        "load_type": load_type,
+        "confidence": confidence,
+        "notes": "Simulated: the verdict planned by the dataset generator for this generated "
+                 "photo. No model read it.",
+        "ok": True,
+        "problems": [],
+        "simulated": True,
     }
 
 
@@ -101,7 +139,12 @@ def handle_photo(bucket, key, obj, meta):
     if phash is None:
         problems.append("phash_failed")
 
-    if obj["size"] > MAX_BYTES_FOR_AI:
+    simulated = simulated_verdict(obj, meta)
+    if simulated is not None:
+        verdict = simulated
+        log("photo_vision_simulated", key=key, cleared=verdict["cleared"],
+            load_type=verdict["load_type"])
+    elif obj["size"] > MAX_BYTES_FOR_AI:
         problems.append("too_large_for_bedrock")
         verdict = {
             "cleared": False,
@@ -153,8 +196,10 @@ def handle_photo(bucket, key, obj, meta):
             "ok": verdict["ok"],
             # A canned mock response names no model: it would be a claim that
             # Bedrock read the photo when nothing did.
-            "modelId": None if config.mock_aws() else config.vision_model_id(),
-            "mocked": config.mock_aws(),
+            "modelId": None if config.mock_aws() or verdict.get("simulated")
+            else config.vision_model_id(),
+            "mocked": config.mock_aws() and not verdict.get("simulated"),
+            "simulated": bool(verdict.get("simulated")),
         },
         "problems": problems + [f"bedrock:{p}" for p in verdict.get("problems", [])],
         "status": "OK",
