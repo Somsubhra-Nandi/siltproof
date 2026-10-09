@@ -17,7 +17,23 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   head), parameters unchanged: Nova Pro, `B1OperatorRoutes=disabled`, invite
   code empty. It also makes `POST /verify` and `POST /decision` read-only.
 
-## 1. Fix the API (code-only change set)
+## State on the morning of 10 Oct (updated)
+
+- API fixed: corrective change set executed 18:22 UTC 9 Oct; `/health` 200,
+  trials closed (503), `/verify` and `/decision` 403 READ_ONLY.
+- **Public site:** https://main.d1o7ayjtge649w.amplifyapp.com (Amplify app
+  `d1o7ayjtge649w`, branch `main`, manual deploys). Job 1: offline basemap.
+  **Job 2 (current): Amazon Location Monochrome Light**, snapshot
+  investigation, trial page on the live API (closed).
+- Location key `siltproof-maps-browser`: `geo-maps:*` on
+  `arn:aws:geo-maps:ap-south-1::provider/default`, referrers the Amplify URL
+  and `http://localhost:4173/*`, expires 2026-11-30. Tiles refuse other
+  referrers (403); the style descriptor (no tiles) is served to anyone.
+- Rollback for the map: redeploy job 1's bundle (kept outside the repo) or
+  rebuild without `VITE_LOCATION_API_KEY`; the app also falls back on its
+  own if the key is refused.
+
+## 1. Fix the API (code-only change set) - done
 
 ```bash
 CS=arn:aws:cloudformation:ap-south-1:967226344298:changeSet/samcli-deploy1791569716/48cd4633-49ea-4a23-a01e-51a7ec6de15a
