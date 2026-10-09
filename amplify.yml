@@ -1,0 +1,34 @@
+# AWS Amplify Hosting build (docs/amazon-location.md, "Amplify Hosting").
+# Monorepo layout: the app is frontend/. The build emits dist/index.html (the
+# investigation) and dist/trial.html (the judge trial); both are plain files,
+# and all app state is in the query string, so no rewrite rules are needed.
+#
+# VITE_* variables are baked in at build time: set them in the Amplify console
+# and redeploy after any change. Without VITE_API_BASE_URL the investigation
+# runs on the committed offline snapshot and the trial page says it needs the
+# API. Never put an invite code or any operator secret in a VITE_* variable.
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+      customHeaders:
+        - pattern: '**/*'
+          headers:
+            - key: X-Content-Type-Options
+              value: nosniff
+            - key: Referrer-Policy
+              value: strict-origin-when-cross-origin
