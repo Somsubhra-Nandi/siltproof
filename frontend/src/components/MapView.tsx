@@ -8,6 +8,7 @@ import type * as GeoJSON from 'geojson'
 import {
   basemapAttribution,
   COLOURS,
+  fallBackOnError,
   fallbackStyle,
   initialMode,
   isAmazonLocationUrl,
@@ -245,10 +246,22 @@ function MapView({
       map.setStyle(fallbackStyle(basemapRef.current))
     }
 
+    // Set once the style document itself has loaded; tiles may still be
+    // loading long after that (see fallBackOnError).
+    let styleLoaded = false
+    map.once('style.load', () => {
+      styleLoaded = true
+    })
+
     map.on('error', (event: ErrorEvent) => {
       const text = event.error?.message ?? 'map error'
       if (!swappedRef.current && startMode === 'location') {
-        swapToFallback(`Amazon Location style failed (${text})`)
+        const status = (event.error as { status?: number } | undefined)?.status
+        if (fallBackOnError(styleLoaded, status)) {
+          swapToFallback(`Amazon Location style failed (${text})`)
+        } else {
+          console.warn(`[siltproof] basemap: ${text}`)
+        }
         return
       }
       setMapError(text)
@@ -387,7 +400,7 @@ function MapView({
     })
 
     const timeout = window.setTimeout(() => {
-      if (!cancelled && !map.isStyleLoaded()) swapToFallback('Amazon Location style did not load in time')
+      if (!cancelled && !styleLoaded) swapToFallback('Amazon Location style did not load in time')
     }, STYLE_TIMEOUT_MS)
 
     return () => {

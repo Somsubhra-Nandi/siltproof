@@ -43,6 +43,7 @@ const browser = await puppeteer.launch({
 })
 const amazon = { descriptor: [], tile: [], glyph: [], sprite: [], other: [] }
 let descriptor = null
+const tileZooms = []
 const consoleErrors = []
 
 try {
@@ -55,6 +56,8 @@ try {
     const kind = /\/descriptor/.test(url) ? 'descriptor' : /\/tiles?\//.test(url) ? 'tile'
       : /\/glyphs\//.test(url) ? 'glyph' : /\/sprites\//.test(url) ? 'sprite' : 'other'
     amazon[kind].push(response.status())
+    const zoom = url.match(/\/tiles\/[^/]+\/(\d+)\//)
+    if (zoom) tileZooms.push(Number(zoom[1]))
     if (kind === 'descriptor' && response.ok()) descriptor = await response.json().catch(() => null)
   })
 
@@ -62,7 +65,40 @@ try {
     await page.goto(base + path, { waitUntil: 'networkidle2', timeout: 60000 })
     await sleep(name === 'drain-14' ? 7000 : 3000)
     await page.screenshot({ path: join(out, `${name}.png`) })
+    if (name !== 'overview') continue
+
+    // Zoom in and pan: new tiles at a deeper zoom must come back too.
+    const box = await (await page.$('[data-testid="map"]')).boundingBox()
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    const before = { count: amazon.tile.length, maxZoom: Math.max(...tileZooms) }
+    await page.mouse.move(cx + 120, cy - 120)
+    for (let step = 0; step < 4; step++) { await page.mouse.wheel({ deltaY: -400 }); await sleep(250) }
+    await sleep(2500)
+    await page.mouse.down()
+    await page.mouse.move(cx - 80, cy + 60, { steps: 12 })
+    await page.mouse.up()
+    await sleep(2500)
+    await page.screenshot({ path: join(out, 'overview-zoomed-panned.png') })
+    const fresh = amazon.tile.slice(before.count)
+    expect(fresh.length > 0 && fresh.every((status) => status === 200 || status === 304),
+      `zoom and pan load new tiles (${fresh.length}, all 200)`)
+    expect(Math.max(...tileZooms) > before.maxZoom, `zoom reaches deeper tiles (z${before.maxZoom} -> z${Math.max(...tileZooms)})`)
+    const fellBack = await page.evaluate(() => /Offline basemap/.test(document.body.innerText))
+    expect(!fellBack, 'still the Amazon map after zoom and pan (no switch to the offline basemap)')
   }
+
+  // A slow connection: tiles still loading after the 6 s style timer must not
+  // be mistaken for a failed style (MapLibre's isStyleLoaded() counts tiles).
+  const slow = await browser.newPage()
+  await slow.setViewport({ width: 1440, height: 900 })
+  await slow.emulateNetworkConditions({ download: 60 * 1024, upload: 30 * 1024, latency: 400 })
+  await slow.goto(base + '/?state=verified', { waitUntil: 'domcontentloaded', timeout: 120000 })
+  await sleep(14000)
+  const slowFellBack = await slow.evaluate(() => /Offline basemap/.test(document.body.innerText))
+  expect(!slowFellBack, 'slow connection: still the Amazon map 14 s in (no false fallback)')
+  await slow.screenshot({ path: join(out, 'overview-slow-network.png') })
+  await slow.close()
   await page.setViewport({ width: 390, height: 844 })
   await page.goto(base + '/?state=verified', { waitUntil: 'networkidle2', timeout: 60000 })
   await sleep(3000)
@@ -97,6 +133,8 @@ try {
   await browser.close()
 }
 
-console.log(`\nscreenshots in ${out}`)
+const total = Object.values(amazon).reduce((sum, list) => sum + list.length, 0)
+console.log(`\nAmazon Location requests: ${total} (descriptor ${amazon.descriptor.length}, tiles ${amazon.tile.length}, glyphs ${amazon.glyph.length}, sprites ${amazon.sprite.length}, other ${amazon.other.length})`)
+console.log(`screenshots in ${out}`)
 console.log(failures.length ? `${failures.length} FAILED` : 'live map checks passed')
 process.exit(failures.length ? 1 : 0)

@@ -85,6 +85,18 @@ export function startingStyleUrl(): string | null {
   return locationConfigured ? locationStyleUrl() : null
 }
 
+/**
+ * Whether a map error should swap the Amazon Location basemap for the offline
+ * one. Before the style document has loaded, any error means the style itself
+ * failed. After it, only a refused key (401/403) does: a slow or failed tile
+ * is transient and must not throw away a working map. (MapLibre's
+ * isStyleLoaded() is also false while tiles are loading, so it cannot tell a
+ * failed style from a busy one.)
+ */
+export function fallBackOnError(styleLoaded: boolean, status?: number): boolean {
+  return !styleLoaded || status === 401 || status === 403
+}
+
 export function initialMode(
   configured = locationConfigured || Boolean(styleOverride()),
 ): BasemapMode {

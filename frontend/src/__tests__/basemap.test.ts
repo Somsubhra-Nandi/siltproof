@@ -7,6 +7,7 @@ import {
   boundsOf,
   colourFor,
   COLOURS,
+  fallBackOnError,
   fallbackStyle,
   initialMode,
   loadBasemap,
@@ -92,6 +93,24 @@ describe('choosing a basemap', () => {
 })
 
 // ------------------------------------------------- tinting the real basemap
+describe('when a map error swaps in the offline basemap', () => {
+  it('swaps for any error before the Amazon style document has loaded', () => {
+    expect(fallBackOnError(false)).toBe(true)
+    expect(fallBackOnError(false, 500)).toBe(true)
+  })
+
+  it('keeps a loaded Amazon map through a slow or failed tile', () => {
+    expect(fallBackOnError(true)).toBe(false)
+    expect(fallBackOnError(true, 500)).toBe(false)
+    expect(fallBackOnError(true, 404)).toBe(false)
+  })
+
+  it('swaps when the key is refused, even after the style loaded', () => {
+    expect(fallBackOnError(true, 403)).toBe(true)
+    expect(fallBackOnError(true, 401)).toBe(true)
+  })
+})
+
 describe('the survey tint for Amazon Location', () => {
   // Shaped like a Maps v2 descriptor's layer list; the ids are illustrative.
   const layers = [
