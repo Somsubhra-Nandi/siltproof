@@ -10,8 +10,12 @@ Dry run by default: prints the plan and the billable calls, and stops.
     python scripts/trial_live_smoke.py --api <ApiUrl> --photo IMG.jpg
     python scripts/trial_live_smoke.py --api <ApiUrl> --photo IMG.jpg --live
 
-The invite code is read from $TRIAL_INVITE_CODE, or prompted for without
-echo; it is never taken on the command line, printed or saved. Against the
+The invite code is read from --invite-file, $TRIAL_INVITE_CODE, or a prompt
+without echo; it is never taken on the command line, printed or saved.
+
+--inspect-aws also reads the deployment directly with your AWS credentials
+(read-only): the daily quota counters before and after, the trial's S3 object
+names and DynamoDB keys, token isolation, and that delete-now left nothing. Against the
 offline dev server (scripts/trial_dev_server.py) no code is needed, and the
 script reports the run as MOCK rather than as a pass.
 
@@ -108,6 +112,66 @@ def wait_ready(api, trial_id, ids, timeout_s):
         time.sleep(3)
 
 
+class AwsInspector:
+    """Read-only checks against the deployment, with the caller's credentials."""
+
+    def __init__(self):
+        import boto3
+
+        self.region = os.environ.get("AWS_REGION", "ap-south-1")
+        self.bucket = os.environ["EVIDENCE_BUCKET"]
+        self.table = boto3.resource("dynamodb", region_name=self.region).Table(
+            os.environ.get("TABLE_NAME", "siltproof"))
+        self.s3 = boto3.client("s3", region_name=self.region)
+
+    def quotas(self):
+        import datetime
+
+        day = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        out = {}
+        for kind in ("BEDROCK", "TEXTRACT", "TRIALS"):
+            item = self.table.get_item(Key={"pk": f"QUOTA#{day}", "sk": kind}).get("Item") or {}
+            out[kind] = int(item.get("count") or 0)
+        return out
+
+    def keys(self, trial_id):
+        listing = self.s3.list_objects_v2(Bucket=self.bucket, Prefix=f"trials/{trial_id}/")
+        return sorted(obj["Key"].split(f"trials/{trial_id}/", 1)[1] for obj in listing.get("Contents", []))
+
+    def items(self, trial_id):
+        from boto3.dynamodb.conditions import Key
+
+        found = self.table.query(KeyConditionExpression=Key("pk").eq(f"TRIAL#{trial_id}"))
+        return sorted(item["sk"] for item in found.get("Items", []))
+
+    def during(self, trial_id, api, requests, vision, before):
+        after = self.quotas()
+        keys = self.keys(trial_id)
+        sks = self.items(trial_id)
+        originals = [k for k in keys if k.startswith("originals/")]
+        copies = [k for k in keys if k.startswith("processing/")]
+        print(f"\n  s3:       {len(originals)} originals, {len(copies)} processing copies under trials/<id>/")
+        print(f"  dynamodb: {', '.join(sk.split('#')[0] for sk in sks)}")
+        print(f"  quotas:   before {before}, after {after}")
+        url = f"{api.base}/trials/{trial_id}"
+        no_token = requests.get(url, timeout=30).status_code
+        wrong = requests.get(url, headers={"authorization": "Bearer " + "x" * 43}, timeout=30).status_code
+        return [
+            ("S3: both originals stored under the trial's own prefix", len(originals) == 2),
+            ("S3: processing copy only when Nova got one",
+             (len(copies) == 1) == (vision.get("input") == "processing_copy")),
+            ("DynamoDB: trial, two evidence items, latest result",
+             sks.count("META") == 1 and sum(sk.startswith("EVID#") for sk in sks) == 2
+             and "RESULT#LATEST" in sks),
+            ("daily quota: exactly +1 Bedrock and +1 Textract",
+             after["BEDROCK"] - before["BEDROCK"] == 1 and after["TEXTRACT"] - before["TEXTRACT"] == 1),
+            (f"isolation: no token {no_token}, wrong token {wrong} (both 404)", no_token == wrong == 404),
+        ]
+
+    def leftovers(self, trial_id):
+        return {"s3": len(self.keys(trial_id)), "dynamodb": len(self.items(trial_id))}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -118,6 +182,10 @@ def main(argv=None):
     parser.add_argument("--live", action="store_true", help="actually call the API. Costs money.")
     parser.add_argument("--keep", action="store_true", help="do not delete the trial at the end")
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--invite-file", default=None,
+                        help="file holding the invite code (read, never printed)")
+    parser.add_argument("--inspect-aws", action="store_true",
+                        help="also check S3, DynamoDB and quota counters directly (read-only)")
     args = parser.parse_args(argv)
 
     photo, slip = pathlib.Path(args.photo), pathlib.Path(args.slip)
@@ -149,7 +217,12 @@ def main(argv=None):
     mock = bool(health.get("mockAws"))
     body = {"label": "live smoke", "kind": "field"}
     if not mock and "localhost" not in args.api and "127.0.0.1" not in args.api:
-        body["inviteCode"] = os.environ.get("TRIAL_INVITE_CODE") or getpass.getpass("Invite code: ")
+        if args.invite_file:
+            body["inviteCode"] = pathlib.Path(args.invite_file).read_text(encoding="utf-8").strip()
+        else:
+            body["inviteCode"] = os.environ.get("TRIAL_INVITE_CODE") or getpass.getpass("Invite code: ")
+    inspector = AwsInspector() if args.inspect_aws else None
+    quota_before = inspector.quotas() if inspector else None
     created = api.call("POST", "/trials", body)
     trial_id, api.token = created["trialId"], created["accessToken"]
     print(f"\ntrial {trial_id} created")
@@ -178,6 +251,8 @@ def main(argv=None):
              trial["usage"]["bedrockCalls"] == 1 and trial["usage"]["textractCalls"] == 1),
             ("analysis ran", bool(analysis.get("analysisId"))),
         ]
+        if inspector:
+            checks += inspector.during(trial_id, api, requests, vision, quota_before)
         print()
         for name, ok in checks:
             print(f"  {'ok  ' if ok else 'FAIL'} {name}")
@@ -203,6 +278,10 @@ def main(argv=None):
         if not args.keep:
             api.call("DELETE", f"/trials/{trial_id}")
             print(f"trial {trial_id} deleted")
+            if inspector:
+                left = inspector.leftovers(trial_id)
+                print(f"  {'ok  ' if not any(left.values()) else 'FAIL'} cleanup: "
+                      f"{left['s3']} S3 objects and {left['dynamodb']} DynamoDB items left")
 
 
 if __name__ == "__main__":
