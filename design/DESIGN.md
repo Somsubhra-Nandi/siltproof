@@ -2,8 +2,8 @@
 
 Direction A's survey sheet is the visual language, Direction C's case file is
 the drain investigation, and Direction B contributes one camera move. The
-prototype is `design/hybrid/index.html`; screenshots are in
-`screenshots/hybrid/`, videos in `videos/hybrid/`. Decisions taken overnight
+prototype is `design/hybrid/index.html`; its captures (`node capture-hybrid.mjs`) go to
+`screenshots/hybrid/` and `videos/hybrid/`, which are not committed. Decisions taken overnight
 without you are in `DECISIONS-hybrid.md`; the build plan is in
 `IMPLEMENTATION-PLAN.md`.
 
@@ -257,7 +257,7 @@ prototypes use fixed pixel tracks, so this is specified rather than built.
 | `08-hover.png` | Hover on drain 3: row, ring and tooltip |
 | `closeup-exhibit-*.png` | Exhibits A, B, C and the photo slot at the size they appear |
 
-Videos: `videos/hybrid/01-verification-scan.webm` (5.7 s) and
+Videos (regenerated locally, not committed): `videos/hybrid/01-verification-scan.webm` (5.7 s) and
 `02-open-drain-14.webm` (9.3 s). Both are a real MapLibre GL map running in
 Chrome with SwiftShader. The camera moves are MapLibre `flyTo`, `jumpTo` and
 `easeTo` calls, not CSS. They were recorded with CDP screencast.

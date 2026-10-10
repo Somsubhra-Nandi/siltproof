@@ -23,7 +23,7 @@ cd design && python3 -m http.server 8765
 | Real-photo slot | `?view=drain14&photos=slot` |
 
 - Captures: `node capture-hybrid.mjs [stills|video|all]`, writing to
-  `screenshots/hybrid/` and `videos/hybrid/`.
+  `screenshots/hybrid/` and `videos/hybrid/` (not committed).
 - Design system: `DESIGN.md`.
 - Overnight decisions: `DECISIONS-hybrid.md`.
 - Build plan: `IMPLEMENTATION-PLAN.md`.
@@ -58,7 +58,7 @@ drain 14 on the map or in the list. Extra parameters: `&play=scan` or
 state, `&confirm=hold` shows the confirmation and `&decided=1` shows the
 signed decision. Only drain 14 carries full evidence; other drains say so.
 
-Screenshots, close-ups and videos are in `screenshots/`, all at 1920×1080 with
+Screenshots, close-ups and videos are written to `screenshots/` (not committed), all at 1920×1080 with
 device scale factor 1. To regenerate them (Playwright from a scratch install,
 plus `npx playwright install ffmpeg` for video):
 

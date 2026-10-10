@@ -12,7 +12,7 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   `trial.process`. Fixed in `021c96f`, with `tests/test_api_packaging.py`.
   Nothing public used the API yet. The ingest function is healthy.
 - Prepared, not executed: change set
-  `arn:aws:cloudformation:ap-south-1:967226344298:changeSet/samcli-deploy1791569716/48cd4633-49ea-4a23-a01e-51a7ec6de15a`,
+  `<change-set-arn>` (from `sam deploy --no-execute-changeset`),
   code only (both functions; the artifact matches `backend/` at the branch
   head), parameters unchanged: Nova Pro, `B1OperatorRoutes=disabled`, invite
   code empty. It also makes `POST /verify` and `POST /decision` read-only.
@@ -37,7 +37,7 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
 
 - **Trials open (19:28 UTC 9 Oct, 00:58 IST 10 Oct):** parameter-only change set
   `trial-invite-code` set `TrialInviteCode` (32 URL-safe characters,
-  192 bits). The code is in `%USERPROFILE%/.siltproof/trial-invite-code.txt`
+  192 bits). The code is kept in a file outside the repository
   on the laptop that set it (readable by that Windows account only); it is
   not in git, the bundle, Amplify or any log. Without it `POST /trials` is
   403 INVITE_REQUIRED.
@@ -74,17 +74,18 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   console errors. `/health` 200; `POST /trials` without an invite code is
   403 INVITE_REQUIRED (no paid call made); `trial.html` loads.
 - **Rollback:** start a manual deployment with
-  `%USERPROFILE%\.siltproof\rollback\amplify-job5-candidate-4e7b872-fullkey.zip`
+  `amplify-job5-candidate-4e7b872-fullkey.zip`, kept outside the repository
   (job 5, last known good); jobs 3 and 4 bundles are kept beside it.
 
 ## 1. Fix the API (code-only change set) - done
 
 ```bash
-CS=arn:aws:cloudformation:ap-south-1:967226344298:changeSet/samcli-deploy1791569716/48cd4633-49ea-4a23-a01e-51a7ec6de15a
+CS=<change-set-arn>
 aws cloudformation describe-change-set --profile siltproof --region ap-south-1 --change-set-name $CS --query '[Status,ExecutionStatus]'
 aws cloudformation execute-change-set --profile siltproof --region ap-south-1 --change-set-name $CS
 aws cloudformation wait stack-update-complete --profile siltproof --region ap-south-1 --stack-name siltproof
-API=https://j0scrvpupi.execute-api.ap-south-1.amazonaws.com
+API=$(aws cloudformation describe-stacks --profile siltproof --region ap-south-1 --stack-name siltproof \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
 curl -s $API/health                                   # 200
 curl -s -X POST $API/trials -d '{}'                   # 503 TRIALS_DISABLED
 curl -s -X POST $API/decision -d '{"drainId":"1","decision":"HOLD"}'   # 403 READ_ONLY
@@ -149,7 +150,7 @@ Dry run first; 117 Textract pages, 0 Bedrock calls (about $1.75):
 
 ```bash
 python data/seed.py --simulated-vision                    # plan
-python data/seed.py --simulated-vision --live --bucket siltproof-evidence-967226344298
+python data/seed.py --simulated-vision --live --bucket <EvidenceBucketName>
 python data/check_seed.py --live                          # read-only comparison
 python data/check_seed.py --live --verify                 # rules, only if all match
 ```
