@@ -252,7 +252,7 @@ describe('before verification', () => {
     expect(amount(container)).toBe('₹22.32lakh')
     expect(screen.getAllByText('Not yet calculated')).toHaveLength(3)
     expect(container.querySelector('.stamp')).toBeNull()
-    expect(screen.getByText(/Simulated demonstration/)).toBeInTheDocument()
+    expect(screen.getByText(/No real ward or payment is involved/)).toBeInTheDocument()
     expect(screen.getByText(/18 drains|3 drains on this bill, not checked/)).toBeInTheDocument()
   })
 
@@ -391,16 +391,19 @@ describe('the case file', () => {
 
     expect(screen.getByText('Rule R3, deterministic')).toBeInTheDocument()
     const ai = container.querySelector('.ai')!
-    expect(within(ai as HTMLElement).getByText('AI observation, not a finding')).toBeInTheDocument()
+    // A canned reading (mocked, no model id) never claims a model read it.
+    expect(within(ai as HTMLElement).getByText('Pre-written observation, not a finding')).toBeInTheDocument()
+    expect(within(ai as HTMLElement).getByText('No model called')).toBeInTheDocument()
+    expect(within(ai as HTMLElement).queryByText(/Bedrock/)).toBeNull()
     expect(within(ai as HTMLElement).getByText(/no model was called/)).toBeInTheDocument()
-    expect(screen.getByText(/Evidence summary, offline/)).toBeInTheDocument()
+    expect(screen.getByText(/Evidence summary, assembled from the rule findings/)).toBeInTheDocument()
   })
 
   it('shows the labelled photo slot when there is no image link', async () => {
     render(<App />)
     await screen.findByText('Trip 001 never reached the dump site')
-    expect(screen.getAllByText(/No image link was returned/).length).toBe(2)
-    expect(screen.getByText('No slip image here')).toBeInTheDocument()
+    expect(screen.getAllByText('Image unavailable.').length).toBe(2)
+    expect(screen.getByText('Slip image unavailable')).toBeInTheDocument()
   })
 
   it('confirms a hold and passes the note along', async () => {

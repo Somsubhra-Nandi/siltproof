@@ -35,7 +35,12 @@ function CaseTimeline({ timeline }: { timeline: Timeline }) {
     const el = ref.current
     if (!el) return
     // Before layout (and in jsdom) there is no width; assume the 1920 track.
-    const update = () => setWidth(el.clientWidth ? Math.max(0, el.clientWidth - NAME_W - END_W) : 720)
+    // On a phone the timeline keeps a readable minimum width (--tl-min, set in
+    // CSS) and scrolls sideways, rather than squeezing its labels together.
+    const update = () => {
+      const min = parseFloat(getComputedStyle(el).getPropertyValue('--tl-min')) || 0
+      setWidth(el.clientWidth ? Math.max(0, Math.max(el.clientWidth, min) - NAME_W - END_W) : 720)
+    }
     update()
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
     observer?.observe(el)

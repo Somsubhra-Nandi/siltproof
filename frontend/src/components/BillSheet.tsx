@@ -108,6 +108,7 @@ function Ledger({ summary, pending }: { summary: Summary; pending: boolean }) {
 function BillSheet(props: Props) {
   const { bill, error, phase, rows, summary, revealed, reasons, hoverId } = props
   const [openReview, setOpenReview] = useState<string | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [confirming, setConfirming] = useState<{ drainId: string; kind: Kind } | null>(null)
 
   const trips = bill?.drains.reduce((sum, row) => sum + row.tripCount, 0) ?? 0
@@ -422,14 +423,25 @@ function BillSheet(props: Props) {
           <a className="link" href={`${import.meta.env.BASE_URL}trial.html`}>
             Try SiltProof Yourself
           </a>
-          <span className="sim-badge">Simulated data</span>
+          <button
+            type="button"
+            className="sim-badge"
+            aria-expanded={phase === 'pending' || aboutOpen}
+            aria-controls="about-case"
+            onClick={() => setAboutOpen((open) => !open)}
+          >
+            Simulated case study
+          </button>
         </span>
       </header>
 
-      {phase === 'pending' && (
-        <div className="disclose">
-          <b>Simulated demonstration.</b> The bill, contractor, weighbridge slips, GPS traces and
-          photos are generated. No real ward or payment is involved.
+      {(phase === 'pending' || aboutOpen) && (
+        <div className="disclose" id="about-case">
+          <b>Simulated case study.</b> The bill, contractor, weighbridge slips, GPS traces and
+          photos are generated, and the photo observations and evidence summaries are pre-written: no
+          AI model processed this investigation. No real ward or payment is involved. The checks
+          themselves are the real rules. To run the live pipeline on your own files, use Try SiltProof
+          Yourself.
         </div>
       )}
 
@@ -453,9 +465,9 @@ function BillSheet(props: Props) {
           {offline && (
             <span
               className="offline-tag"
-              title="The prepared, simulated investigation (public/data/demo). Decisions are applied in this browser only and are not saved to AWS."
+              title="Decisions on this prepared case study are applied in this browser only and are not saved to AWS."
             >
-              Simulated snapshot · decisions stay in this browser
+              Decisions stay in this browser
             </span>
           )}
         </p>

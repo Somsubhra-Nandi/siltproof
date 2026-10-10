@@ -1,3 +1,7 @@
+import { useState } from 'react'
+
+import Lightbox from './Lightbox'
+import { offline } from '../api'
 import type { CaseFacts } from '../lib/caseFacts'
 import { LOUPE, SLIP_ROWS, SLIP_SIZE } from '../lib/slipLayout'
 import { slipTitle } from '../lib/caseFacts'
@@ -5,11 +9,17 @@ import type { Finding, Trip } from '../types'
 
 const SCAN_W = 222
 const SLIP_RULES = ['R7', 'R8', 'R9', 'SLIP_MISSING']
+// The snapshot's slip fields come from the dataset, not a live Textract read.
+const READ_CAPTION = offline
+  ? 'Fields recorded for this slip, with confidence:'
+  : 'Fields as Textract read them at upload, with its confidence:'
 
 interface Props {
   trip: Trip | null
   facts: CaseFacts
   imageExpired: boolean
+  /** The prepared investigation: its slips are generated. */
+  simulatedCase: boolean
   onImageError: () => void
 }
 
@@ -26,14 +36,15 @@ function Field({ trip, name, label, hit }: { trip: Trip; name: string; label: st
     <div className={`${hit ? 'hit' : ''} ${low ? 'low' : ''}`}>
       <span>{label}</span>
       <b className="mono">{value}</b>
-      <em className="mono" title="Textract confidence">
+      <em className="mono" title="Confidence">
         {field?.confidence ? `${field.confidence.toFixed(1)}%` : ''}
       </em>
     </div>
   )
 }
 
-function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
+function ExhibitSlip({ trip, facts, imageExpired, simulatedCase, onImageError }: Props) {
+  const [enlarged, setEnlarged] = useState(false)
   const slip = trip?.slip ?? null
   const url = trip?.slipImageUrl ?? null
   const hit = facts.conflictingField
@@ -65,7 +76,12 @@ function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
         <div className="slipgrid">
           {url && !imageExpired ? (
             <figure className="scan">
-              <span className="scan-inner">
+              <button
+                type="button"
+                className="scan-inner"
+                onClick={() => setEnlarged(true)}
+                aria-label={`Enlarge the weighbridge slip for trip ${trip.tripNo}`}
+              >
                 <img
                   src={url}
                   width={SCAN_W}
@@ -79,16 +95,18 @@ function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
                     aria-hidden="true"
                   />
                 )}
-              </span>
-              <span className="tag-sim">Sample slip</span>
+              </button>
+              <figcaption>
+                Trip {trip.tripNo}, ticket <span className="mono">{slip.ticketNo ?? 'unread'}</span>
+              </figcaption>
             </figure>
           ) : (
             <div className="photoslot slip-slot">
-              <b>{imageExpired ? 'Slip link expired' : 'No slip image here'}</b>
+              <b>{imageExpired ? 'Slip link expired' : 'Slip image unavailable'}</b>
               <span>
                 {imageExpired
-                  ? 'Reopen the drain to fetch a fresh link.'
-                  : 'The fields Textract read at upload are on the right.'}
+                  ? 'Reopen the drain to refresh it.'
+                  : 'The fields read from the slip are shown alongside.'}
               </span>
             </div>
           )}
@@ -121,11 +139,11 @@ function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
                     />
                   )}
                 </div>
-                <p className="loupe-cap">Enlarged from the slip. Fields as Textract read them at upload, with its confidence:</p>
+                <p className="loupe-cap">Enlarged from the slip. {READ_CAPTION}</p>
               </>
             )}
             {(!url || imageExpired || !loupe) && (
-              <p className="loupe-cap">Fields as Textract read them at upload, with its confidence:</p>
+              <p className="loupe-cap">{READ_CAPTION}</p>
             )}
             <div className="fields">
               <Field trip={trip} name="ticketNo" label="Ticket" hit={hit === 'ticketNo'} />
@@ -148,6 +166,26 @@ function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
             )}
           </div>
         </div>
+      )}
+      {simulatedCase && slip && (
+        <p className="ex-note">
+          Generated slip from a fictional weighbridge.
+          {offline ? ' Its fields and confidence scores are part of the simulated dataset.' : ''}
+        </p>
+      )}
+      {enlarged && url && slip && trip && (
+        <Lightbox
+          label={`Weighbridge slip, trip ${trip.tripNo}`}
+          onClose={() => setEnlarged(false)}
+          items={[
+            {
+              src: url,
+              alt: `Weighbridge slip for trip ${trip.tripId}, ticket ${slip.ticketNo ?? 'unread'}`,
+              highlight: row ? { top: (row[0] / SLIP_SIZE.height) * 100, height: (row[1] / SLIP_SIZE.height) * 100 } : null,
+              caption: findings[0]?.message ?? `Trip ${trip.tripNo}: the slip agrees with the trip.`,
+            },
+          ]}
+        />
       )}
     </article>
   )

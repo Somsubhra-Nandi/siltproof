@@ -34,6 +34,10 @@ interface Props {
   saveError: string | null
   explaining: boolean
   evidenceSummary: string | null
+  /** False with reduced motion: the finished haul is already drawn. */
+  canReplay: boolean
+  replaying: boolean
+  onReplay: () => void
   onBack: () => void
   onSelectTrip: (tripId: string) => void
   onEvidenceError: () => void
@@ -138,7 +142,6 @@ function CaseFile({ slotRef, ...props }: Props) {
               <span className="num">{drain.widthM} m</span> wide, <span className="num">{drain.depthM} m</span> deep.{' '}
               {drain.trips.length} trips, <span className="num">{grouped(drain.claimedTonnes)} t</span> claimed.{' '}
               {verdictLine(drain, facts)}
-              <span className="sim-badge inline-badge">Simulated data</span>
             </div>
           ) : (
             <div className="dims">
@@ -161,6 +164,20 @@ function CaseFile({ slotRef, ...props }: Props) {
             <span className="ex-tag">Exhibit A</span>
             <h2 id="exhibit-a">{ready ? routeTitle(drain, facts) : 'The haul to the dump site'}</h2>
             <span className="rules">
+              {props.canReplay && ready && facts.trip && facts.trip.actualRoute.length > 1 && (
+                <button
+                  type="button"
+                  className="replay-btn"
+                  onClick={props.onReplay}
+                  disabled={props.replaying}
+                  aria-label={`Replay the recorded haul for trip ${facts.trip.tripNo}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M2 1l9 5-9 5z" fill="currentColor" />
+                  </svg>
+                  {props.replaying ? 'Replaying' : 'Replay haul'}
+                </button>
+              )}
               {drain && drain.trips.length > 1 && facts?.trip && (
                 <label className="trip-pick">
                   <span>Trip</span>
@@ -212,6 +229,7 @@ function CaseFile({ slotRef, ...props }: Props) {
                 trip={facts.trip}
                 facts={facts}
                 imageExpired={props.evidenceExpired}
+                simulatedCase={bill.simulated}
                 onImageError={props.onEvidenceError}
               />
             ) : (
@@ -228,6 +246,7 @@ function CaseFile({ slotRef, ...props }: Props) {
                 original={props.original}
                 forceSlot={props.forcePhotoSlot}
                 expired={props.evidenceExpired}
+                simulatedCase={bill.simulated}
                 onImageError={props.onEvidenceError}
               />
             ) : (

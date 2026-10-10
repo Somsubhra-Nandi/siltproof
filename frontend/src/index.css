@@ -76,14 +76,17 @@ button, textarea, input { font: inherit; color: inherit; }
 }
 
 .sim-badge {
-  font: 600 13px/1 var(--sans);
-  color: var(--ink);
-  padding: 6px 10px;
+  font: 600 12px/1 var(--sans);
+  color: var(--ink-2);
+  padding: 5px 8px;
   border-radius: 3px;
   white-space: nowrap;
-  background: repeating-linear-gradient(-45deg, #e6dfc9 0 6px, #efe9d6 6px 12px);
-  border: 1px solid #cdbf95;
+  background: transparent;
+  border: 1px solid var(--rule);
+  cursor: pointer;
 }
+.sim-badge:hover { color: var(--ink); border-color: var(--ink-3-line); }
+.sim-badge:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
 
 /* ------------------------------------------------------------- buttons */
 .btn {

@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 
+import Lightbox from './Lightbox'
+import type { LightboxItem } from './Lightbox'
 import type { CaseFacts } from '../lib/caseFacts'
 import { allFindings, photoTitle } from '../lib/caseFacts'
 import { PHASH_DUPLICATE_MAX } from '../lib/timeline'
-import { offline } from '../api'
 import { dayTime } from '../format'
 import type { Drain, Finding, Photo } from '../types'
 
 const PHOTO_RULES = ['R1', 'R2', 'R3', 'R4', 'PHOTOS_MISSING']
+const ROLE_ORDER = ['before', 'after', 'load']
+const ROLE_NAMES: Record<string, string> = { before: 'Before', after: 'After', load: 'Load' }
 
 interface Props {
   drain: Drain
@@ -18,10 +21,13 @@ interface Props {
   /** ?photos=slot: show the reserved frames for the real photos instead. */
   forceSlot: boolean
   expired: boolean
+  /** The prepared investigation: its photos are generated stand-ins. */
+  simulatedCase: boolean
   onImageError: () => void
 }
 
 const fileOf = (key: string) => key.split('/').slice(-2).join('/')
+const roleName = (photo: Photo) => ROLE_NAMES[photo.role ?? ''] ?? 'Photo'
 
 function Bits({ hash, label }: { hash: string; label: string }) {
   const bits = [...hash].flatMap((h) => [...parseInt(h, 16).toString(2).padStart(4, '0')])
@@ -39,7 +45,7 @@ type SlotReason = 'expired' | 'reserved' | 'missing'
 function Slot({ who, reason }: { who: string; reason: SlotReason }) {
   return (
     <div className="photoslot">
-      <svg width="40" height="32" viewBox="0 0 40 32" aria-hidden="true">
+      <svg width="32" height="26" viewBox="0 0 40 32" aria-hidden="true">
         <rect x="1" y="5" width="38" height="26" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
         <circle cx="20" cy="18" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
         <rect x="13" y="1" width="14" height="6" fill="currentColor" />
@@ -47,12 +53,10 @@ function Slot({ who, reason }: { who: string; reason: SlotReason }) {
       <b>{who}</b>
       <span>
         {reason === 'expired'
-          ? 'Photo link expired. Reopen the drain to fetch a new one.'
+          ? 'Link expired. Reopen the drain to refresh it.'
           : reason === 'reserved'
             ? 'Real GPS-tagged photo goes here. Not yet supplied.'
-            : offline
-              ? 'Not in the offline snapshot. The record and checks are shown.'
-              : 'No image link was returned for this photo.'}
+            : 'Image unavailable.'}
       </span>
     </div>
   )
@@ -62,19 +66,21 @@ function Slot({ who, reason }: { who: string; reason: SlotReason }) {
 function AiObservation({ photo, reuse = false }: { photo: Photo; reuse?: boolean }) {
   const ai = photo.bedrock
   if (!ai?.notes) return null
-  const mocked = ai.mocked || !ai.modelId
+  // No model read it: either planned by the dataset generator, or a fixed
+  // sample standing in for a model call.
+  const prewritten = Boolean(ai.simulated || ai.mocked || !ai.modelId)
   return (
     <div className="ai">
       <div className="k">
-        <span>{ai.simulated ? 'Simulated observation, not a finding' : 'AI observation, not a finding'}</span>
-        <span>{ai.simulated ? 'No model called' : 'Bedrock vision'}</span>
+        <span>{prewritten ? 'Pre-written observation, not a finding' : 'AI observation, not a finding'}</span>
+        <span>{prewritten ? 'No model called' : 'Amazon Bedrock'}</span>
       </div>
       <p>“{ai.notes}”</p>
       <small>
         {ai.simulated
-          ? 'Simulated: planned by the dataset generator for this generated photo; no model was called.'
-          : mocked
-            ? 'Offline: a canned sample, no model was called.'
+          ? 'Planned by the dataset generator for this generated photo; no model was called.'
+          : prewritten
+            ? 'A fixed sample written for this case study; no model was called.'
             : `Read by ${ai.modelId} when the photo was uploaded.`}{' '}
         {reuse
           ? 'It describes what a photo shows; it cannot tell that a photo was filed twice. R3 can.'
@@ -90,7 +96,7 @@ function FindingBox({ finding }: { finding: Finding }) {
     <div className={`finding ${finding.severity}`}>
       <div className="k">
         <span>
-          Rule {finding.rule}, deterministic{usesModel ? ', applied to the Bedrock reading' : ''}
+          Rule {finding.rule}, deterministic{usesModel ? ', applied to the photo reading' : ''}
         </span>
         <span>{finding.severity === 'hard' ? 'hard fail' : 'soft fail'}</span>
       </div>
@@ -148,16 +154,48 @@ function Compare({ left, right, leftLabel, rightLabel, onImageError }: {
           <path d="M5 1 1 6l4 5M13 1l4 5-4 5" fill="none" stroke="#1C2A38" strokeWidth="1.8" />
         </svg>
       </span>
-      <span className="tag-sim">Simulated photo</span>
     </div>
   )
 }
 
-function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageError }: Props) {
+function caption(photo: Photo, where = '') {
+  return (
+    <>
+      <b>{roleName(photo)}</b> <span className="num">{dayTime(photo.timestamp)}</span>
+      {where}
+      {photo.hasGps ? '' : ', no GPS'}
+      <small className="mono">{photo.s3Key.split('/').pop()}</small>
+    </>
+  )
+}
+
+function ExhibitPhotos({ drain, facts, original, forceSlot, expired, simulatedCase, onImageError }: Props) {
+  const [open, setOpen] = useState<{ items: LightboxItem[]; start: number; label: string } | null>(null)
   const findings = allFindings(drain).filter((f) => PHOTO_RULES.includes(f.rule))
   const r3 = facts.r3
   const rules = [...new Set(findings.map((f) => f.rule))]
   const slotReason: SlotReason = expired ? 'expired' : forceSlot ? 'reserved' : 'missing'
+  const showable = (photo: Photo | null | undefined): photo is Photo & { imageUrl: string } =>
+    Boolean(photo?.imageUrl) && !forceSlot && !expired
+
+  // Every photo on the drain that has an image, before, after, then load.
+  const byRole = [...drain.photos].sort(
+    (a, b) => ROLE_ORDER.indexOf(a.role ?? '') - ROLE_ORDER.indexOf(b.role ?? ''),
+  )
+  const gallery = byRole.filter(showable).map((photo) => ({
+    key: photo.s3Key,
+    item: {
+      src: photo.imageUrl!,
+      alt: `${roleName(photo)} photo of drain ${drain.drainId}, ${fileOf(photo.s3Key)}`,
+      caption: caption(photo),
+    },
+  }))
+  const openGallery = (key: string) =>
+    setOpen({
+      items: gallery.map((entry) => entry.item),
+      start: Math.max(0, gallery.findIndex((entry) => entry.key === key)),
+      label: `Drain ${drain.drainId} photographs`,
+    })
 
   let body
   if (r3) {
@@ -167,14 +205,14 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
     const originalDrain = String(r3.evidence.originalDrainId ?? '?')
     const leftLabel = `Drain ${originalDrain}, filed first`
     const rightLabel = `Drain ${drain.drainId} copy`
-    const canShow = !forceSlot && !expired && original?.imageUrl && copy?.imageUrl
+    const canShow = showable(original) && showable(copy)
     body = (
       <div className="photogrid">
         <div>
           {canShow ? (
             <Compare
-              left={original!.imageUrl!}
-              right={copy!.imageUrl!}
+              left={original.imageUrl}
+              right={copy.imageUrl}
               leftLabel={leftLabel}
               rightLabel={rightLabel}
               onImageError={onImageError}
@@ -187,14 +225,32 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
           )}
           <div className="cmp-cap">
             <span>
-              <b>{fileOf(origKey)}</b>
+              <b className="mono">{fileOf(origKey)}</b>
               {original ? `${dayTime(original.timestamp)}, inside drain ${originalDrain}` : `filed for drain ${originalDrain}`}
             </span>
             <span>
-              <b>{fileOf(copyKey)}</b>
+              <b className="mono">{fileOf(copyKey)}</b>
               {copy ? `${dayTime(copy.timestamp)}, billed for drain ${drain.drainId}` : ''}
             </span>
           </div>
+          {canShow && (
+            <button
+              type="button"
+              className="link enlarge"
+              onClick={() =>
+                setOpen({
+                  label: `Photo filed for drain ${originalDrain}, and its copy on drain ${drain.drainId}`,
+                  start: 0,
+                  items: [
+                    { src: original.imageUrl, alt: leftLabel, caption: caption(original, `, inside drain ${originalDrain}`) },
+                    { src: copy.imageUrl, alt: rightLabel, caption: caption(copy, `, billed for drain ${drain.drainId}`) },
+                  ],
+                })
+              }
+            >
+              Enlarge both photos
+            </button>
+          )}
         </div>
         <div>
           {original?.pHash && copy?.pHash && (
@@ -213,40 +269,47 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
       </div>
     )
   } else {
-    // Show the photo a finding names, or the after-photos, up to three.
+    // The photos a finding names first, then before and after, two at most.
     const named = new Set(findings.map((f) => String(f.evidence.s3Key ?? '')))
     const ordered = [
-      ...drain.photos.filter((photo) => named.has(photo.s3Key)),
-      ...drain.photos.filter((photo) => !named.has(photo.s3Key) && photo.role === 'after'),
-      ...drain.photos.filter((photo) => !named.has(photo.s3Key) && photo.role !== 'after'),
+      ...byRole.filter((photo) => named.has(photo.s3Key)),
+      ...byRole.filter((photo) => !named.has(photo.s3Key)),
     ].slice(0, 2)
-    const focus = ordered[0] ?? null
+    const focus = ordered.find((photo) => named.has(photo.s3Key)) ?? ordered.find((p) => p.role === 'after') ?? ordered[0] ?? null
+    const more = gallery.filter((entry) => !ordered.some((photo) => photo.s3Key === entry.key))
     body = drain.photos.length === 0 ? (
       <div className="warn">No photographs were filed for this drain.</div>
     ) : (
       <div className="photogrid">
         <div>
-          <div className="slotpair">
-            {ordered.map((photo) =>
-              photo.imageUrl && !forceSlot && !expired ? (
-                <figure key={photo.s3Key} className="photo-frame">
-                  <img src={photo.imageUrl} alt={`${photo.role ?? 'drain'} photo ${fileOf(photo.s3Key)}`} onError={onImageError} />
-                  <span className="tag-sim">Simulated photo</span>
-                </figure>
-              ) : (
-                <Slot key={photo.s3Key} who={fileOf(photo.s3Key)} reason={slotReason} />
-              ),
-            )}
-          </div>
-          <div className="cmp-cap">
+          <div className="photopair">
             {ordered.map((photo) => (
-              <span key={photo.s3Key}>
-                <b>{fileOf(photo.s3Key)}</b>
-                {photo.role ?? 'photo'}, {dayTime(photo.timestamp)}
-                {photo.hasGps ? '' : ', no GPS'}
-              </span>
+              <figure key={photo.s3Key} className={`photo-card ${named.has(photo.s3Key) ? 'named' : ''}`}>
+                {showable(photo) ? (
+                  <button
+                    type="button"
+                    className="photo-open"
+                    onClick={() => openGallery(photo.s3Key)}
+                    aria-label={`Enlarge the ${roleName(photo).toLowerCase()} photo, ${fileOf(photo.s3Key)}`}
+                  >
+                    <img
+                      src={photo.imageUrl}
+                      alt={`${roleName(photo)} photo of drain ${drain.drainId}, ${fileOf(photo.s3Key)}`}
+                      onError={onImageError}
+                    />
+                  </button>
+                ) : (
+                  <Slot who={`${roleName(photo)} photo`} reason={slotReason} />
+                )}
+                <figcaption>{caption(photo)}</figcaption>
+              </figure>
             ))}
           </div>
+          {more.length > 0 && (
+            <button type="button" className="link enlarge" onClick={() => openGallery(more[0].key)}>
+              {more.length === 1 ? 'One more photo' : `${more.length} more photos`}
+            </button>
+          )}
         </div>
         <div>
           {findings.length ? (
@@ -276,6 +339,10 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageErro
         </span>
       </div>
       {body}
+      {simulatedCase && drain.photos.length > 0 && (
+        <p className="ex-note">Generated stand-in images. Their GPS and time tags belong to the simulated dataset.</p>
+      )}
+      {open && <Lightbox items={open.items} start={open.start} label={open.label} onClose={() => setOpen(null)} />}
     </article>
   )
 }

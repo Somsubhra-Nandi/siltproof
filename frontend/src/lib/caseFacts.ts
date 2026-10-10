@@ -41,11 +41,16 @@ export function reasonFor(drain: Drain): string {
   return findings[0]?.message ?? ''
 }
 
-/** The trip the case file opens on: the first held one, else the first in review. */
+/**
+ * The trip the case file opens on: a held trip whose trace never reached the
+ * dump site (the haul Exhibit A can show), else the first held one, else the
+ * first in review.
+ */
 export function focusTrip(drain: Drain, tripId: string | null = null): Trip | null {
   const chosen = tripId ? drain.trips.find((trip) => trip.tripId === tripId) : undefined
   if (chosen) return chosen
   return (
+    drain.trips.find((trip) => trip.verdict === 'HOLD' && trip.findings.some((f) => f.rule === 'R5')) ??
     drain.trips.find((trip) => trip.verdict === 'HOLD') ??
     drain.trips.find((trip) => trip.verdict === 'REVIEW') ??
     drain.trips[0] ??
@@ -239,6 +244,9 @@ export function caseFacts(drain: Drain, tripId: string | null = null): CaseFacts
 // that nothing was found.
 
 export function routeTitle(drain: Drain, facts: CaseFacts): string {
+  // A trace logged in two places at once is the story, even when it also
+  // misses the dump site (drain 16's second trip is both).
+  if (facts.tripFindings.some((f) => f.rule === 'R6')) return 'One truck, logged in two places at once'
   if (facts.trip && !facts.reachedDump) {
     return facts.allStopTogether
       ? 'No truck reached the dump site'

@@ -64,7 +64,7 @@ function DecisionBar(props: Props) {
         {!raw
           ? 'Evidence summary'
           : offlineText
-            ? 'Evidence summary, offline: assembled from the rule findings, no model was called'
+            ? 'Evidence summary, assembled from the rule findings; no model was called'
             : `Evidence summary written by ${drain.summaryModelId ?? 'Amazon Bedrock'}. A description, not a finding`}
       </span>
       {raw ? (

@@ -77,6 +77,7 @@ function App() {
   const [decidedLocally, setDecidedLocally] = useState<Record<string, boolean>>({})
   const [explaining, setExplaining] = useState(false)
   const [evidenceSummary, setEvidenceSummary] = useState<string | null>(null)
+  const [replaying, setReplaying] = useState(false)
   const [announcement, setAnnouncement] = useState('')
 
   const mapRef = useRef<MapHandle>(null)
@@ -311,7 +312,7 @@ function App() {
   useEffect(() => {
     if (mode !== 'case') return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || document.querySelector('.confirm')) return
+      if (event.key !== 'Escape' || document.querySelector('.confirm, .lightbox')) return
       closeCase()
     }
     window.addEventListener('keydown', onKey)
@@ -474,6 +475,17 @@ function App() {
 
   const row = openId ? (bill?.drains.find((entry) => entry.drainId === openId) ?? null) : null
 
+  // Redraw the selected trip's recorded trace in Exhibit A.
+  const onReplay = async () => {
+    if (!drain || !facts || !mapRef.current || replaying) return
+    setReplaying(true)
+    try {
+      await mapRef.current.replay(drain, facts)
+    } finally {
+      setReplaying(false)
+    }
+  }
+
   return (
     <div ref={appRef} className={`app mode-${mode} ${settled ? 'settled' : ''}`}>
       <div className="sheet-wrap" inert={mode !== 'overview' ? true : undefined}>
@@ -523,6 +535,9 @@ function App() {
           saveError={saveError && saveError.drainId === openId ? saveError.message : null}
           explaining={explaining}
           evidenceSummary={evidenceSummary}
+          canReplay={verified && !reduced}
+          replaying={replaying}
+          onReplay={onReplay}
           onBack={closeCase}
           onSelectTrip={setTripId}
           onEvidenceError={onEvidenceError}

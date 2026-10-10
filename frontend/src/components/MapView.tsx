@@ -45,6 +45,8 @@ const TILT_MS = 1000
 const REPLAY_MS = 2600
 const DIMENSION_MS = 500
 const HOLD_MS = 400
+// A replay in the case file holds its ending long enough to read.
+const REPLAY_HOLD_MS = 1600
 
 export type MapMode = 'overview' | 'flying' | 'case'
 
@@ -53,7 +55,15 @@ export interface MapHandle {
   sweep(onPass: (drainIds: string[], progress: number) => void, ms?: number): Promise<void>
   /** Tilt over the drain and replay the focus trip's trace, once. */
   fly(drain: Drain, facts: CaseFacts): Promise<void>
+  /** In the case file: redraw the selected trip's recorded trace, then restore the case map. */
+  replay(drain: Drain, facts: CaseFacts): Promise<void>
 }
+
+type Anchor = 'right' | 'left' | 'bottom' | 'center'
+type Label = { marker: Marker; at: LngLat; html: string; cls: string; anchor: Anchor; offset: [number, number] }
+
+// Keep case labels this far inside the map frame.
+const LABEL_INSET = 6
 
 interface Props {
   ref?: Ref<MapHandle>
@@ -198,7 +208,10 @@ function MapView({
   const basemapRef = useRef<unknown>(null)
   const swappedRef = useRef(false)
   const ringsRef = useRef<Record<string, { el: HTMLDivElement; tag: HTMLDivElement; markers: Marker[] }>>({})
-  const labelsRef = useRef<Record<string, Marker>>({})
+  const labelsRef = useRef<Record<string, Label>>({})
+  // Bumped to cancel a trace replay that is still drawing.
+  const runRef = useRef(0)
+  const fitLabelsRef = useRef<() => void>(() => undefined)
   const callbacks = useRef({ onSelect, onHover })
   const modeRef = useRef(mode)
 
@@ -390,6 +403,8 @@ function MapView({
     map.on('load', addDataLayers)
     map.on('styledata', addDataLayers)
 
+    map.on('moveend', () => fitLabelsRef.current())
+
     let frame = 0
     map.on('move', () => {
       if (frame) return
@@ -503,20 +518,67 @@ function MapView({
   }, [rows, revealed, verified, hoverId, mode, caseId, rate, layersReady, geoReady])
 
   // -------------------------------------------------------- case labels
-  const label = useCallback((key: string, at: LngLat, html: string, cls: string, anchor: 'right' | 'left' | 'bottom' | 'center', offset: [number, number]) => {
+  const label = useCallback((key: string, at: LngLat, html: string, cls: string, anchor: Anchor, offset: [number, number]) => {
     const map = mapRef.current
     if (!map) return
-    labelsRef.current[key]?.remove()
+    labelsRef.current[key]?.marker.remove()
     const el = document.createElement('div')
     el.className = `maplabel ${cls}`
     el.innerHTML = html
-    labelsRef.current[key] = new Marker({ element: el, anchor, offset }).setLngLat(at).addTo(map)
+    const marker = new Marker({ element: el, anchor, offset }).setLngLat(at).addTo(map)
+    labelsRef.current[key] = { marker, at, html, cls, anchor, offset }
   }, [])
 
   const clearLabels = useCallback(() => {
-    for (const marker of Object.values(labelsRef.current)) marker.remove()
+    for (const entry of Object.values(labelsRef.current)) entry.marker.remove()
     labelsRef.current = {}
   }, [])
+
+  /**
+   * Keep the case labels inside the map frame and off each other: a label
+   * that runs past the side it hangs towards moves to the other side of its
+   * point, anything still outside is nudged in, and a label that lands on an
+   * earlier one drops below it. Narrow frames (mobile) need this; on wide
+   * ones every label already fits and nothing moves.
+   */
+  const fitLabels = useCallback(() => {
+    const map = mapRef.current
+    if (!map) return
+    const box = map.getContainer().getBoundingClientRect()
+    if (!box.width) return
+    const placed: DOMRect[] = []
+    for (const key of Object.keys(labelsRef.current)) {
+      let entry = labelsRef.current[key]
+      entry.marker.setOffset(entry.offset)
+      let r = entry.marker.getElement().getBoundingClientRect()
+      if (!r.width) continue
+      const pastLeft = r.left < box.left + LABEL_INSET
+      const pastRight = r.right > box.right - LABEL_INSET
+      if ((pastLeft && entry.anchor === 'right') || (pastRight && entry.anchor === 'left')) {
+        label(key, entry.at, entry.html, entry.cls, entry.anchor === 'right' ? 'left' : 'right', [-entry.offset[0], entry.offset[1]])
+        entry = labelsRef.current[key]
+        r = entry.marker.getElement().getBoundingClientRect()
+      }
+      let dx = 0
+      if (r.left < box.left + LABEL_INSET) dx = box.left + LABEL_INSET - r.left
+      else if (r.right > box.right - LABEL_INSET) dx = Math.max(box.left + LABEL_INSET - r.left, box.right - LABEL_INSET - r.right)
+      let dy = 0
+      for (const other of placed) {
+        const overlaps =
+          r.left + dx < other.right && r.right + dx > other.left && r.top + dy < other.bottom && r.bottom + dy > other.top
+        if (overlaps) dy = other.bottom + 4 - r.top
+      }
+      if (dx || dy) {
+        entry.marker.setOffset([entry.offset[0] + dx, entry.offset[1] + dy])
+        r = entry.marker.getElement().getBoundingClientRect()
+      }
+      placed.push(r)
+    }
+  }, [label])
+
+  useEffect(() => {
+    fitLabelsRef.current = fitLabels
+  })
 
   const setSource = (id: string, data: GeoJSON.FeatureCollection | GeoJSON.Feature) => {
     const source = mapRef.current?.getSource(id) as GeoJSONSource | undefined
@@ -563,6 +625,7 @@ function MapView({
       } else {
         label('dump', f.dump, 'Approved dump site', '', 'bottom', [0, -22])
       }
+      requestAnimationFrame(() => fitLabelsRef.current())
     },
     [clearLabels, label],
   )
@@ -599,6 +662,9 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !layersReady) return
+    // A change of drain, trip or mode ends any replay still drawing.
+    runRef.current += 1
+    setReplay(null)
     if (mode === 'case' && caseDrain && facts) {
       showCase(caseDrain, facts)
       map.easeTo({ pitch: 0, bearing: 0, duration: reducedMotion ? 0 : 900 })
@@ -646,6 +712,57 @@ function MapView({
       window.clearTimeout(timer)
     }
   }, [mode, caseDrain, facts, caseCamera, reducedMotion, geoReady, layersReady])
+
+  /**
+   * Draw the trip's recorded trace from its first fix to its last, then show
+   * how it ends: inside the dump site, or stopped short with the measured
+   * gap. Only the recorded points are drawn; nothing is added past the last
+   * fix. A newer run (another replay, or a change of trip) cancels it.
+   */
+  const playTrace = useCallback(
+    async (drain: Drain, f: CaseFacts, run: number, hold: number) => {
+      const trip = f.trip
+      if (!trip) return
+      const live = () => run === runRef.current
+      const route = trip.actualRoute
+      const total = trip.actualRouteDistanceM / 1000
+      const left = trip.startTime?.slice(11, 16) ?? '—'
+      const name = `Trip ${trip.tripNo}, ${trip.vehicleNo}`
+      await tween(
+        REPLAY_MS,
+        (p) => {
+          if (!live()) return
+          setSource('actual', line(sliceLine(route, p)))
+          setReplay({ trip: name, left, km: (total * p).toFixed(1), done: null })
+        },
+        ease.inOut,
+        false,
+      )
+      if (!live()) return
+
+      if (!f.reachedDump && f.stop) {
+        setSource('stop', { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: f.stop } })
+        if (f.allStopTogether) {
+          setSource('others', {
+            type: 'FeatureCollection',
+            features: drain.trips.filter((other) => other !== trip && other.actualRoute.length > 1).map((other) => line(other.actualRoute)),
+          })
+        }
+        setReplay({ trip: name, left, km: total.toFixed(1), done: `stops ${((f.shortOfDumpM ?? 0) / 1000).toFixed(1)} km short of the dump site` })
+        await tween(DIMENSION_MS, (p) => { if (live()) setSource('dim', dimensionLine(f.stop!, f.dump, p)) }, ease.out, false)
+        if (!live()) return
+        const mid: LngLat = [(f.stop[0] + f.dump[0]) / 2, (f.stop[1] + f.dump[1]) / 2]
+        label('dim', mid, `${((f.shortOfDumpM ?? 0) / 1000).toFixed(1)} km short`, 'dim', 'center', [0, 0])
+        fitLabelsRef.current()
+      } else {
+        const arrived = trip.arrivalTime?.slice(11, 16)
+        setReplay({ trip: name, left, km: total.toFixed(1), done: arrived ? `enters the dump site at ${arrived}` : 'enters the dump site' })
+      }
+      await wait(hold, false)
+      if (live()) setReplay(null)
+    },
+    [label],
+  )
 
   // ------------------------------------------------------------- handle
   useImperativeHandle(
@@ -718,43 +835,29 @@ function MapView({
         })
         await wait(TILT_MS + 50, false)
 
-        const total = trip.actualRouteDistanceM / 1000
-        const left = trip.startTime?.slice(11, 16) ?? '—'
-        await tween(
-          REPLAY_MS,
-          (p) => {
-            setSource('actual', line(sliceLine(route, p)))
-            setReplay({ trip: `Trip ${trip.tripNo}, ${trip.vehicleNo}`, left, km: (total * p).toFixed(1), done: null })
-          },
-          ease.inOut,
-          false,
-        )
+        await playTrace(drain, f, ++runRef.current, HOLD_MS)
+      },
 
-        if (!f.reachedDump && f.stop) {
-          setSource('stop', { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: f.stop } })
-          if (f.allStopTogether) {
-            setSource('others', {
-              type: 'FeatureCollection',
-              features: drain.trips.filter((other) => other !== trip && other.actualRoute.length > 1).map((other) => line(other.actualRoute)),
-            })
-          }
-          setReplay({
-            trip: `Trip ${trip.tripNo}, ${trip.vehicleNo}`,
-            left,
-            km: total.toFixed(1),
-            done: `stops ${((f.shortOfDumpM ?? 0) / 1000).toFixed(1)} km short of the dump site`,
-          })
-          await tween(DIMENSION_MS, (p) => setSource('dim', dimensionLine(f.stop!, f.dump, p)), ease.out, false)
-          const mid: LngLat = [(f.stop[0] + f.dump[0]) / 2, (f.stop[1] + f.dump[1]) / 2]
-          label('dim', mid, `${((f.shortOfDumpM ?? 0) / 1000).toFixed(1)} km short`, 'dim', 'center', [0, 0])
-        } else {
-          setReplay({ trip: `Trip ${trip.tripNo}, ${trip.vehicleNo}`, left, km: total.toFixed(1), done: 'enters the dump site' })
-        }
-        await wait(HOLD_MS, false)
-        setReplay(null)
+      async replay(drain, f) {
+        const map = mapRef.current
+        const geo = geoRef.current
+        const trip = f.trip
+        if (!map || !geo || !trip || trip.actualRoute.length < 2 || reducedMotion) return
+        const run = ++runRef.current
+        const route = trip.actualRoute
+        // The opening flight's drawing, in the case frame as it stands: the
+        // claimed haul and the destination stay, the recorded trace is redrawn.
+        clearCase()
+        setSource('claimed', drain.claimedRoute ? line(drain.claimedRoute) : EMPTY)
+        setSource('actual', line([route[0], route[0]]))
+        label('dump', f.dump, 'Approved dump site', '', 'bottom', [0, -22])
+        label('drain', geo.centroids[drain.drainId] ?? route[0], `Drain ${drain.drainId}<span class="sub">loads leave from here</span>`, '', 'right', [-30, 0])
+        fitLabelsRef.current()
+        await playTrace(drain, f, run, REPLAY_HOLD_MS)
+        if (run === runRef.current) showCase(drain, f)
       },
     }),
-    [reducedMotion, rows, clearCase, label],
+    [reducedMotion, rows, clearCase, label, showCase, playTrace],
   )
 
   // ---------------------------------------------------------- furniture

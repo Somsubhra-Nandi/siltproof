@@ -83,6 +83,13 @@ describe('other drains', () => {
     expect(facts.allStopTogether).toBe(false)
   })
 
+  it('opens drain 16 on the held trip whose trace misses the dump site', () => {
+    const facts = caseFacts(drain(d16))
+    expect(facts.trip?.tripId).toBe('16#006')
+    expect(facts.reachedDump).toBe(false)
+    expect(routeTitle(drain(d16), facts)).toBe('One truck, logged in two places at once')
+  })
+
   it('says plainly when a drain is clean', () => {
     const facts = caseFacts(drain(d1))
     expect(routeTitle(drain(d1), facts)).toBe('Every trace reaches the dump site')

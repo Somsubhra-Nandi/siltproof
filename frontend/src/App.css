@@ -376,7 +376,6 @@
 .case-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px; }
 .case-head h1 { font: 500 44px/1 var(--serif); letter-spacing: -0.02em; margin: 4px 0 6px; }
 .case-head .dims { color: var(--ink-2); font-size: 16px; }
-.inline-badge { margin-left: 10px; vertical-align: 2px; }
 .back { font-size: 16px; }
 .case-money { display: flex; align-items: center; gap: 20px; }
 .case-money .amt { font: 500 60px/0.95 var(--serif); color: var(--held); letter-spacing: -0.03em; text-align: right; font-variant-numeric: lining-nums; }
@@ -405,6 +404,10 @@
 .ex-tag { font: 600 13px/1 var(--sans); letter-spacing: 0.02em; border: 1.5px solid var(--ink); padding: 5px 7px 4px; white-space: nowrap; }
 .ex-head h2 { font: 600 22px/1.15 var(--serif); margin: 0; overflow-wrap: anywhere; }
 .ex-head .rules { display: flex; gap: 6px; align-items: center; }
+/* Exhibit A carries the replay and trip controls: its title takes a row of its own. */
+.exA .ex-head { grid-template-columns: auto minmax(0, 1fr); row-gap: 8px; }
+.exA .ex-head h2 { grid-column: 1 / -1; grid-row: 2; }
+.exA .ex-head .rules { justify-self: end; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
 .trip-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); margin-right: 6px; }
 .trip-pick select { font: 500 14px var(--mono); border: 1px solid var(--ink-3-line); border-radius: 3px; background: var(--paper); padding: 3px 4px; color: var(--ink); }
 .exA-slot { flex: 1; min-height: 220px; position: relative; }
@@ -451,12 +454,15 @@
 
 /* Exhibit B: the slip */
 .slipgrid { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 20px; min-height: 0; flex: 1; }
-.scan { position: relative; align-self: start; margin: 0; background: #fff; padding: 6px; border: 1px solid var(--ink-3-line); box-shadow: 3px 4px 0 rgba(28, 42, 56, 0.1); transform: rotate(-0.6deg); }
-.scan img { display: block; width: 222px; height: auto; filter: contrast(1.02) sepia(0.06); }
-.scan-inner { position: relative; display: block; }
-.scan .hl { position: absolute; left: 1%; right: 3%; border: 2px solid var(--held); background: rgba(142, 36, 36, 0.1); }
-.scan .tag-sim { left: 12px; bottom: 12px; }
-.slip-slot { height: 280px; }
+.scan { position: relative; align-self: start; margin: 0; }
+.scan-inner { position: relative; display: block; padding: 6px; border: 1px solid var(--ink-3-line); background: #fff; box-shadow: 3px 4px 0 rgba(28, 42, 56, 0.1); transform: rotate(-0.6deg); cursor: zoom-in; }
+.scan-inner:hover { border-color: var(--prussian); }
+.scan-inner:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+.scan img { display: block; width: 222px; max-width: 100%; height: auto; filter: contrast(1.02) sepia(0.06); }
+.scan .hl { position: absolute; left: calc(1% + 6px); right: calc(3% + 6px); border: 2px solid var(--held); background: rgba(142, 36, 36, 0.1); }
+.scan figcaption { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+.scan figcaption .mono { white-space: nowrap; }
+.slip-slot { min-height: 200px; }
 .slip-read { min-width: 0; }
 .loupe { position: relative; overflow: hidden; box-shadow: 0 0 0 1.5px var(--ink), 3px 3px 0 1.5px rgba(28, 42, 56, 0.12); background: #fff; max-width: 420px; }
 .loupe img { position: absolute; left: 0; top: 0; max-width: none; }
@@ -469,11 +475,13 @@
 .fields em { font-style: normal; font-size: 13px; color: var(--ink-3); }
 .fields div.hit b { color: var(--held); }
 .fields div.low em { color: var(--review-text); }
+/* One quiet line of provenance per exhibit. */
+.ex-note { margin: 12px 0 0; padding-top: 8px; border-top: 1px solid var(--sheet-2); font-size: 12.5px; line-height: 1.35; color: var(--ink-3); }
 
 /* Exhibit C: the photographs */
-.photogrid { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; flex: 1; min-height: 0; }
+.photogrid { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 20px; flex: 1; min-height: 0; }
 .photogrid > div { min-width: 0; }
-.compare { position: relative; height: 236px; border: 1.5px solid var(--ink); overflow: hidden; user-select: none; touch-action: none; cursor: ew-resize; background: var(--sheet-2); }
+.compare { position: relative; aspect-ratio: 4 / 3; border: 1.5px solid var(--ink); overflow: hidden; user-select: none; touch-action: none; cursor: ew-resize; background: var(--sheet-2); }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .compare .top { clip-path: inset(0 0 0 var(--cut, 50%)); }
 .compare .handle { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; margin-left: -1px; background: var(--paper); box-shadow: 0 0 0 1px var(--ink); }
@@ -484,27 +492,37 @@
 .compare .side { position: absolute; top: 10px; font: 600 14px/1.2 var(--sans); background: rgba(28, 42, 56, 0.86); color: #f2efe7; padding: 5px 8px; }
 .compare .side.l { left: 10px; }
 .compare .side.r { right: 10px; background: var(--held); }
-.tag-sim { position: absolute; bottom: 10px; left: 10px; background: rgba(28, 42, 56, 0.88); color: #f2efe7; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 2px; }
-.slotpair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 236px; }
-.photo-frame { position: relative; margin: 0; border: 1.5px solid var(--ink); overflow: hidden; background: var(--sheet-2); }
-.photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.slotpair, .photopair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.photo-card { margin: 0; min-width: 0; }
+.photo-open { display: block; width: 100%; padding: 0; border: 1.5px solid var(--ink); background: var(--sheet-2); aspect-ratio: 4 / 3; overflow: hidden; cursor: zoom-in; }
+.photo-open:hover { border-color: var(--prussian); }
+.photo-open:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+.photo-open img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.photo-card.named .photo-open { border-color: var(--held); box-shadow: 0 0 0 1.5px var(--held); }
+.photo-card figcaption { margin-top: 6px; font-size: 14px; line-height: 1.3; color: var(--ink-2); }
+.photo-card figcaption b { color: var(--ink); font-weight: 600; }
+.photo-card figcaption small, .cmp-cap b { display: block; font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .photoslot {
+  aspect-ratio: 4 / 3;
   border: 1.5px dashed var(--ink-3-line);
   background: repeating-linear-gradient(-45deg, var(--sheet) 0 8px, var(--sheet-2) 8px 16px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   text-align: center;
-  padding: 14px;
+  padding: 8px;
+  overflow: hidden;
   color: var(--ink-2);
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.3;
 }
-.photoslot b { color: var(--ink); font-size: 15px; }
-.cmp-cap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; margin-top: 6px; color: var(--ink-2); line-height: 1.3; }
-.cmp-cap b { color: var(--ink); display: block; overflow-wrap: anywhere; }
+.photoslot b { color: var(--ink); font-size: 14px; }
+.slip-slot { aspect-ratio: auto; }
+.cmp-cap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; font-size: 14px; margin-top: 6px; color: var(--ink-2); line-height: 1.3; }
+.cmp-cap b { color: var(--ink); font-weight: 500; font-size: 13px; }
+.enlarge { margin-top: 6px; font-size: 14px; min-height: 32px; }
 .hashes { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 12px; align-items: center; }
 .bits { display: grid; grid-template-columns: repeat(8, 7px); gap: 1px; }
 .bits i { width: 7px; height: 7px; background: var(--sheet-2); }
@@ -575,8 +593,7 @@
   .slipgrid { grid-template-columns: 180px minmax(0, 1fr); }
   .scan img { width: 166px; }
   .fields { grid-template-columns: 1fr; }
-  .photogrid { grid-template-columns: 280px minmax(0, 1fr); }
-  .compare, .slotpair { height: 200px; }
+  .photogrid { grid-template-columns: 320px minmax(0, 1fr); }
   .case-money .amt { font-size: 48px; }
 }
 @media (max-width: 1500px) {
@@ -618,7 +635,51 @@
   .ex-head { grid-template-columns: auto minmax(0, 1fr); }
   .ex-head h2 { grid-column: 1 / -1; grid-row: 2; }
   .ex-head .rules { justify-self: end; flex-wrap: wrap; }
+  /* The slip and the photos sit above what they prove, one column. */
+  .slipgrid, .photogrid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .timeline { --tl-min: 820; overflow-x: auto; overscroll-behavior-x: contain; }
+  .timeline > * { min-width: 820px; }
+  .scan { justify-self: center; }
+  .scan img { width: 240px; }
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .fields div { grid-template-columns: 76px minmax(0, 1fr) auto; }
+  .exhibit { padding: 12px 14px; }
+  /* Rings already carry the verdict; the held tags would run off a phone's map. */
+  .map-root .maptag-marker { display: none; }
+  .offmap { font-size: 13px; }
 }
+
+/* Replay in the case file: a compact read-out inside Exhibit A's frame. */
+.app.mode-case .replay { bottom: 12px; gap: 6px 14px; padding: 6px 10px; font-size: 14px; flex-wrap: wrap; white-space: normal; max-width: calc(100% - 24px); }
+.app.mode-case .replay b { font-size: 17px; }
+.replay-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 32px; padding: 4px 10px; margin-right: 6px;
+  font: 600 14px/1 var(--sans); color: var(--prussian);
+  background: var(--paper); border: 1.5px solid var(--prussian); border-radius: 3px; cursor: pointer;
+}
+.replay-btn:hover:not(:disabled) { background: var(--prussian); color: var(--paper); }
+.replay-btn:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+.replay-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Evidence enlarged over the page. */
+.lightbox { position: fixed; inset: 0; z-index: 80; background: rgba(20, 28, 38, 0.72); display: grid; place-items: center; padding: 16px; }
+.lightbox-panel { background: var(--paper); border: 1.5px solid var(--ink); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); max-width: min(1100px, 100%); max-height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.lightbox-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--rule); font-weight: 600; font-size: 15px; }
+.lightbox-count { color: var(--ink-2); font-weight: 400; }
+.lightbox-close { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--ink); cursor: pointer; border-radius: 3px; }
+.lightbox-close:hover { background: var(--sheet-2); }
+.lightbox-close:focus-visible, .btn-step:focus-visible { outline: 3px solid var(--prussian); outline-offset: 2px; }
+.lightbox-figure { margin: 0; padding: 14px 16px; overflow: auto; min-height: 0; }
+.lightbox-img { position: relative; display: block; width: fit-content; max-width: 100%; margin: 0 auto; }
+.lightbox-img img { display: block; max-width: 100%; max-height: calc(100vh - 220px); width: auto; height: auto; }
+.lightbox-img .hl { position: absolute; left: 1%; right: 3%; border: 2px solid var(--held); background: rgba(142, 36, 36, 0.1); }
+.lightbox-figure figcaption { margin-top: 10px; font-size: 15px; color: var(--ink-2); line-height: 1.35; }
+.lightbox-figure figcaption b { color: var(--ink); }
+.lightbox-figure figcaption small { display: block; font-size: 13px; color: var(--ink-3); }
+.lightbox-nav { display: flex; justify-content: space-between; gap: 12px; padding: 0 16px 14px; }
+.btn-step { min-height: 44px; padding: 8px 16px; font: 600 15px/1 var(--sans); color: var(--ink); background: var(--sheet); border: 1.5px solid var(--ink); border-radius: 3px; cursor: pointer; }
+.btn-step:hover { background: var(--sheet-2); }
 
 /* MapLibre's attribution, shown for the Amazon Location basemap. */
 .map-root .maplibregl-ctrl-attrib { font: 12px/1.4 var(--sans); background: rgba(242, 239, 231, 0.9); }
