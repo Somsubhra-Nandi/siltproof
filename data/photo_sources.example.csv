@@ -1,0 +1,11 @@
+# Licensed photographs for the SiltProof case study (docs/PHOTO-REPLACEMENT.md).
+# One row per slot: a before and an after photo for each of drains 1-18, plus a
+# load photo for drain 3 (construction debris) and drain 9 (a silt heap): 38 rows.
+# Drain 14's after-02 and after-03 are NOT listed: they are rebuilt from drain 9's
+# after photo, which is what rule R3 must catch.
+# licence: CC0-1.0, PDM-1.0, CC-BY-2.0, CC-BY-3.0, CC-BY-4.0, Unsplash or Pexels.
+# observation (optional): what the photo shows, used as its pre-written reading.
+file,drainId,role,sourceUrl,author,licence,licenceUrl,observation,note
+drain01-before.jpg,1,before,https://commons.wikimedia.org/wiki/File:EXAMPLE.jpg,Example Author,CC-BY-4.0,https://creativecommons.org/licenses/by/4.0/,"Silt and plastic waste fill the channel bed.",
+drain01-after.jpg,1,after,https://unsplash.com/photos/EXAMPLE,Example Author,Unsplash,https://unsplash.com/license,"Channel bed and invert are visible; the section looks cleared.",
+drain03-load.jpg,3,load,https://www.pexels.com/photo/EXAMPLE/,Example Author,Pexels,https://www.pexels.com/license/,"Load is broken brick, concrete rubble and tile fragments, not drain silt.",must show construction debris (R4)

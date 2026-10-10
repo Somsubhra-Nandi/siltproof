@@ -4,6 +4,9 @@
 tested before the shoot. After the shoot, the real photos take over and nothing
 else in the pipeline changes.
 
+For licensed stock photographs in place of the generated ones (not a real
+shoot), use `data/import_photos.py` instead: see `docs/PHOTO-REPLACEMENT.md`.
+
 ## What to do after the photo shoot
 
 1. Move the originals off the phone **by cable, AirDrop or Google Drive**.

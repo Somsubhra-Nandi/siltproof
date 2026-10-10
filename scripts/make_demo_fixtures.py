@@ -113,7 +113,16 @@ def main(argv=None):
                         help="ward name written into the snapshot")
     parser.add_argument("--keep", action="store_true",
                         help="reuse data/out instead of generating into a temp dir")
+    parser.add_argument("--photo-sources", default=None,
+                        help="licensed photographs to use instead of the generated ones "
+                             "(CSV, see docs/PHOTO-REPLACEMENT.md); default: generated")
+    parser.add_argument("--photos-dir", default=None,
+                        help="folder holding the photographs named in --photo-sources")
+    parser.add_argument("--accept-simulated-tags", action="store_true",
+                        help="agree that the photographs carry the case study's simulated GPS and time tags")
     args = parser.parse_args(argv)
+    if bool(args.photo_sources) != bool(args.photos_dir):
+        parser.error("--photo-sources and --photos-dir go together")
 
     import boto3
     from moto import mock_aws
@@ -166,6 +175,23 @@ def main(argv=None):
         # show numbers the demo never produces.
         gen_slips.main([])
         gen_photos.main([])
+        credits = None
+        if args.photo_sources:
+            # Licensed photographs take the generated ones' slots and tags;
+            # every check runs before anything is written.
+            import import_photos
+
+            try:
+                credits = import_photos.apply(
+                    work, args.photo_sources, args.photos_dir,
+                    accept_simulated_tags=args.accept_simulated_tags,
+                )
+            except import_photos.PhotoImportError as exc:
+                print("photographs not accepted:")
+                for problem in exc.problems:
+                    print(f"  - {problem}")
+                return 1
+            print(f"photographs: {len(credits)} licensed files in place of the generated ones")
 
         seed_script.main(
             ["--live", "--yes", "--bucket", BUCKET, "--table", TABLE,
@@ -208,6 +234,8 @@ def main(argv=None):
 
         (OUT / "bill.json").write_text(json.dumps(bill, indent=1) + "\n")
         written = 1
+        if credits is not None:
+            (OUT / "photo-credits.json").write_text(json.dumps(credits, indent=1) + "\n")
         responses = {}
 
         for row in bill["drains"]:
