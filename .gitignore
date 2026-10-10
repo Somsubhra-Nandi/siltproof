@@ -34,4 +34,27 @@ data/simulated/traces/
 
 # generator output (regenerate with data/gen_*.py)
 data/out/
-frontend/screenshots/location-live/
+
+# capture and browser-check output; regenerate with the npm scripts
+# (frontend/screenshots/README.md says how)
+frontend/screenshots/*
+!frontend/screenshots/README.md
+frontend/videos/
+design/screenshots/
+design/videos/
+
+# test-runner, browser-test and visual-regression reports
+.pytest_cache/
+.coverage
+htmlcov/
+playwright-report/
+test-results/
+blob-report/
+cypress/screenshots/
+cypress/videos/
+__screenshots__/
+*.har
+
+# local recordings and debug captures
+recordings/
+debug-captures/
