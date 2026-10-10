@@ -204,7 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain16/after-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain16/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0621722,
@@ -220,12 +220,13 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain16/before-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain16/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0629556,
@@ -241,6 +242,7 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }
@@ -332,7 +334,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-001.png",
    "actualRoute": [
     [
      72.885433,
@@ -658,7 +660,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-002.png",
    "actualRoute": [
     [
      72.885431,
@@ -959,7 +961,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-003.png",
    "actualRoute": [
     [
      72.885411,
@@ -1270,7 +1272,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-004.png",
    "actualRoute": [
     [
      72.885407,
@@ -1581,7 +1583,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-005.png",
    "actualRoute": [
     [
      72.885424,
@@ -1911,7 +1913,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-006.png",
    "actualRoute": [
     [
      73.14118,
@@ -2222,7 +2224,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/16-007.png",
    "actualRoute": [
     [
      72.885485,

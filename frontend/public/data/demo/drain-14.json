@@ -247,6 +247,7 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
@@ -268,6 +269,7 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
@@ -289,6 +291,7 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
@@ -310,6 +313,7 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }

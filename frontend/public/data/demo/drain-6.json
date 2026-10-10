@@ -204,7 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain6/after-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain6/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0864722,
@@ -220,12 +220,13 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain6/before-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain6/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0834306,
@@ -241,6 +242,7 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }
@@ -332,7 +334,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-001.png",
    "actualRoute": [
     [
      72.876693,
@@ -609,7 +611,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-002.png",
    "actualRoute": [
     [
      72.87676,
@@ -886,7 +888,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-003.png",
    "actualRoute": [
     [
      72.876701,
@@ -1163,7 +1165,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-004.png",
    "actualRoute": [
     [
      72.876757,
@@ -1440,7 +1442,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-005.png",
    "actualRoute": [
     [
      72.876708,
@@ -1730,7 +1732,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-006.png",
    "actualRoute": [
     [
      72.87672,
@@ -1975,7 +1977,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/6-007.png",
    "actualRoute": [
     [
      72.876666,

@@ -218,7 +218,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain3/after-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain3/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0866167,
@@ -234,12 +234,13 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain3/before-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain3/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0856333,
@@ -255,12 +256,13 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain3/load-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain3/load-01.jpg",
    "role": "load",
    "status": "OK",
    "lat": 19.0861639,
@@ -276,6 +278,7 @@
     "notes": "Load is broken brick, concrete rubble and tile fragments, not drain silt.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }
@@ -381,7 +384,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-001.png",
    "actualRoute": [
     [
      72.888226,
@@ -652,7 +655,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-002.png",
    "actualRoute": [
     [
      72.888153,
@@ -923,7 +926,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-003.png",
    "actualRoute": [
     [
      72.888248,
@@ -1194,7 +1197,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-004.png",
    "actualRoute": [
     [
      72.888235,
@@ -1475,7 +1478,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-005.png",
    "actualRoute": [
     [
      72.888218,
@@ -1756,7 +1759,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-006.png",
    "actualRoute": [
     [
      72.888224,
@@ -2037,7 +2040,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-007.png",
    "actualRoute": [
     [
      72.888155,
@@ -2308,7 +2311,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-008.png",
    "actualRoute": [
     [
      72.888184,
@@ -2579,7 +2582,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-009.png",
    "actualRoute": [
     [
      72.888215,
@@ -2860,7 +2863,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-010.png",
    "actualRoute": [
     [
      72.888144,
@@ -3131,7 +3134,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-011.png",
    "actualRoute": [
     [
      72.888168,
@@ -3412,7 +3415,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/3-012.png",
    "actualRoute": [
     [
      72.888237,

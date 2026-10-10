@@ -204,7 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain18/after-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain18/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0706917,
@@ -220,12 +220,13 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain18/before-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain18/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0726444,
@@ -241,6 +242,7 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }
@@ -332,7 +334,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/18-001.png",
    "actualRoute": [
     [
      72.886834,
@@ -617,7 +619,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/18-002.png",
    "actualRoute": [
     [
      72.8868,
@@ -902,7 +904,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/18-003.png",
    "actualRoute": [
     [
      72.886873,
@@ -1187,7 +1189,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/18-004.png",
    "actualRoute": [
     [
      72.886856,
@@ -1472,7 +1474,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/18-005.png",
    "actualRoute": [
     [
      72.886831,
@@ -1757,7 +1759,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/18-006.png",
    "actualRoute": [
     [
      72.886812,

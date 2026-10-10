@@ -204,7 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain12/after-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain12/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0687278,
@@ -220,12 +220,13 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain12/before-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain12/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0692361,
@@ -241,6 +242,7 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }
@@ -342,7 +344,7 @@
      "vehicleNo"
     ]
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/12-001.png",
    "actualRoute": [
     [
      72.869117,
@@ -655,7 +657,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/12-002.png",
    "actualRoute": [
     [
      72.869091,
@@ -968,7 +970,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/12-003.png",
    "actualRoute": [
     [
      72.869071,
@@ -1281,7 +1283,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/12-004.png",
    "actualRoute": [
     [
      72.869016,
@@ -1594,7 +1596,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/12-005.png",
    "actualRoute": [
     [
      72.869113,
@@ -1907,7 +1909,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/12-006.png",
    "actualRoute": [
     [
      72.869026,

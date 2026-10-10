@@ -27,9 +27,10 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(REPO / "backend"), str(REPO / "data")]
 
 # Drains whose images are copied into the snapshot, so the offline demo can
-# show them. The originals of any photo these drains reuse come along too.
-# Every other image link is null offline: presigned links never go in here.
-OFFLINE_IMAGE_DRAINS = ("14",)
+# show them: all 18, so every case file has its slips and photos. The
+# originals of any photo these drains reuse come along too. Presigned links
+# never go in here.
+OFFLINE_IMAGE_DRAINS = tuple(str(drain) for drain in range(1, 19))
 
 BUCKET = "siltproof-demo-evidence"
 TABLE = "siltproof-demo"
@@ -68,9 +69,10 @@ def localise_images(responses, evidence_root):
     """Swap presigned links for local copies, or null, in the drain responses.
 
     The live API signs a 5-minute link for every image. A snapshot must not
-    keep those: they expire, and they point at a bucket. The hero drain's
-    images, and the originals its reused photos copy, are copied next to the
-    snapshot instead and linked by path; everything else is null.
+    keep those: they expire, and they point at a bucket. The drains'
+    images (every drain in OFFLINE_IMAGE_DRAINS), and the originals their
+    reused photos copy, are copied next to the snapshot instead and linked by
+    path; anything else is null.
     """
     keep = set()
     for drain_id in OFFLINE_IMAGE_DRAINS:

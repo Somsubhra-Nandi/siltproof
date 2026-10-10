@@ -204,7 +204,7 @@
  "photos": [
   {
    "s3Key": "photos/B1/drain7/after-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain7/after-01.jpg",
    "role": "after",
    "status": "OK",
    "lat": 19.0880917,
@@ -220,12 +220,13 @@
     "notes": "Channel bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   },
   {
    "s3Key": "photos/B1/drain7/before-01.jpg",
-   "imageUrl": null,
+   "imageUrl": "/data/demo/evidence/photos/B1/drain7/before-01.jpg",
    "role": "before",
    "status": "OK",
    "lat": 19.0889972,
@@ -241,6 +242,7 @@
     "notes": "Channel is full of wet silt up to the kerb line.",
     "modelId": null,
     "mocked": true,
+    "simulated": false,
     "ok": true
    }
   }
@@ -332,7 +334,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/7-001.png",
    "actualRoute": [
     [
      72.870349,
@@ -617,7 +619,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/7-002.png",
    "actualRoute": [
     [
      72.870304,
@@ -902,7 +904,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/7-003.png",
    "actualRoute": [
     [
      72.870371,
@@ -1187,7 +1189,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/7-004.png",
    "actualRoute": [
     [
      72.870355,
@@ -1472,7 +1474,7 @@
     "missingFields": [],
     "lowConfidenceFields": []
    },
-   "slipImageUrl": null,
+   "slipImageUrl": "/data/demo/evidence/slips/B1/7-005.png",
    "actualRoute": [
     [
      72.870366,

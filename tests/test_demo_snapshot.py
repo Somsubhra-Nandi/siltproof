@@ -23,6 +23,7 @@ def test_the_headline_numbers():
     assert (summary["claimedTonnes"], summary["verifiedTonnes"],
             summary["reviewTonnes"], summary["heldTonnes"]) == (1240, 805, 65, 370)
     assert summary["heldRupees"] == 666000
+    assert summary["claimedRupees"] == 2232000
 
 
 def test_no_presigned_link_is_committed():
@@ -40,10 +41,17 @@ def test_image_links_are_local_files_or_null():
             assert (DEMO.parent.parent / link.lstrip("/")).exists(), link
 
 
-def test_the_hero_drain_has_its_images_offline():
-    drain = load("drain-14")
-    assert all(photo["imageUrl"] for photo in drain["photos"])
-    assert all(trip["slipImageUrl"] for trip in drain["trips"])
+def test_every_drain_has_its_images_offline():
+    slips = photos = 0
+    for drain_id in range(1, 19):
+        drain = load(f"drain-{drain_id}")
+        for trip in drain["trips"]:
+            assert trip["slipImageUrl"] == f"/data/demo/evidence/{trip['slipKey']}", trip["tripId"]
+            slips += 1
+        for photo in drain["photos"]:
+            assert photo["imageUrl"] == f"/data/demo/evidence/{photo['s3Key']}", photo["s3Key"]
+            photos += 1
+    assert (slips, photos) == (117, 40)
 
 
 def test_r8_and_the_summary_agree_on_the_minutes():
