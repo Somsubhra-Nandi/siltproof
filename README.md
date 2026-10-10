@@ -79,7 +79,7 @@ AI reads the documents. Deterministic rules judge them. A person decides.
 
 SiltProof has two execution paths:
 
-- **The prepared investigation** is a fictional bill (Bill B1) analysed before
+- **The prepared investigation** is a bill (Bill B1) analysed before
   deployment and served as static files. It shows the full experience at the
   scale of a real bill, instantly and at no cost per visit.
 - **Try SiltProof Yourself** runs the live pipeline on AWS against files you
@@ -89,8 +89,7 @@ SiltProof has two execution paths:
 ## Investigation spotlight: Bill B1
 
 One ward, one contractor bill, 21 Sep to 4 Oct 2026, at an illustrative
-₹1,800 per tonne. The bill and its evidence are a prepared case study, not a
-real payment decision.
+₹1,800 per tonne. The bill and its evidence are a prepared case study.
 
 |  | Tonnes | Amount |
 |---|---:|---:|
@@ -338,28 +337,12 @@ design/         Design system and early prototypes
 Real contractor bills and their evidence are not public, so the 18-drain
 investigation is a prepared case study:
 
-- **Bill B1 is fictional.** The contractor, trips, timestamps, weighbridge
-  slips and drain sections are generated. The drain geometry is synthetic,
-  placed in a Mumbai setting; it does not trace real drains. The truck GPS
-  traces were interpolated offline by the dataset generator, not routed with
-  Amazon Location. Amazon Location supplies the live map.
-- **Slip readings are prepared values.** The field values and confidences
-  shown for the 117 slips are fixture readings, not output from running
-  Textract on each slip.
-- **The 40 photographs are licensed illustrative images** (CC0 1.0 and the
-  Pexels License), not field captures from these locations, and they carry no
-  EXIF. The GPS and time attached to each photo, and its observation note, are
-  prepared records, not fresh Bedrock output. Sources and authors are listed
-  in [`docs/PHOTO-CREDITS.md`](docs/PHOTO-CREDITS.md).
-- **The rules and the totals are real.** The verdicts, tonnages and amounts
-  come from running the actual rules code over that evidence.
-- **The live trial is separate.** Files uploaded there are processed by
-  Textract and Bedrock on AWS, and its results say which service produced each
-  reading.
+- Bill B1 is synthetic. Drain locations, truck GPS traces, trip records, weighbridge slips and their confidence scores are prepared case-study data.
+- The 40 photographs are licensed illustrative images (CC0 1.0 and the Pexels License), not field captures from these locations. The GPS and time attached to each photo, and its observation note, are prepared records.
+- **The rules and the totals are real.** The verdicts, tonnages and amounts come from running the actual rules code over that evidence.
+- **The live trial is separate.** Files uploaded there are processed by Textract and Bedrock on AWS, and its results say which service produced each reading.
 
-The method is described further in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/JUDGE-TRIAL-API.md`](docs/JUDGE-TRIAL-API.md) and
-[`DECISIONS.md`](DECISIONS.md).
+The method is described further in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`DECISIONS.md`](DECISIONS.md).
 
 ## Security notes
 
@@ -389,8 +372,6 @@ The method is described further in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md
 
 ## Licence and attribution
 
-This repository does not yet include a software licence file. The photographs
-are CC0 1.0 or Pexels License images, credited in
-[`docs/PHOTO-CREDITS.md`](docs/PHOTO-CREDITS.md). The live map is
+This repository does not yet include a software licence file. The live map is
 © AWS, HERE through Amazon Location Service. The offline fallback basemap uses
 road and water data © OpenStreetMap contributors, ODbL.
