@@ -566,6 +566,36 @@ Still accepted, by design: `POST /decision` and `POST /verify` have no auth
 change B1's decisions; re-run the seed's reset to restore it. CORS is `*` on
 the API and the bucket.
 
+## Every drain's evidence in the offline snapshot (10 Oct 2026)
+
+The snapshot used to copy images for drain 14 only, so seventeen case files
+showed placeholders where their slips and photos belonged. It now copies all
+117 slips and 40 photos (about 13 MB). They are byte-identical to what the
+generators write; the drain JSON changed only in its image links and in a
+`bedrock.simulated: false` field the current ingest code writes and the old
+snapshot predated. The labels say the case study is simulated once, quietly:
+one "Simulated case study" control with the methodology, one provenance line
+per exhibit, and pre-written photo readings headed as such, never as Bedrock.
+
+## Drain 16 opens on the trace that shows the impossible trip
+
+A case file opens on a held trip whose trace misses the dump site, before the
+first held trip. Drain 14 is unchanged (its first held trip is that trip).
+Drain 16 now opens on trip 006 rather than 002: trip 006 is the second of the
+impossible pair, its trace 22 km from where the truck was 7 minutes earlier,
+which is the R6 story the plan gives drain 16. Its Exhibit A title therefore
+says R6 ("One truck, logged in two places at once") ahead of R5, whose miss
+follows from the same displaced trace. No verdict or total changes.
+
+## Licensed photographs: an import that keeps every rule's case
+
+`data/import_photos.py` swaps generated photos for licensed ones slot by
+slot, rebuilds drain 14's two copies from the new drain 9 photo and refuses
+any set whose perceptual hashes would change what R3 sees. It discards each
+photograph's own EXIF and writes the slot's simulated GPS and time, labelled
+as simulated, only with `--accept-simulated-tags`: that choice is pending
+(`docs/PHOTO-REPLACEMENT.md`).
+
 ## Pending live steps (not run; each needs approval)
 
 1. Redeploy the api and ingest code:

@@ -45,6 +45,7 @@ backend/     CodeUri for BOTH functions, so they share common/
   layers/    photo deps (pillow, imagehash, numpy, scipy) for ingest only
   events/    sam local invoke payloads
 data/        osm_drains, gen_trips, gen_slips, gen_photos, check_photos,
+             import_photos (licensed photos, docs/PHOTO-REPLACEMENT.md),
              seed, reset; dataset.py holds the shared constants
   out/       generated output, git-ignored
 scripts/     check_region.py, make_demo_fixtures.py
@@ -75,8 +76,8 @@ import `from common import ...`.
   `reset.py` and `gen_trips.py` are dry-run/offline unless `--live` is passed,
   and `--live` prints the call plan and a billable-call estimate first. Keep it
   that way for anything new.
-- Run the tests before committing: `.venv/bin/python -m pytest` (249 tests,
-  about 80 s) and `cd frontend && npm test` (76). No AWS account needed.
+- Run the tests before committing: `.venv/bin/python -m pytest` (471 tests,
+  about 8 min) and `cd frontend && npm test` (114). No AWS account needed.
   `sam build` needs `--use-container`, because the local python is 3.13 and
   the runtime is 3.12.
 - Rules live in `backend/common/rules.py` as pure functions over dicts. Keep
