@@ -21,7 +21,6 @@ function photos(d: Drain, original: Photo | null = null) {
       original={original}
       forceSlot={false}
       expired={false}
-      simulatedCase
       onImageError={noop}
     />,
   )
@@ -37,7 +36,7 @@ describe('Exhibit C, from the snapshot', () => {
     ])
     expect(container.querySelector('.photoslot')).toBeNull()
     expect(screen.queryByText(/Simulated photo/)).toBeNull()
-    expect(screen.getByText(/Generated stand-in images/)).toBeInTheDocument()
+    expect(screen.queryByText(/Generated stand-in|simulated dataset/)).toBeNull()
   })
 
   it('enlarges a photo in a dialog, steps through the drain’s photos, and closes on Escape', () => {
@@ -55,7 +54,7 @@ describe('Exhibit C, from the snapshot', () => {
   it('labels a pre-written observation honestly', () => {
     const { container } = photos(drain(d1))
     const ai = container.querySelector('.ai') as HTMLElement
-    expect(within(ai).getByText('Pre-written observation, not a finding')).toBeInTheDocument()
+    expect(within(ai).getByText('Photo observation, not a finding')).toBeInTheDocument()
     expect(within(ai).queryByText(/Bedrock/)).toBeNull()
   })
 
@@ -75,7 +74,7 @@ describe('Exhibit B, from the snapshot', () => {
     const d = drain(d11)
     const facts = caseFacts(d)
     const { container } = render(
-      <ExhibitSlip trip={facts.trip} facts={facts} imageExpired={false} simulatedCase onImageError={noop} />,
+      <ExhibitSlip trip={facts.trip} facts={facts} imageExpired={false} onImageError={noop} />,
     )
     expect(container.querySelector('.scan img')).toHaveAttribute('src', '/data/demo/evidence/slips/B1/11-001.png')
     expect(container.querySelector('.scan .hl')).not.toBeNull()
@@ -91,7 +90,7 @@ describe('Exhibit B, from the snapshot', () => {
     const d = drain(d11)
     const facts = caseFacts(d, '11#003')
     const { container } = render(
-      <ExhibitSlip trip={facts.trip} facts={facts} imageExpired={false} simulatedCase onImageError={noop} />,
+      <ExhibitSlip trip={facts.trip} facts={facts} imageExpired={false} onImageError={noop} />,
     )
     expect(container.querySelector('.scan img')).toHaveAttribute('src', '/data/demo/evidence/slips/B1/11-003.png')
     expect(container.querySelector('.scan .hl')).toBeNull()

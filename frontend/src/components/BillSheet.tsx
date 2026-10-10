@@ -108,7 +108,6 @@ function Ledger({ summary, pending }: { summary: Summary; pending: boolean }) {
 function BillSheet(props: Props) {
   const { bill, error, phase, rows, summary, revealed, reasons, hoverId } = props
   const [openReview, setOpenReview] = useState<string | null>(null)
-  const [aboutOpen, setAboutOpen] = useState(false)
   const [confirming, setConfirming] = useState<{ drainId: string; kind: Kind } | null>(null)
 
   const trips = bill?.drains.reduce((sum, row) => sum + row.tripCount, 0) ?? 0
@@ -423,27 +422,8 @@ function BillSheet(props: Props) {
           <a className="link" href={`${import.meta.env.BASE_URL}trial.html`}>
             Try SiltProof Yourself
           </a>
-          <button
-            type="button"
-            className="sim-badge"
-            aria-expanded={phase === 'pending' || aboutOpen}
-            aria-controls="about-case"
-            onClick={() => setAboutOpen((open) => !open)}
-          >
-            Simulated case study
-          </button>
         </span>
       </header>
-
-      {(phase === 'pending' || aboutOpen) && (
-        <div className="disclose" id="about-case">
-          <b>Simulated case study.</b> The bill, contractor, weighbridge slips, GPS traces and
-          photos are generated, and the photo observations and evidence summaries are pre-written: no
-          AI model processed this investigation. No real ward or payment is involved. The checks
-          themselves are the real rules. To run the live pipeline on your own files, use Try SiltProof
-          Yourself.
-        </div>
-      )}
 
       {error && (
         <div className="err sheet-note" role="alert">

@@ -18,8 +18,6 @@ interface Props {
   trip: Trip | null
   facts: CaseFacts
   imageExpired: boolean
-  /** The prepared investigation: its slips are generated. */
-  simulatedCase: boolean
   onImageError: () => void
 }
 
@@ -43,7 +41,7 @@ function Field({ trip, name, label, hit }: { trip: Trip; name: string; label: st
   )
 }
 
-function ExhibitSlip({ trip, facts, imageExpired, simulatedCase, onImageError }: Props) {
+function ExhibitSlip({ trip, facts, imageExpired, onImageError }: Props) {
   const [enlarged, setEnlarged] = useState(false)
   const slip = trip?.slip ?? null
   const url = trip?.slipImageUrl ?? null
@@ -166,12 +164,6 @@ function ExhibitSlip({ trip, facts, imageExpired, simulatedCase, onImageError }:
             )}
           </div>
         </div>
-      )}
-      {simulatedCase && slip && (
-        <p className="ex-note">
-          Generated slip from a fictional weighbridge.
-          {offline ? ' Its fields and confidence scores are part of the simulated dataset.' : ''}
-        </p>
       )}
       {enlarged && url && slip && trip && (
         <Lightbox

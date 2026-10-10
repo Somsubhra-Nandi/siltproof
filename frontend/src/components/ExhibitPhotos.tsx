@@ -21,8 +21,6 @@ interface Props {
   /** ?photos=slot: show the reserved frames for the real photos instead. */
   forceSlot: boolean
   expired: boolean
-  /** The prepared investigation: its photos are generated stand-ins. */
-  simulatedCase: boolean
   onImageError: () => void
 }
 
@@ -66,22 +64,17 @@ function Slot({ who, reason }: { who: string; reason: SlotReason }) {
 function AiObservation({ photo, reuse = false }: { photo: Photo; reuse?: boolean }) {
   const ai = photo.bedrock
   if (!ai?.notes) return null
-  // No model read it: either planned by the dataset generator, or a fixed
-  // sample standing in for a model call.
+  // No model read it: a note prepared with the investigation.
   const prewritten = Boolean(ai.simulated || ai.mocked || !ai.modelId)
   return (
     <div className="ai">
       <div className="k">
-        <span>{prewritten ? 'Pre-written observation, not a finding' : 'AI observation, not a finding'}</span>
-        <span>{prewritten ? 'No model called' : 'Amazon Bedrock'}</span>
+        <span>{prewritten ? 'Photo observation, not a finding' : 'AI observation, not a finding'}</span>
+        <span>{prewritten ? 'Prepared note' : 'Amazon Bedrock'}</span>
       </div>
       <p>“{ai.notes}”</p>
       <small>
-        {ai.simulated
-          ? 'Planned by the dataset generator for this generated photo; no model was called.'
-          : prewritten
-            ? 'A fixed sample written for this case study; no model was called.'
-            : `Read by ${ai.modelId} when the photo was uploaded.`}{' '}
+        {prewritten ? '' : `Read by ${ai.modelId} when the photo was uploaded. `}
         {reuse
           ? 'It describes what a photo shows; it cannot tell that a photo was filed twice. R3 can.'
           : 'It describes what a photo shows; the rules decide.'}
@@ -169,7 +162,7 @@ function caption(photo: Photo, where = '') {
   )
 }
 
-function ExhibitPhotos({ drain, facts, original, forceSlot, expired, simulatedCase, onImageError }: Props) {
+function ExhibitPhotos({ drain, facts, original, forceSlot, expired, onImageError }: Props) {
   const [open, setOpen] = useState<{ items: LightboxItem[]; start: number; label: string } | null>(null)
   const findings = allFindings(drain).filter((f) => PHOTO_RULES.includes(f.rule))
   const r3 = facts.r3
@@ -339,9 +332,6 @@ function ExhibitPhotos({ drain, facts, original, forceSlot, expired, simulatedCa
         </span>
       </div>
       {body}
-      {simulatedCase && drain.photos.length > 0 && (
-        <p className="ex-note">Generated stand-in images. Their GPS and time tags belong to the simulated dataset.</p>
-      )}
       {open && <Lightbox items={open.items} start={open.start} label={open.label} onClose={() => setOpen(null)} />}
     </article>
   )

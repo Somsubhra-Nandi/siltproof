@@ -229,7 +229,6 @@ function CaseFile({ slotRef, ...props }: Props) {
                 trip={facts.trip}
                 facts={facts}
                 imageExpired={props.evidenceExpired}
-                simulatedCase={bill.simulated}
                 onImageError={props.onEvidenceError}
               />
             ) : (
@@ -246,7 +245,6 @@ function CaseFile({ slotRef, ...props }: Props) {
                 original={props.original}
                 forceSlot={props.forcePhotoSlot}
                 expired={props.evidenceExpired}
-                simulatedCase={bill.simulated}
                 onImageError={props.onEvidenceError}
               />
             ) : (
