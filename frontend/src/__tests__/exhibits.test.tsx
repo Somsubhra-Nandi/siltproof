@@ -54,7 +54,7 @@ describe('Exhibit C, from the snapshot', () => {
   it('labels a pre-written observation honestly', () => {
     const { container } = photos(drain(d1))
     const ai = container.querySelector('.ai') as HTMLElement
-    expect(within(ai).getByText('Photo observation, not a finding')).toBeInTheDocument()
+    expect(within(ai).getByText('Photo observation · Not a verification finding')).toBeInTheDocument()
     expect(within(ai).queryByText(/Bedrock/)).toBeNull()
   })
 

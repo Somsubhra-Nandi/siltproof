@@ -438,10 +438,9 @@ function BillSheet(props: Props) {
 
       {bill ? (
         <p className="bill-meta">
-          <strong>Bill {bill.billId}</strong>
-          {showWard ? `, ${bill.ward}` : ''}, drain desilting, {windowText(bill.workWindow)}
+          <strong>Bill {bill.billId}</strong> · {bill.drains.length} drains · {trips} trips
           <br />
-          {bill.contractor}, {bill.drains.length} drains, {trips} trips
+          Drain desilting{showWard ? `, ${bill.ward}` : ''}, {windowText(bill.workWindow)}
           {offline && (
             <span
               className="offline-tag"

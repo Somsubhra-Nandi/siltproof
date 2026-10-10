@@ -69,8 +69,8 @@ function AiObservation({ photo, reuse = false }: { photo: Photo; reuse?: boolean
   return (
     <div className="ai">
       <div className="k">
-        <span>{prewritten ? 'Photo observation, not a finding' : 'AI observation, not a finding'}</span>
-        <span>{prewritten ? 'Prepared note' : 'Amazon Bedrock'}</span>
+        <span>{prewritten ? 'Photo observation · Not a verification finding' : 'AI observation, not a finding'}</span>
+        {!prewritten && <span>Amazon Bedrock</span>}
       </div>
       <p>“{ai.notes}”</p>
       <small>

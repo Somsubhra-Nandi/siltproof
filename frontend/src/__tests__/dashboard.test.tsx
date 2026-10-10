@@ -253,6 +253,7 @@ describe('before verification', () => {
     expect(screen.getAllByText('Not yet calculated')).toHaveLength(3)
     expect(container.querySelector('.stamp')).toBeNull()
     expect(screen.queryByText(/Simulated case study/)).toBeNull()
+    expect(screen.queryByText(/Simulated Contractor/)).toBeNull()
     expect(screen.getByText(/18 drains|3 drains on this bill, not checked/)).toBeInTheDocument()
   })
 
@@ -392,8 +393,7 @@ describe('the case file', () => {
     expect(screen.getByText('Rule R3, deterministic')).toBeInTheDocument()
     const ai = container.querySelector('.ai')!
     // A canned reading (mocked, no model id) never claims a model read it.
-    expect(within(ai as HTMLElement).getByText('Photo observation, not a finding')).toBeInTheDocument()
-    expect(within(ai as HTMLElement).getByText('Prepared note')).toBeInTheDocument()
+    expect(within(ai as HTMLElement).getByText('Photo observation · Not a verification finding')).toBeInTheDocument()
     expect(within(ai as HTMLElement).queryByText(/Bedrock/)).toBeNull()
     expect(screen.getByText(/Evidence summary, assembled from the rule findings/)).toBeInTheDocument()
   })
