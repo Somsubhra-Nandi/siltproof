@@ -14,9 +14,16 @@ Built for Environmental Hacks (AWS), 8–10 Oct 2026. Full scope and schedule in
 [`siltproof-hackathon-plan.md`](siltproof-hackathon-plan.md), which is the
 source of truth.
 
-**Data statement:** contractor bills are not public. The drain geometry and the
-photos (with their GPS and timestamps) are real; weighbridge slips and GPS
-traces are simulated. Every check runs live on AWS.
+**Data statement:** contractor bills are not public, so the 18-drain
+investigation (Bill B1) is a prepared case study. The drain geometry is real
+(OpenStreetMap). The bill, contractor, weighbridge slips, GPS traces, trip and
+photo timestamps are simulated; the photo observations and evidence summaries
+are prepared, not model output, and the public site serves them from a
+precomputed snapshot. The 40 photographs are licensed illustrative stock
+(CC0 and Pexels, [`docs/PHOTO-CREDITS.md`](docs/PHOTO-CREDITS.md)): none was
+taken at these drains, and the files carry no EXIF. The ten rules are the
+real rules. **Try SiltProof Yourself** (`trial.html`) runs the live AWS
+pipeline (Textract, Bedrock, the same rules) on files a judge uploads.
 
 ## Architecture
 

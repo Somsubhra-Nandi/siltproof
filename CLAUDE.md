@@ -84,6 +84,8 @@ import `from common import ...`.
   them that way: the API assembles the context, the rules only judge it.
 - After changing rules or generators, regenerate the offline snapshot with
   `python scripts/make_demo_fixtures.py`, or the frontend demo will drift.
+  That restores the generated photos: re-apply the illustrative ones with
+  `import_photos.py --snapshot` (docs/PHOTO-REPLACEMENT.md).
 - `data/out/ground_truth.json` is the expected output of rules R1-R10 for the
   generated dataset. Day 2's rules are tested against it; if a rule disagrees,
   one of the two is wrong - decide which before changing either.

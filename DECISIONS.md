@@ -596,6 +596,31 @@ photograph's own EXIF and writes the slot's simulated GPS and time, labelled
 as simulated, only with `--accept-simulated-tags`: that choice is pending
 (`docs/PHOTO-REPLACEMENT.md`).
 
+## Illustrative photographs, display only (10 Oct 2026)
+
+The geometric stand-ins in the offline snapshot are replaced by 38 licensed
+photographs (40 files with drain 14's two copies), without
+`--accept-simulated-tags`: no GPS or time is written into any photograph.
+`import_photos.py --snapshot` swaps the pixels in
+`frontend/public/data/demo` and leaves the evidence records as the prepared
+investigation wrote them (GPS, times, verdicts, decisions, bill). Only what
+derives from pixels follows the pixels:
+
+- each photo's `pHash`, recomputed from the served file; drain 14's R3
+  distances are now 0 (exact copy) and 10 (edited copy, was 6), limit 12.
+  The write is refused unless R3 still finds exactly the same copies, and
+  `tests/test_demo_snapshot.py` checks every hash against its file;
+- the prepared observation for each photo, rewritten to describe the new
+  picture (same meaning: silted before, cleared after, drain 3 debris).
+
+CC0 and Pexels only, so no on-site credit is needed; CC BY candidates were
+dropped rather than add credits to the UI. Credits: `docs/PHOTO-CREDITS.md`.
+Regenerating the snapshot with `make_demo_fixtures.py` restores the
+generated photos; re-run the `--snapshot` step after it. The site no longer
+shows the "Simulated case study" badge or per-exhibit generated notices; the
+provenance is stated in the README instead, and prepared observations are
+still labelled "Prepared note", never as a model reading.
+
 ## Pending live steps (not run; each needs approval)
 
 1. Redeploy the api and ingest code:

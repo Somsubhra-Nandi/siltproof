@@ -219,7 +219,7 @@
     "s3Key": "photos/B1/drain14/after-03.jpg",
     "original": "photos/B1/drain9/after-01.jpg",
     "originalDrainId": "9",
-    "hammingDistance": 6
+    "hammingDistance": 10
    }
   }
  ],
@@ -238,13 +238,13 @@
    "lon": 72.8776167,
    "timestamp": "2026-09-25T12:03:33+05:30",
    "hasGps": true,
-   "pHash": "a6594906747c7a6b",
+   "pHash": "8c9f9cebe9c08670",
    "problems": [],
    "bedrock": {
     "cleared": true,
     "loadType": "unclear",
     "confidence": 0.9,
-    "notes": "Channel bed and invert are visible; the section looks cleared.",
+    "notes": "Concrete-lined channel with a shallow, open flow and no silt banks; the section looks cleared.",
     "modelId": null,
     "mocked": true,
     "simulated": false,
@@ -260,13 +260,13 @@
    "lon": 72.8779056,
    "timestamp": "2026-10-01T15:11:15+05:30",
    "hasGps": true,
-   "pHash": "e66b145c3a61676a",
+   "pHash": "c0cbc9710ef6f2e0",
    "problems": [],
    "bedrock": {
     "cleared": true,
     "loadType": "unclear",
     "confidence": 0.9,
-    "notes": "Channel bed and invert are visible; the section looks cleared.",
+    "notes": "Dry concrete channel; bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
     "simulated": false,
@@ -282,13 +282,13 @@
    "lon": 72.8779056,
    "timestamp": "2026-10-01T15:23:15+05:30",
    "hasGps": true,
-   "pHash": "e66b959c3a616662",
+   "pHash": "d0cbdb780eb0f0f0",
    "problems": [],
    "bedrock": {
     "cleared": true,
     "loadType": "unclear",
     "confidence": 0.9,
-    "notes": "Channel bed and invert are visible; the section looks cleared.",
+    "notes": "Dry concrete channel; bed and invert are visible; the section looks cleared.",
     "modelId": null,
     "mocked": true,
     "simulated": false,
@@ -304,13 +304,13 @@
    "lon": 72.8773222,
    "timestamp": "2026-09-24T09:22:47+05:30",
    "hasGps": true,
-   "pHash": "a58e5a5217373e07",
+   "pHash": "91c0c1e3f4d43ae7",
    "problems": [],
    "bedrock": {
     "cleared": false,
     "loadType": "unclear",
     "confidence": 0.86,
-    "notes": "Channel is full of wet silt up to the kerb line.",
+    "notes": "Discoloured standing water and waste along the channel.",
     "modelId": null,
     "mocked": true,
     "simulated": false,
@@ -353,7 +353,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -710,7 +710,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -1067,7 +1067,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -1424,7 +1424,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -1781,7 +1781,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -2138,7 +2138,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -2495,7 +2495,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -2852,7 +2852,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -3209,7 +3209,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -3566,7 +3566,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -3923,7 +3923,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -4280,7 +4280,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -4637,7 +4637,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -4994,7 +4994,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -5351,7 +5351,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -5708,7 +5708,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -6065,7 +6065,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {
@@ -6422,7 +6422,7 @@
       "s3Key": "photos/B1/drain14/after-03.jpg",
       "original": "photos/B1/drain9/after-01.jpg",
       "originalDrainId": "9",
-      "hammingDistance": 6
+      "hammingDistance": 10
      }
     },
     {

@@ -296,15 +296,129 @@ def apply(work_dir, sources, photos_dir, accept_simulated_tags=False):
     return credits
 
 
+def encode_plain(image):
+    """JPEG with no EXIF at all: no camera, no GPS, no time."""
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", quality=QUALITY, optimize=True)
+    return buffer.getvalue()
+
+
+def _walk_evidence(node):
+    """Every finding evidence dict inside a drain record."""
+    if isinstance(node, dict):
+        if isinstance(node.get("evidence"), dict):
+            yield node["evidence"]
+        for value in node.values():
+            yield from _walk_evidence(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _walk_evidence(value)
+
+
+def apply_to_snapshot(snapshot_dir, sources, photos_dir, manifest):
+    """Display-only: put the licensed pixels into the committed offline snapshot.
+
+    The snapshot's evidence records (GPS, time, verdicts, decisions) are left as
+    the prepared investigation wrote them. Only what is derived from pixels moves
+    with the pixels: each photo's pHash, the R3 Hamming distances, and the
+    pre-written observation where the sources file gives one. The JPEGs carry no
+    EXIF. Refuses to write unless R3 still finds exactly the same copies.
+    Returns the credits list.
+    """
+    from common.photo import perceptual_hash
+    from common.rules import find_duplicates
+
+    snapshot_dir = pathlib.Path(snapshot_dir)
+    fill, derived = slots(manifest)
+    rows = read_sources(sources)
+    problems = validate_rows(rows, fill) + validate_images(rows, photos_dir)
+    if problems:
+        raise PhotoImportError(problems)
+
+    staged, by_key = {}, {}
+    for row in rows:
+        key = fill[(row["drainId"], row["role"])]
+        with Image.open(pathlib.Path(photos_dir) / row["file"]) as source:
+            image = fit(source)
+        staged[key] = encode_plain(image)
+        by_key[key] = (row, image)
+    for key, (source_key, kind) in derived.items():
+        staged[key] = staged[source_key] if kind == "exact copy" else encode_plain(edited_copy(by_key[source_key][1]))
+
+    hashes = {key: perceptual_hash(data) for key, data in staged.items()}
+    problems = check_hashes({key: imagehash.hex_to_hash(h) for key, h in hashes.items()}, derived)
+
+    paths = sorted(snapshot_dir.glob("drain-*.json"))
+    drains = {path: json.loads(path.read_text(encoding="utf-8")) for path in paths}
+    photos = [photo for drain in drains.values() for photo in drain["photos"]]
+    missing = sorted({photo["s3Key"] for photo in photos} ^ set(staged))
+    if missing:
+        problems.append(f"snapshot photos and sources disagree on: {', '.join(missing)}")
+    if problems:
+        raise PhotoImportError(problems)
+
+    # R3 must find the same copies of the same originals with the new hashes.
+    before = {key: dup["original"] for key, dup in find_duplicates(photos).items()}
+    after_photos = [dict(photo, pHash=hashes[photo["s3Key"]]) for photo in photos]
+    after = find_duplicates(after_photos)
+    if before != {key: dup["original"] for key, dup in after.items()}:
+        raise PhotoImportError([f"R3 would change: {before} became {after}"])
+
+    notes = {key: row["observation"] for key, (row, _) in by_key.items() if row.get("observation")}
+    for key, (source_key, _) in derived.items():
+        if source_key in notes:
+            notes[key] = notes[source_key]
+    for drain in drains.values():
+        for photo in drain["photos"]:
+            photo["pHash"] = hashes[photo["s3Key"]]
+            if photo["s3Key"] in notes and photo.get("bedrock"):
+                photo["bedrock"]["notes"] = notes[photo["s3Key"]]
+        for evidence in _walk_evidence(drain):
+            key = evidence.get("s3Key")
+            if key in after and "hammingDistance" in evidence:
+                evidence["hammingDistance"] = after[key]["distance"]
+            if key in notes and "notes" in evidence:
+                evidence["notes"] = notes[key]
+
+    # Everything checked: write.
+    for key, data in staged.items():
+        (snapshot_dir / "evidence" / key).write_bytes(data)
+    for path, drain in drains.items():
+        path.write_text(json.dumps(drain, indent=1) + "\n")
+
+    credits = []
+    for key in sorted(staged):
+        source_key = derived.get(key, (key,))[0]
+        row = by_key[source_key][0]
+        credits.append({
+            "key": key, "derivedFrom": None if key == source_key else source_key,
+            "sourceUrl": row["sourceUrl"], "author": row["author"], "licence": row["licence"],
+            "pHash": hashes[key],
+        })
+    return credits
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--sources", required=True, help="CSV, see data/photo_sources.example.csv")
     parser.add_argument("--photos-dir", required=True, help="folder holding the photographs")
     parser.add_argument("--manifest", default=str(ds.OUT / "mock_manifest.json"),
                         help="generator manifest naming the slots (default data/out/mock_manifest.json)")
+    parser.add_argument("--snapshot", help="display-only: write the photos into this offline snapshot "
+                        "(frontend/public/data/demo) without EXIF; see docs/PHOTO-REPLACEMENT.md")
     args = parser.parse_args(argv)
 
     manifest = json.loads(pathlib.Path(args.manifest).read_text())
+    if args.snapshot:
+        try:
+            credits = apply_to_snapshot(args.snapshot, args.sources, args.photos_dir, manifest)
+        except PhotoImportError as exc:
+            print(f"Nothing written. {len(exc.problems)} problem(s):")
+            for problem in exc.problems:
+                print(f"  - {problem}")
+            return 1
+        print(f"Wrote {len(credits)} photos into {args.snapshot}; R3 finds the same copies.")
+        return 0
     fill, derived = slots(manifest)
     rows = read_sources(args.sources)
     problems = validate_rows(rows, fill) + validate_images(rows, args.photos_dir)

@@ -107,7 +107,24 @@ where an `observation` was given, the photo's pre-written notes.
 Keep the licensed originals and the filled sources file out of git unless the
 licence allows redistribution.
 
-## Still to do before licensed photos are published
+## Display-only route (used for the submission, 10 Oct 2026)
+
+The published snapshot uses this route instead of step 2: no simulated tags
+are written into any photograph.
+
+```bash
+python data/import_photos.py --sources data/photo_sources.csv \
+    --photos-dir <originals> --snapshot frontend/public/data/demo
+```
+
+It replaces the 40 JPEGs in the snapshot (no EXIF), recomputes each photo's
+pHash and drain 14's R3 distances from the new files, applies each row's
+`observation`, and writes nothing unless R3 still finds the same copies.
+GPS, times, verdicts and totals stay as the prepared investigation wrote
+them. Re-run it after any `make_demo_fixtures.py` rebuild. Credits:
+`docs/PHOTO-CREDITS.md` (CC0 and Pexels only, so the site needs none).
+
+## Still to do before licensed photos are published (EXIF route only)
 
 1. **Show the credits.** CC BY needs visible attribution. The frontend does
    not read `photo-credits.json` yet: add a credit line per photo (in the
