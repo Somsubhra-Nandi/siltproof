@@ -45,6 +45,38 @@ Profile `siltproof`, region `ap-south-1`, stack `siltproof`.
   one synthetic 5.2 MB JPEG and one generated slip; 1 Nova Pro call on the
   1568 px processing copy, 1 Textract call, all checks green, trial deleted.
 
+## State on the evening of 10 Oct: Amplify job 6 (current, submission build)
+
+- **Job 6, SUCCEED** (deploy 18:28:48 to 18:28:57 IST, 10 Oct), frontend
+  only, manual zip deploy to app `d1o7ayjtge649w`, branch `main`. Bundle
+  `amplify-job6-candidate-3eaa562-fullkey.zip` (commit `3eaa562`,
+  `feat/integrate-judge-trial`, 23,165,730 bytes, 189 entries), built
+  locally by the owner with job 5's settings: job 5's API base, snapshot bill
+  source, `ap-south-1`, and the same Location key (same length and
+  fingerprint as job 5's bundle; never printed). No backend, infrastructure
+  or key change.
+- What changed for users: 38 licensed illustrative photographs (CC0 and
+  Pexels, `docs/PHOTO-CREDITS.md`) in all 40 photo slots, no simulation
+  badge or per-exhibit generated notices, the bill line reads
+  "Bill B1 · 18 drains · 117 trips", Exhibit C's note is headed
+  "Photo observation · Not a verification finding".
+- **Verified live** (headless Chrome, desktop 1440 px and mobile 390 px):
+  served `index.html` and `trial.html` byte-identical to the zip; Amazon
+  Location map (attribution "© AWS, HERE"), every completed tile request
+  200 (176 desktop, 82 mobile; only requests the map itself cancelled
+  while navigating were aborted); all 18 drains open with their photos
+  (1200 px, no generated notices); 40 photos and 117 slips resolve; drain
+  14: replay animates, stops 2.2 km short, R3 against drain 9 at 0 of 64
+  bits, R8 06:53 time-in, all six slip fields with confidences 99.1, 96.5,
+  98.4, 95.9, 98.9 and 97.8 %; replays animate on drains 1, 11 and 16;
+  ₹22.32 lakh claimed, ₹6.66 lakh held, ₹14.49 lakh payable, 805/65/370 t;
+  trip switching, photo and slip enlargement (Escape closes) work; no
+  console errors. `/health` 200; `POST /trials` without an invite code is
+  403 INVITE_REQUIRED (no paid call made); `trial.html` loads.
+- **Rollback:** start a manual deployment with
+  `%USERPROFILE%\.siltproof\rollback\amplify-job5-candidate-4e7b872-fullkey.zip`
+  (job 5, last known good); jobs 3 and 4 bundles are kept beside it.
+
 ## 1. Fix the API (code-only change set) - done
 
 ```bash
